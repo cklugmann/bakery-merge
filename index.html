@@ -260,12 +260,12 @@ function drawKeks(ctx,r,g){
 }
 
 function drawMuffin(ctx,r,g){
-  const lT=r*.18,lB=r*.82,lWt=r*1.05,lWb=r*.78;
+  const lT=r*.18,lB=r*.82,lWt=r*.98,lWb=r*.76;
   ctx.beginPath();ctx.moveTo(-lWt,lT);ctx.lineTo(lWt,lT);ctx.lineTo(lWb,lB);ctx.lineTo(-lWb,lB);ctx.closePath();
   ctx.fillStyle=g?'#f0dea0':'#f0e0c0';ctx.fill();
   ctx.strokeStyle=g?'#a08040':'#b89050';ctx.lineWidth=1.5;ctx.stroke();
   ctx.strokeStyle=g?'rgba(140,90,0,.45)':'rgba(160,110,40,.45)';ctx.lineWidth=.9;
-  for(let i=-3;i<=3;i++){const wx=i*(lWt/3.8);ctx.beginPath();ctx.moveTo(wx,lT+2);ctx.lineTo(wx*(lWb/lWt),lB-2);ctx.stroke();}
+  for(let i=-3;i<=3;i++){const wx=i*(lWt/3.6);ctx.beginPath();ctx.moveTo(wx,lT+2);ctx.lineTo(wx*(lWb/lWt),lB-2);ctx.stroke();}
   ctx.beginPath();ctx.arc(0,lT*.1,r*.93,Math.PI,0,false);ctx.lineTo(lWt,lT);ctx.lineTo(-lWt,lT);ctx.closePath();
   ctx.fillStyle=g?'#b89020':'#6b3a10';ctx.fill();
   ctx.strokeStyle=g?'#7a5800':'#3a1800';ctx.lineWidth=1.5;ctx.stroke();
@@ -300,26 +300,43 @@ function drawDonut(ctx,r,g){
 }
 
 function drawCroissant(ctx,r,g){
-  const oR=r*.86,iR=r*.54,iOff=r*.5;
-  ctx.beginPath();ctx.arc(0,0,oR,0,TAU,false);ctx.arc(iOff,0,iR,TAU,0,true);
-  const grad=ctx.createLinearGradient(-oR,0,oR*.5,0);
-  if(g){grad.addColorStop(0,'#9a7800');grad.addColorStop(.4,'#ffd700');grad.addColorStop(1,'#c8a000');}
-  else{grad.addColorStop(0,'#a06800');grad.addColorStop(.4,'#e8a820');grad.addColorStop(1,'#c87808');}
-  ctx.fillStyle=grad;ctx.fill('evenodd');ctx.strokeStyle=g?'#7a5800':'#7a4800';ctx.lineWidth=2;ctx.stroke();
-  ctx.save();ctx.beginPath();ctx.arc(0,0,oR,0,TAU,false);ctx.arc(iOff,0,iR,TAU,0,true);ctx.clip('evenodd');
+  // Solid crescent Hoernchen — no evenodd artifacts, no thin-side slit.
+  // Arc centers shifted by +r*0.216 (centroid offset 7.776/36*r) so physics centroid = draw origin.
+  // outer arc: center (r*0.216, 0), radius r → horn tips exactly on physics boundary.
+  // inner arc: center (r*0.836, 0), radius r*0.58 → inner concave edge.
+  // Path sweeps the LONG way (left side only), so no thin right-side slit appears.
+  const ocx=r*0.216, icx=r*0.836, iR=r*0.58;
+  const tB=0.563, tT=-0.563;   // outer arc angles to horn tips (±32.3°)
+  const iT=-1.173, iB=1.173;   // inner arc angles from inner center to same tips (±67.2°)
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(ocx, 0, r,  tB, tT, false);  // outer long arc: CCW from bot-tip through LEFT to top-tip
+  ctx.arc(icx, 0, iR, iT, iB, true);   // inner long arc: CW-screen from top-tip through LEFT to bot-tip
+  ctx.closePath();
+  const grad=ctx.createLinearGradient(ocx-r,0,ocx+r*0.5,0);
+  if(g){grad.addColorStop(0,'#9a7800');grad.addColorStop(.45,'#ffd700');grad.addColorStop(1,'#c8a000');}
+  else{grad.addColorStop(0,'#a06800');grad.addColorStop(.45,'#e8a820');grad.addColorStop(1,'#c87808');}
+  ctx.fillStyle=grad;ctx.fill();
+  ctx.strokeStyle=g?'#7a5800':'#7a4800';ctx.lineWidth=2;ctx.stroke();
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(ocx,0,r,tB,tT,false);ctx.arc(icx,0,iR,iT,iB,true);ctx.closePath();ctx.clip();
   ctx.strokeStyle=g?'rgba(120,80,0,.5)':'rgba(100,55,0,.45)';ctx.lineWidth=1.2;
-  for(let i=-3;i<=3;i++){ctx.beginPath();ctx.moveTo(i*9-oR*.15,-oR*.95);ctx.lineTo(i*9+oR*.12,oR*.95);ctx.stroke();}
-  ctx.beginPath();ctx.ellipse(-oR*.3,-oR*.2,oR*.16,oR*.06,.65,0,TAU);ctx.fillStyle='rgba(255,255,255,.28)';ctx.fill();
+  for(let i=-3;i<=3;i++){ctx.beginPath();ctx.moveTo(ocx+i*9-r*.15,-r*.95);ctx.lineTo(ocx+i*9+r*.12,r*.95);ctx.stroke();}
+  ctx.beginPath();ctx.ellipse(ocx-r*.3,-r*.2,r*.16,r*.06,.65,0,TAU);ctx.fillStyle='rgba(255,255,255,.28)';ctx.fill();
   ctx.restore();
   if(g)goldenGlow(ctx,r);
+  ctx.restore();
 }
 
 function drawCupcake(ctx,r,g){
-  const lT=r*.12,lB=r*.78,lWt=r*.86,lWb=r*.66;
+  // lWb=r*0.62: bottom liner corners sit exactly on the physics circle at y=lB=r*0.78
+  // dR=r*0.9: dome top lands at y=dCY-dR=-r*0.1-r*0.9=-r (exactly the physics boundary)
+  const lT=r*.12,lB=r*.78,lWt=r*.97,lWb=r*.62;
   ctx.beginPath();ctx.moveTo(-lWt,lT);ctx.lineTo(lWt,lT);ctx.lineTo(lWb,lB);ctx.lineTo(-lWb,lB);ctx.closePath();
   ctx.fillStyle=g?'#f5e080':'#d4a8e4';ctx.fill();ctx.strokeStyle=g?'#a08000':'#8840a0';ctx.lineWidth=2;ctx.stroke();
-  for(let i=-4;i<=4;i++){const wx=i*(lWt/4.8);ctx.strokeStyle=g?'rgba(130,90,0,.4)':'rgba(100,40,140,.4)';ctx.lineWidth=.9;ctx.beginPath();ctx.moveTo(wx,lT+2);ctx.lineTo(wx*(lWb/lWt),lB-2);ctx.stroke();}
-  const dCY=-r*.1,dR=r*.88;
+  for(let i=-4;i<=4;i++){const wx=i*(lWt/5.2);ctx.strokeStyle=g?'rgba(130,90,0,.4)':'rgba(100,40,140,.4)';ctx.lineWidth=.9;ctx.beginPath();ctx.moveTo(wx,lT+2);ctx.lineTo(wx*(lWb/lWt),lB-2);ctx.stroke();}
+  const dCY=-r*.1,dR=r*.9;
   ctx.beginPath();ctx.arc(0,dCY,dR,Math.PI,0,false);ctx.lineTo(lWt,lT);ctx.lineTo(-lWt,lT);ctx.closePath();
   ctx.fillStyle=g?'#ffd700':'#f070c0';ctx.fill();ctx.strokeStyle=g?'#a08000':'#a02080';ctx.lineWidth=2;ctx.stroke();
   ctx.strokeStyle=g?'rgba(255,255,200,.4)':'rgba(255,255,255,.35)';ctx.lineWidth=2;
@@ -361,10 +378,13 @@ function drawCakeSlice(ctx,r,g){
 }
 
 function drawTorte(ctx,r,g){
+  // Fill up to r, then draw border ring entirely INSIDE r so no part of stroke exceeds physics boundary
   ctx.beginPath();ctx.arc(0,0,r,0,TAU);
-  ctx.fillStyle=g?'#c8a000':'#3a1c0a';ctx.fill();ctx.strokeStyle=g?'#7a6000':'#1a0800';ctx.lineWidth=3;ctx.stroke();
+  ctx.fillStyle=g?'#c8a000':'#3a1c0a';ctx.fill();
+  ctx.beginPath();ctx.arc(0,0,r-1.5,0,TAU);  // stroke outer edge = (r-1.5)+1.5 = r
+  ctx.strokeStyle=g?'#7a6000':'#1a0800';ctx.lineWidth=3;ctx.stroke();
   ctx.fillStyle=g?'#ffd700':'#5a2a0a';
-  for(let i=0;i<10;i++){ctx.save();ctx.rotate((i/10)*TAU);ctx.beginPath();ctx.ellipse(0,-(r+(i%2===0?r*.07:r*.05)),r*.09,r*.1,0,0,TAU);ctx.fill();ctx.restore();}
+  for(let i=0;i<10;i++){ctx.save();ctx.rotate((i/10)*TAU);ctx.beginPath();ctx.ellipse(0,-r*.925,r*.07,r*.055,0,0,TAU);ctx.fill();ctx.restore();}
   ctx.beginPath();ctx.arc(0,0,r*.87,0,TAU);ctx.fillStyle=g?'#fff3a0':'#fff0e8';ctx.fill();
   for(let i=0;i<6;i++){
     const fa=(i/6)*TAU-Math.PI/2,fx=Math.cos(fa)*r*.59,fy=Math.sin(fa)*r*.59;
@@ -384,7 +404,10 @@ function drawTorte(ctx,r,g){
 }
 
 function drawBrezel(ctx,r,g){
-  const s=r/58;ctx.save();ctx.scale(s,s);ctx.lineCap='round';ctx.lineJoin='round';
+  const s=r/58;ctx.save();ctx.scale(s,s);
+  // Compound centroid at (0,-8.2) unscaled → T=-CY=+8.2 aligns draw with physics body.
+  ctx.translate(0,8.2);
+  ctx.lineCap='round';ctx.lineJoin='round';
   const c=g?'#d4af37':'#c0744a',cs=g?'#8B6914':'#6a3010';
   ctx.strokeStyle=cs;ctx.lineWidth=18;_bpath(ctx);ctx.stroke();
   ctx.strokeStyle=c;ctx.lineWidth=14;_bpath(ctx);ctx.stroke();
@@ -449,9 +472,12 @@ function drawWeddingCake(ctx,r,g){
 const WALL_O={isStatic:true,friction:.4,restitution:.45,label:'wall',
   collisionFilter:{category:0x0002,mask:0x0001}};
 // slop:0.5 base — allows tiny overlap before position-correction fires, kills micro-jiggle
-// sleepThreshold:22, frictionAir:.032 — idle bodies sleep fast, oscillations damp quickly
-const BASE_O={friction:.38,restitution:.42,frictionAir:.032,slop:0.5,label:'unit',
-  sleepThreshold:22,
+// friction:0.06, frictionStatic:0.05 — very low surface friction → objects roll off curved surfaces
+// frictionAir:.010 — low damping, lets gravity resolve unstable equilibria naturally
+// slop:0.05 — near-zero so collision contacts are precise
+// sleepThreshold:80 — bodies stay awake long enough to roll to true equilibrium
+const BASE_O={friction:.06,frictionStatic:.05,restitution:.42,frictionAir:.010,slop:0.05,label:'unit',
+  sleepThreshold:80,
   collisionFilter:{category:0x0001,mask:0x0003}};
 
 const UNITS=[
@@ -459,7 +485,15 @@ const UNITS=[
   {name:'Cookie',      r:15,  physR:15,  mkBody:(x,y)=>{const b=Bodies.circle(x,y,15,{...BASE_O,density:.0025});b.unitId=0;return b;}, drawFn:drawKeks},
   {name:'Muffin',      r:21,  physR:21,  mkBody:(x,y)=>{const b=Bodies.circle(x,y,21,{...BASE_O,density:.0026});b.unitId=1;return b;}, drawFn:drawMuffin},
   {name:'Donut',       r:27,  physR:27,  mkBody:(x,y)=>{const b=Bodies.circle(x,y,27,{...BASE_O,density:.0022});b.unitId=2;return b;}, drawFn:drawDonut},
-  {name:'Croissant',   r:36,  physR:36,  mkBody:(x,y)=>{const b=Bodies.circle(x,y,36,{...BASE_O,density:.0026});b.unitId=3;return b;}, drawFn:drawCroissant},
+  // Croissant: 8-point convex hull = outer arc sampled at 8 points (long arc, 295°).
+  // Vertices pre-centered by (-7.776,0) so centroid=(0,0) matches drawCroissant origin.
+  // The chord closes from [7] back to [0], cutting across the crescent opening at x≈38.
+  {name:'Croissant', r:36, physR:44, mkBody:(x,y)=>{
+    const v=[{x:38.2,y:19.24},{x:17.39,y:34.69},{x:-8.4,y:32.16},{x:-25.81,y:12.96},
+             {x:-25.81,y:-12.96},{x:-8.4,y:-32.16},{x:17.39,y:-34.69},{x:38.2,y:-19.24}];
+    const b=Bodies.fromVertices(x,y,v,{...BASE_O,density:.0026},true);
+    b.unitId=3;return b;
+  }, drawFn:drawCroissant},
   {name:'Cupcake',     r:47,  physR:47,  mkBody:(x,y)=>{const b=Bodies.circle(x,y,47,{...BASE_O,density:.0028});b.unitId=4;return b;}, drawFn:drawCupcake},
   // Cake Slice: 6-vertex convex hull matching the curved-arc visual exactly.
   // Vertices sampled from the actual quadratic bezier in drawCakeSlice at r=65.
@@ -474,11 +508,36 @@ const UNITS=[
     b.unitId=5;return b;
   }, drawFn:drawCakeSlice},
   // Layer Cake: slop:2.5 = generous position-correction tolerance → no micro-jitter
-  {name:'Layer Cake',  r:85,  physR:85,  mkBody:(x,y)=>{const b=Bodies.circle(x,y,85,{...BASE_O,density:.0031,frictionAir:.07,slop:2.5,sleepThreshold:14});b.unitId=6;return b;}, drawFn:drawTorte},
-  // Pretzel: physR=96 — exact match to outermost loop visual edge (51*r/58=100px; 96 = tight without float)
-  {name:'Pretzel',     r:114, physR:96,  mkBody:(x,y)=>{const b=Bodies.circle(x,y,96,{...BASE_O,density:.0029,frictionAir:.06,slop:2.0,sleepThreshold:16});b.unitId=7;return b;}, drawFn:drawBrezel},
-  {name:'Bread Loaf',  r:115, physR:108, mkBody:(x,y)=>{const b=Bodies.rectangle(x,y,196,130,{...BASE_O,density:.0033,chamfer:{radius:28},restitution:.28,frictionAir:.05,slop:2.0,sleepThreshold:18});b.unitId=8;return b;}, drawFn:drawBrot},
-  {name:'Wedding Cake',r:148, physR:148, mkBody:(x,y)=>{const b=Bodies.circle(x,y,148,{...BASE_O,density:.0038,frictionAir:.07,slop:2.5,sleepThreshold:14});b.unitId=9;return b;}, drawFn:drawWeddingCake},
+  {name:'Layer Cake',  r:85,  physR:85,  mkBody:(x,y)=>{const b=Bodies.circle(x,y,85,{...BASE_O,density:.0031,frictionAir:.035,sleepThreshold:70});b.unitId=6;return b;}, drawFn:drawTorte},
+  // Pretzel: compound body — two circles for the loops, positioned at actual loop centers.
+  // The compound centroid = midpoint of loops = 14 unscaled = 27.5px ABOVE visual center.
+  // drawBrezel compensates with ctx.translate(0,+14) unscaled.
+  // physR=86 used for horizontal spawn clamping (loop center ± loop radius = 22s+22s).
+  // Pretzel: 5-circle compound body covering the complete pretzel shape.
+  //   p1/p2: loops (ears) at (±22,-14) unscaled, r=27*s (matches visual stroke outer edge)
+  //   p3: crossing/X at (0,8), r=10*s (covers the dough crossing area)
+  //   p4/p5: leg tips at (±12,34), r=9*s (matches _bpath leg endpoint + half-stroke)
+  // Compound centroid = (0, -8.2) unscaled → draw translate adjusted to T=8.2
+  {name:'Pretzel', r:114, physR:96, mkBody:(x,y)=>{
+    const s=114/58;
+    const opts={...BASE_O,density:.0029,frictionAir:.04,slop:0.05,sleepThreshold:70};
+    const p1=Bodies.circle(x-22*s, y-14*s, 27*s, opts);
+    const p2=Bodies.circle(x+22*s, y-14*s, 27*s, opts);
+    const p3=Bodies.circle(x,       y+ 8*s, 10*s, opts); // crossing/X
+    const p4=Bodies.circle(x+12*s,  y+34*s,  9*s, opts); // right leg tip
+    const p5=Bodies.circle(x-12*s,  y+34*s,  9*s, opts); // left leg tip
+    const cb=Body.create({parts:[p1,p2,p3,p4,p5], label:'unit', ...opts});
+    cb.unitId=7; return cb;
+  }, drawFn:drawBrezel},
+  // Bread Loaf: 24-sided polygon tracing the visual ellipse (semi-axes r*0.95 x r*0.68).
+  // Continuously curved surface → objects roll off naturally, no flat stable resting spots.
+  {name:'Bread Loaf',  r:115, physR:109, mkBody:(x,y)=>{
+    const ew=115*0.95,eh=115*0.68,N=24,v=[];
+    for(let i=0;i<N;i++){const a=(i/N)*6.2832;v.push({x:Math.cos(a)*ew,y:Math.sin(a)*eh});}
+    const b=Bodies.fromVertices(x,y,v,{...BASE_O,density:.0033,frictionAir:.04,slop:0.05,sleepThreshold:70},true);
+    b.unitId=8;return b;
+  }, drawFn:drawBrot},
+  {name:'Wedding Cake',r:122, physR:122, mkBody:(x,y)=>{const b=Bodies.circle(x,y,122,{...BASE_O,density:.0038,frictionAir:.04,sleepThreshold:70});b.unitId=9;return b;}, drawFn:drawWeddingCake},
 ];
 
 // Only first 5 types spawn; weighted like Suika (heavily toward small)
