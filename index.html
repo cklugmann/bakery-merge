@@ -448,22 +448,37 @@ function drawWeddingCake(ctx,r,g){
 // ═══════════════════════════════════════════════════════════
 const WALL_O={isStatic:true,friction:.4,restitution:.45,label:'wall',
   collisionFilter:{category:0x0002,mask:0x0001}};
-// Sleep system handles idle jiggle — restitution can be satisfyingly bouncy again
-const BASE_O={friction:.38,restitution:.42,frictionAir:.016,label:'unit',
-  sleepThreshold:60,
+// slop:0.5 base — allows tiny overlap before position-correction fires, kills micro-jiggle
+// sleepThreshold:22, frictionAir:.032 — idle bodies sleep fast, oscillations damp quickly
+const BASE_O={friction:.38,restitution:.42,frictionAir:.032,slop:0.5,label:'unit',
+  sleepThreshold:22,
   collisionFilter:{category:0x0001,mask:0x0003}};
 
 const UNITS=[
-  {name:'Cookie',      r:10, physR:10, mkBody:(x,y)=>{const b=Bodies.circle(x,y,10,{...BASE_O,density:.0025});b.unitId=0;return b;}, drawFn:drawKeks},
-  {name:'Muffin',      r:14, physR:14, mkBody:(x,y)=>{const b=Bodies.circle(x,y,14,{...BASE_O,density:.0026});b.unitId=1;return b;}, drawFn:drawMuffin},
-  {name:'Donut',       r:18, physR:18, mkBody:(x,y)=>{const b=Bodies.circle(x,y,18,{...BASE_O,density:.0022});b.unitId=2;return b;}, drawFn:drawDonut},
-  {name:'Croissant',   r:24, physR:24, mkBody:(x,y)=>{const b=Bodies.circle(x,y,24,{...BASE_O,density:.0026});b.unitId=3;return b;}, drawFn:drawCroissant},
-  {name:'Cupcake',     r:32, physR:32, mkBody:(x,y)=>{const b=Bodies.circle(x,y,32,{...BASE_O,density:.0028});b.unitId=4;return b;}, drawFn:drawCupcake},
-  {name:'Cake Slice',  r:43, physR:43, mkBody:(x,y)=>{const b=Bodies.polygon(x,y,3,43,{...BASE_O,density:.003,restitution:.28,friction:.55,sleepThreshold:60});b.unitId=5;return b;}, drawFn:drawCakeSlice},
-  {name:'Layer Cake',  r:57, physR:57, mkBody:(x,y)=>{const b=Bodies.circle(x,y,57,{...BASE_O,density:.0031});b.unitId=6;return b;}, drawFn:drawTorte},
-  {name:'Pretzel',     r:76, physR:76, mkBody:(x,y)=>{const b=Bodies.circle(x,y,76,{...BASE_O,density:.0029});b.unitId=7;return b;}, drawFn:drawBrezel},
-  {name:'Bread Loaf',  r:100,physR:94, mkBody:(x,y)=>{const b=Bodies.rectangle(x,y,170,112,{...BASE_O,density:.0033,chamfer:{radius:26},restitution:.32,sleepThreshold:60});b.unitId=8;return b;}, drawFn:drawBrot},
-  {name:'Wedding Cake',r:130,physR:130,mkBody:(x,y)=>{const b=Bodies.circle(x,y,130,{...BASE_O,density:.0038});b.unitId=9;return b;}, drawFn:drawWeddingCake},
+  // Radii ×1.25 vs previous pass: 12→15, 17→21, 22→27, 29→36, 38→47, 52→65, 68→85, 91→114, 120→150, 156→195
+  {name:'Cookie',      r:15,  physR:15,  mkBody:(x,y)=>{const b=Bodies.circle(x,y,15,{...BASE_O,density:.0025});b.unitId=0;return b;}, drawFn:drawKeks},
+  {name:'Muffin',      r:21,  physR:21,  mkBody:(x,y)=>{const b=Bodies.circle(x,y,21,{...BASE_O,density:.0026});b.unitId=1;return b;}, drawFn:drawMuffin},
+  {name:'Donut',       r:27,  physR:27,  mkBody:(x,y)=>{const b=Bodies.circle(x,y,27,{...BASE_O,density:.0022});b.unitId=2;return b;}, drawFn:drawDonut},
+  {name:'Croissant',   r:36,  physR:36,  mkBody:(x,y)=>{const b=Bodies.circle(x,y,36,{...BASE_O,density:.0026});b.unitId=3;return b;}, drawFn:drawCroissant},
+  {name:'Cupcake',     r:47,  physR:47,  mkBody:(x,y)=>{const b=Bodies.circle(x,y,47,{...BASE_O,density:.0028});b.unitId=4;return b;}, drawFn:drawCupcake},
+  // Cake Slice: 6-vertex convex hull matching the curved-arc visual exactly.
+  // Vertices sampled from the actual quadratic bezier in drawCakeSlice at r=65.
+  // fromVertices is safe for convex shapes — no poly-decomp needed.
+  {name:'Cake Slice',  r:65, physR:65, mkBody:(x,y)=>{
+    // Vertices shifted by -2.96 Y so centroid=(0,0), matching drawCakeSlice origin
+    const verts=[
+      {x:0,y:-67.96},{x:56.3,y:29.54},{x:28.1,y:34.94},
+      {x:0,y:36.64},{x:-28.1,y:34.94},{x:-56.3,y:29.54}
+    ];
+    const b=Bodies.fromVertices(x,y,verts,{...BASE_O,density:.003,restitution:.28,friction:.55,slop:1.0,sleepThreshold:22},true);
+    b.unitId=5;return b;
+  }, drawFn:drawCakeSlice},
+  // Layer Cake: slop:2.5 = generous position-correction tolerance → no micro-jitter
+  {name:'Layer Cake',  r:85,  physR:85,  mkBody:(x,y)=>{const b=Bodies.circle(x,y,85,{...BASE_O,density:.0031,frictionAir:.07,slop:2.5,sleepThreshold:14});b.unitId=6;return b;}, drawFn:drawTorte},
+  // Pretzel: physR=96 — exact match to outermost loop visual edge (51*r/58=100px; 96 = tight without float)
+  {name:'Pretzel',     r:114, physR:96,  mkBody:(x,y)=>{const b=Bodies.circle(x,y,96,{...BASE_O,density:.0029,frictionAir:.06,slop:2.0,sleepThreshold:16});b.unitId=7;return b;}, drawFn:drawBrezel},
+  {name:'Bread Loaf',  r:115, physR:108, mkBody:(x,y)=>{const b=Bodies.rectangle(x,y,196,130,{...BASE_O,density:.0033,chamfer:{radius:28},restitution:.28,frictionAir:.05,slop:2.0,sleepThreshold:18});b.unitId=8;return b;}, drawFn:drawBrot},
+  {name:'Wedding Cake',r:148, physR:148, mkBody:(x,y)=>{const b=Bodies.circle(x,y,148,{...BASE_O,density:.0038,frictionAir:.07,slop:2.5,sleepThreshold:14});b.unitId=9;return b;}, drawFn:drawWeddingCake},
 ];
 
 // Only first 5 types spawn; weighted like Suika (heavily toward small)
@@ -490,7 +505,7 @@ let level=1,mergeCount=0,score=0;
 let curId=0,nxtId=1;
 let canSpawn=true,goTimer=0;
 let chainCount=0,lastMergeTime=0;
-let cameraY=0,camAnimating=false,camAnimFrom=0,camAnimTo=0;
+let cameraY=0,camAnimating=false,camAnimFrom=0,camAnimTo=0,camAnimStart=0;
 let bottomWall=null;
 const particles=[],pendingMerges=[],mergingIds=new Set(),floatTexts=[];
 
@@ -555,10 +570,10 @@ function initGame(){
   }
 
   engine=Engine.create({
-    positionIterations:10,
+    positionIterations:6,   // lower = less over-correction → less jiggle
     velocityIterations:8,
     constraintIterations:3,
-    enableSleeping:true,   // ← fixes jiggling: idle bodies go to sleep
+    enableSleeping:true,
   });
   engine.gravity.y=2.1;
   runner=Runner.create({delta:1000/60});
@@ -581,9 +596,38 @@ function initGame(){
   // Input
   const clampX=id=>{const u=UNITS[id];return x=>Math.max(u.physR+5,Math.min(fieldW-u.physR-5,x));};
   canvas.onmousemove=e=>{const r=canvas.getBoundingClientRect();spawnX=clampX(curId)(e.clientX-r.left);};
-  canvas.ontouchmove=e=>{e.preventDefault();const r=canvas.getBoundingClientRect();spawnX=clampX(curId)(e.touches[0].clientX-r.left);};
   canvas.onclick=dropUnit;
-  canvas.ontouchend=e=>{e.preventDefault();dropUnit();};
+
+  // Mobile touch controls:
+  // - touchstart: immediately snap spawnX to finger (shows preview at tap position)
+  // - touchmove: fine-tune position while dragging
+  // - touchend: if finger barely moved (<= 18px) treat as a tap → drop at that X
+  //             if moved more it was a drag → just update position, don't drop
+  //             During camAnimating: update spawnX but never drop (prevents freeze)
+  let touchStartX=0;
+  canvas.ontouchstart=e=>{
+    e.preventDefault();
+    const rect=canvas.getBoundingClientRect();
+    const tx=e.touches[0].clientX-rect.left;
+    touchStartX=tx;
+    spawnX=clampX(curId)(tx);
+  };
+  canvas.ontouchmove=e=>{
+    e.preventDefault();
+    const rect=canvas.getBoundingClientRect();
+    spawnX=clampX(curId)(e.touches[0].clientX-rect.left);
+  };
+  canvas.ontouchend=e=>{
+    e.preventDefault();
+    if(camAnimating) return; // never drop during transition
+    const rect=canvas.getBoundingClientRect();
+    const tx=(e.changedTouches[0]?.clientX??touchStartX)-rect.left;
+    const moved=Math.abs(tx-touchStartX);
+    // Snap to final touch position regardless
+    spawnX=clampX(curId)(tx);
+    // Tap (small movement) → drop immediately
+    if(moved<=18) dropUnit();
+  };
 }
 
 function makeBottomWall(){
@@ -741,6 +785,7 @@ function startTransition(){
 
   camAnimFrom=cameraY;
   camAnimTo=cameraY+fieldH;
+  camAnimStart=performance.now(); // for max-duration fallback
 }
 
 function updateCamera(){
@@ -754,7 +799,10 @@ function updateCamera(){
     cameraY=camAnimTo;
   }
   const camArrived=cameraY>=camAnimTo-2;
-  const allSettled=units.length===0||units.every(b=>Math.hypot(b.velocity.x,b.velocity.y)<1.0&&b.speed<1.0);
+  // allSettled: velocity below threshold, OR max 5s elapsed (prevents freeze if bodies keep bouncing)
+  const elapsed=performance.now()-camAnimStart;
+  const allSettled=elapsed>5000||units.length===0||
+    units.every(b=>Math.hypot(b.velocity.x,b.velocity.y)<1.2);
   if(camArrived&&allSettled){
     cameraY=camAnimTo; camAnimating=false; canSpawn=true;
     engine.gravity.y=2.1;
