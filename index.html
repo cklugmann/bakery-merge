@@ -5,15 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#f6d8b8">
 <title>Bakery Merge</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
 <!-- physics: local copy first (works offline), CDN as fallback -->
 <script src="vendor/matter.min.js"></script>
 <script>window.Matter || document.write('<script src="https://cdn.jsdelivr.net/npm/matter-js@0.20.0/build/matter.min.js"><\/script>');</script>
 <style>
+@font-face{font-family:"Fredoka";src:url("vendor/fonts/fredoka-latin-wght.woff2") format("woff2");font-weight:300 700;font-style:normal;font-display:swap}
 :root{--ink:#5a2d0c;--ink2:#8a4a1c;--card:#fff8ee;--line:#e9c48f;--accent:#f07a2a;--accent2:#e2531b;--font:"Fredoka","Nunito","Trebuchet MS",system-ui,sans-serif}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 html,body{height:100%;overflow:hidden;overscroll-behavior:none}
 body{background:#f6d8b8 radial-gradient(130% 90% at 50% 0%,#fff3e2 0%,#f8dcbc 55%,#eec29a 100%);font-family:var(--font);color:var(--ink);user-select:none;-webkit-user-select:none;touch-action:none}
 #app{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
@@ -21,41 +20,41 @@ body{background:#f6d8b8 radial-gradient(130% 90% at 50% 0%,#fff3e2 0%,#f8dcbc 55
 #board{position:relative;line-height:0;display:flex;justify-content:center}
 #game{display:block;border-radius:16px;box-shadow:0 0 0 3px #d9a56c,0 12px 30px rgba(120,60,10,.28);touch-action:none;cursor:pointer}
 
-/* HUD */
-#hud{display:flex;align-items:center;gap:8px}
-.chip{background:var(--card);border:2px solid var(--line);border-radius:14px;padding:5px 10px;display:flex;flex-direction:column;justify-content:center;min-height:52px;box-shadow:0 3px 0 rgba(200,140,70,.35)}
-.lbl{font-size:.62rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#b0703a;line-height:1.1}
-#score-chip{flex:1;min-width:0}
-#score{font-size:1.55rem;font-weight:700;line-height:1.05;font-variant-numeric:tabular-nums;transition:transform .12s}
-#score.bump{transform:scale(1.12)}
-#best-line{font-size:.7rem;color:#a86a36;font-weight:500;white-space:nowrap}
-#stage-chip{min-width:96px}
-#stage-row{display:flex;align-items:baseline;gap:6px}
-#stage{font-size:1.2rem;font-weight:700;line-height:1.1}
-#mult{font-size:.9rem;font-weight:700;color:#fff;background:linear-gradient(#ff9a3d,#ea5f1c);border-radius:8px;padding:0 6px;line-height:1.35}
-#gate-bar{height:6px;border-radius:6px;background:#f1dcb9;overflow:hidden;margin-top:4px}
+/* HUD — portrait: one fluid grid row that can never overflow (texts truncate, the score shrinks to fit) */
+#hud{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr) auto auto;align-items:stretch;gap:6px}
+.chip{min-width:0;overflow:hidden;background:var(--card);border:2px solid var(--line);border-radius:14px;padding:5px 9px;display:flex;flex-direction:column;justify-content:center;box-shadow:0 3px 0 rgba(200,140,70,.35)}
+.lbl{font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:#b0703a;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#score{font-size:26px;font-weight:700;line-height:1.12;white-space:nowrap;overflow:hidden;font-variant-numeric:tabular-nums;transition:color .15s}
+#score.bump{color:#e2531b}
+#best-line{font-size:11px;color:#a86a36;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25}
+#stage-row{display:flex;align-items:center;gap:6px;min-width:0;line-height:1.15}
+#stage{font-size:19px;font-weight:700;white-space:nowrap}
+#mult{flex:none;font-size:13px;font-weight:700;color:#fff;background:linear-gradient(#ff9a3d,#ea5f1c);border-radius:7px;padding:0 5px;line-height:1.4}
+#gate-row{display:flex;align-items:center;gap:6px;margin-top:4px;min-width:0}
+#gate-bar{flex:1;min-width:16px;height:6px;border-radius:6px;background:#f1dcb9;overflow:hidden}
 #gate-fill{height:100%;width:0;background:linear-gradient(90deg,#ffb347,#f07a2a);border-radius:6px;transition:width .25s}
-#gate-txt{font-size:.62rem;color:#a86a36;font-weight:600;margin-top:2px;white-space:nowrap}
-#next-chip{align-items:center;padding:3px 8px}
-#next{display:block;width:44px;height:44px}
+#gate-txt{flex:none;font-size:11px;color:#a86a36;font-weight:700;white-space:nowrap}
+#next-chip{align-items:center;padding:4px 6px}
+#next{display:block;width:40px;height:40px}
 #combo{position:absolute;left:50%;top:10px;transform:translateX(-50%) scale(.6);opacity:0;pointer-events:none;font-weight:700;font-size:1.1rem;color:#fff;background:linear-gradient(#ff8a3d,#e5461b);padding:3px 12px;border-radius:999px;box-shadow:0 3px 0 #a8360f;transition:opacity .2s,transform .25s cubic-bezier(.2,1.6,.4,1);line-height:1.4;white-space:nowrap}
 #combo.show{opacity:1;transform:translateX(-50%) scale(1)}
 .btns{display:flex;gap:6px}
-.ibtn{width:42px;height:42px;border-radius:13px;background:var(--card);border:2px solid var(--line);box-shadow:0 3px 0 rgba(200,140,70,.35);display:grid;place-items:center;cursor:pointer;color:var(--ink2)}
+.ibtn{width:44px;height:100%;min-height:44px;border-radius:13px;background:var(--card);border:2px solid var(--line);box-shadow:0 3px 0 rgba(200,140,70,.35);display:grid;place-items:center;cursor:pointer;color:var(--ink2);font:inherit}
 .ibtn:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(200,140,70,.35)}
 .ibtn svg{width:20px;height:20px}
 #ladder-wrap{line-height:0}
 #ladder{display:block;width:100%;border-radius:14px;background:var(--card);border:2px solid var(--line);box-shadow:0 3px 0 rgba(200,140,70,.35)}
-
-@media (max-width:380px){#hud{gap:5px}.chip{padding:4px 7px;min-height:46px;border-radius:12px}#score{font-size:1.2rem}#stage-chip{min-width:78px}#stage{font-size:1.05rem}#mult{font-size:.8rem}.ibtn{width:34px;height:34px;border-radius:11px}.ibtn svg{width:17px;height:17px}.btns{gap:4px}#gate-txt{font-size:.56rem}}
+/* narrow phones: sound toggle lives in the pause menu, everything a bit tighter */
+@media (max-width:479px){body:not(.wide) #btn-sound{display:none}}
+@media (max-width:360px){#hud{gap:4px}.chip{padding:4px 6px;border-radius:12px}#stage{font-size:16px}#mult{font-size:11px}.ibtn{width:38px}#next{width:34px;height:34px}.lbl{font-size:9px;letter-spacing:.04em}#best-line,#gate-txt{font-size:10px}}
 /* wide (landscape) layout: HUD panel left, ladder right */
 .wide #col{flex-direction:row;align-items:stretch}
-.wide #hud{flex-direction:column;align-items:stretch;width:186px;gap:10px}
+.wide #hud{display:flex;flex-direction:column;align-items:stretch;width:186px;gap:10px}
 .wide #hud .chip{min-height:0;padding:9px 12px;flex:none}
-.wide #score{font-size:2rem}
 .wide #next-chip{flex-direction:row;justify-content:space-between}
 .wide #next{width:64px;height:64px}
 .wide .btns{margin-top:auto;justify-content:space-between}
+.wide .ibtn{height:44px}
 .wide #logo{display:block}
 #logo{display:none;font-weight:700;font-size:1.65rem;line-height:1;text-align:center;color:#7a3a0e;text-shadow:0 2px 0 #fff5e6,0 4px 0 rgba(200,120,50,.35);padding:6px 0 2px}
 #logo small{display:block;font-size:.72rem;font-weight:500;color:#b0703a;text-shadow:none;margin-top:4px;letter-spacing:.04em}
@@ -89,6 +88,9 @@ h2{font-weight:700;font-size:2rem;color:#7a3a0e;line-height:1.1}
 .stat span{font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:#b0703a;font-weight:600}
 #over-icon{width:56px;height:56px;display:block;margin:0 auto 2px}
 .hint{font-size:.72rem;color:#b88a5c;margin-top:10px}
+@media (max-height:760px){.card{padding:18px 18px 18px;border-radius:24px}h1{font-size:2.1rem}.tag{margin:4px 0 2px}#title-cv{height:112px}.tips{font-size:.8rem;margin:4px 2px 12px;line-height:1.38}.btn{padding:11px 42px}}
+@media (max-height:620px){h1{font-size:1.75rem}#title-cv{height:88px}.tips{font-size:.74rem}.tips li{margin:2px 0 2px 16px}.best{margin-top:8px}}
+@media (max-height:520px){#title-cv{display:none}.tips{font-size:.72rem;margin-bottom:10px}h1{font-size:1.6rem}}
 #loading{position:fixed;inset:0;display:grid;place-items:center;font-weight:600;color:#a86a36}
 </style>
 </head>
@@ -99,7 +101,7 @@ h2{font-weight:700;font-size:2rem;color:#7a3a0e;line-height:1.1}
     <div id="hud">
       <div id="logo">Bakery<br>Merge<small>drop · merge · fall deeper</small></div>
       <div class="chip" id="score-chip"><div class="lbl">Score</div><div id="score">0</div><div id="best-line">Best <span id="best">0</span></div></div>
-      <div class="chip" id="stage-chip"><div id="stage-row"><div><div class="lbl">Stage</div><div id="stage">1</div></div><div id="mult">×1</div></div><div id="gate-bar"><div id="gate-fill"></div></div><div id="gate-txt">12 merges to the gate</div></div>
+      <div class="chip" id="stage-chip"><div class="lbl">Stage</div><div id="stage-row"><div id="stage">1</div><div id="mult">×1</div></div><div id="gate-row" title="Merges until the gate opens"><div id="gate-bar"><div id="gate-fill"></div></div><div id="gate-txt">12</div></div></div>
       <div class="chip" id="next-chip"><div class="lbl">Next</div><canvas id="next" width="88" height="88"></canvas></div>
       <div class="btns">
         <button class="ibtn" id="btn-sound" aria-label="Toggle sound"></button>
@@ -1971,7 +1973,7 @@ const UI = {
     ['title', 'over', 'pause'].forEach(id => $(id).classList.remove('show'));
     this.titleOn = false;
     newRun();
-    this.shownScore = 0; this.lastScoreTxt = '0'; $('score').textContent = '0'; this.ladderDirty = true;
+    this.shownScore = 0; this.lastScoreTxt = '0'; $('score').textContent = '0'; this.fitScore(); this.ladderDirty = true;
     this.onScore(); this.onStage(); this.onNext();
   },
   setPaused(p) {
@@ -2027,11 +2029,12 @@ const UI = {
     const lw = wide ? 72 : $('col').clientWidth - 4, lh = wide ? bh - 4 : 44;
     lad.width = Math.round(lw * dpr); lad.height = Math.round(lh * dpr);
     lad.style.width = lw + 'px'; lad.style.height = lh + 'px';
-    const ns = wide ? 64 : vw < 380 ? 36 : 44, nx = $('next');
+    const ns = wide ? 64 : vw <= 360 ? 34 : 40, nx = $('next');
     nx.width = nx.height = Math.round(ns * dpr); nx.style.width = nx.style.height = ns + 'px';
     const tc = $('title-cv'), tw = tc.clientWidth || 320;
-    tc.width = Math.round(tw * dpr); tc.height = Math.round(150 * dpr);
-    this.ladderDirty = true;
+    tc.width = Math.round(tw * dpr); tc.height = Math.round((tc.clientHeight || 150) * dpr);
+    this.ladderDirty = true; this._gt = null;
+    this.fitScore();
     this.onNext();
   },
 
@@ -2045,9 +2048,19 @@ const UI = {
     this.gateUI();
   },
   gateUI() {
-    const left = Math.max(0, G.req - G.merges);
-    $('gate-fill').style.width = (G.state === 'gate' || G.state === 'fall' ? 100 : clamp(G.merges / G.req, 0, 1) * 100) + '%';
-    $('gate-txt').textContent = G.state === 'gate' || G.state === 'fall' ? 'Gate open!' : `${left} merge${left === 1 ? '' : 's'} to the gate`;
+    const left = Math.max(0, G.req - G.merges), open = G.state === 'gate' || G.state === 'fall';
+    const wide = document.body.classList.contains('wide');
+    const w = (open ? 100 : clamp(G.merges / G.req, 0, 1) * 100).toFixed(1) + '%';
+    const tight = !wide && $('stage-chip').clientWidth < 100;
+    const txt = open ? (wide ? 'Gate open!' : tight ? '✓' : 'Open!') : wide ? `${left} merge${left === 1 ? '' : 's'} to the gate` : tight ? String(left) : `${left} to go`;
+    if (w !== this._gw) { this._gw = w; $('gate-fill').style.width = w; }
+    if (txt !== this._gt) { this._gt = txt; $('gate-txt').textContent = txt; }
+  },
+  // shrink the score until it fits its card (fonts, zoom and huge scores can never overflow)
+  fitScore() {
+    const el = $('score'), max = document.body.classList.contains('wide') ? 34 : 26;
+    let s = max; el.style.fontSize = s + 'px';
+    while (s > 11 && el.scrollWidth > el.clientWidth + 0.5) { s--; el.style.fontSize = s + 'px'; }
   },
   onNext() {
     const cv = $('next'), c = cv.getContext('2d');
@@ -2126,7 +2139,10 @@ const UI = {
       if (Math.abs(G.score - this.shownScore) < 1) this.shownScore = G.score;
       const txt = fmt(this.shownScore);
       if (txt !== this.lastScoreTxt) {
+        const grew = txt.length !== this.lastScoreTxt.length;
         this.lastScoreTxt = txt; const el = $('score'); el.textContent = txt;
+        if (grew) this.fitScore();
+        else if (el.scrollWidth > el.clientWidth + 0.5) { let fs = parseFloat(el.style.fontSize) || 26; while (fs > 11 && el.scrollWidth > el.clientWidth + 0.5) { fs--; el.style.fontSize = fs + 'px'; } }
         if (!el.classList.contains('bump')) { el.classList.add('bump'); setTimeout(() => el.classList.remove('bump'), 120); }
       }
     }
@@ -2179,6 +2195,8 @@ function boot() {
   UI.layout();
   UI.onStage(); UI.onNext();
   requestAnimationFrame(loop);
+  // if the font arrived late (or metrics changed), re-measure everything once
+  try { document.fonts.ready.then(() => UI.layout()); } catch (e) { /* ignore */ }
 }
 (function waitForFonts() {
   let done = false;
