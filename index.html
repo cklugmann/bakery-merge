@@ -88,6 +88,7 @@ h2{font-weight:700;font-size:2rem;color:#7a3a0e;line-height:1.1}
 .stat span{font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:#b0703a;font-weight:600}
 #over-icon{width:56px;height:56px;display:block;margin:0 auto 2px}
 .hint{font-size:.72rem;color:#b88a5c;margin-top:10px}
+@media (pointer:coarse){.hint{display:none}}
 .ver{font-size:.68rem;color:#c49a70;margin-top:8px;letter-spacing:.04em}
 @media (max-height:760px){.card{padding:18px 18px 18px;border-radius:24px}h1{font-size:2.1rem}.tag{margin:4px 0 2px}#title-cv{height:112px}.tips{font-size:.8rem;margin:4px 2px 12px;line-height:1.38}.btn{padding:11px 42px}}
 @media (max-height:620px){h1{font-size:1.75rem}#title-cv{height:88px}.tips{font-size:.74rem}.tips li{margin:2px 0 2px 16px}.best{margin-top:8px}}
@@ -135,8 +136,9 @@ h2{font-weight:700;font-size:2rem;color:#7a3a0e;line-height:1.1}
   <div class="card">
     <h2>Paused</h2>
     <div class="row"><button class="btn" id="btn-resume">Resume</button></div>
-    <div class="row"><button class="btn ghost" id="btn-restart">Restart</button><button class="btn ghost" id="btn-sound2">Sound: on</button></div>
-    <div class="hint">Space / click to drop · ← → to aim · P to pause</div>
+    <div class="row"><button class="btn ghost" id="btn-restart">Restart</button></div>
+    <div class="row"><button class="btn ghost" id="btn-sound2">Sound: on</button><button class="btn ghost" id="btn-music">Music: on</button></div>
+    <div class="hint">Space / click to drop · ← → to aim · P pause · M sound · N music</div>
     <div class="ver"></div>
   </div>
 </div>
@@ -161,7 +163,7 @@ h2{font-weight:700;font-size:2rem;color:#7a3a0e;line-height:1.1}
 // ═══════════════════════════════════════════════════════════════════
 //  UTILITIES
 // ═══════════════════════════════════════════════════════════════════
-const VERSION = '0.2.2';   // bump with every release — see CHANGELOG.md
+const VERSION = '0.3.0';   // bump with every release — see CHANGELOG.md
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -992,17 +994,26 @@ function drawFace(c, T, mood, golden) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-//  SOUND — tiny WebAudio synth, no audio files.
-//  Everything is tuned to C-major pentatonic, so overlapping sounds and
-//  combo runs always stay in harmony. Soft mallet/kalimba timbre + a
-//  little room reverb.
+//  SOUND — a tiny WebAudio synth, no audio files.
+//  "A fairy in a magical bakery": celesta / music-box / harp timbres in a
+//  soft hall. Everything follows one slow chord progression, so drops,
+//  merges, combos and the ambient music always harmonise — tapping
+//  quickly plays a little music-box melody.
 // ═══════════════════════════════════════════════════════════════════
 const Sfx = (() => {
-  let ac = null, bus = null, master = null, noiseBuf = null;
-  let muted = store.get('bm.muted', false);
-  const ends = [];          // end times of sounding voices (robust voice limiting)
-  const MAX_VOICES = 22;
-  const VOL = 0.55;
+  let ac = null, bus = null, musicBus = null, master = null, noiseBuf = null;
+  let muted = store.get('bm.muted', false), music = store.get('bm.music', true);
+  let stale = false;                 // context must be rebuilt on the next user gesture
+  const ends = [];                   // end times of sounding notes (voice limiting)
+  const MAX_VOICES = 26, VOL = 0.72, MUSIC_VOL = 1;
+
+  // ── harmony: Cadd9 → Am7 → Fmaj7 → G6/9 (pitch classes) ──
+  const PROG = [[0, 2, 4, 7, 11], [9, 0, 4, 7, 11], [5, 9, 0, 4, 7], [7, 11, 2, 4, 9]];
+  const ROOT = [48, 45, 41, 43];
+  const H = { chord: 0, step: 0, lastDrop: -1e9, lastChange: 0 };
+  const tones = (lo, hi, ch = H.chord) => { const out = []; for (let m = lo; m <= hi; m++) if (PROG[ch].includes(((m % 12) + 12) % 12)) out.push(m); return out; };
+  const nextChord = () => { H.chord = (H.chord + 1) % PROG.length; H.lastChange = ac ? ac.currentTime : 0; music && padSwell(0); };
+  const DROP_PATTERN = [0, 2, 4, 3, 5, 4, 2, 1];   // music-box contour over the chord tones
 
   function build() {
     const AC = window.AudioContext || window.webkitAudioContext;
@@ -1010,130 +1021,214 @@ const Sfx = (() => {
     ac = new AC();
     master = ac.createGain(); master.gain.value = muted ? 0 : VOL;
     const comp = ac.createDynamicsCompressor();
-    comp.threshold.value = -18; comp.knee.value = 18; comp.ratio.value = 3; comp.attack.value = 0.005; comp.release.value = 0.25;
-    bus = ac.createGain(); bus.gain.value = 1;
-    // small, soft room
-    const len = Math.floor(ac.sampleRate * 1.5), ir = ac.createBuffer(2, len, ac.sampleRate);
-    for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); }
+    comp.threshold.value = -20; comp.knee.value = 18; comp.ratio.value = 3; comp.attack.value = 0.004; comp.release.value = 0.3;
+    // warm, airy hall
+    const len = Math.floor(ac.sampleRate * 2.4), ir = ac.createBuffer(2, len, ac.sampleRate);
+    for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.6); }
     const verb = ac.createConvolver(); verb.buffer = ir;
-    const wet = ac.createGain(); wet.gain.value = 0.2;
-    const tone = ac.createBiquadFilter(); tone.type = 'lowpass'; tone.frequency.value = 5200; tone.Q.value = 0.5;
-    bus.connect(tone); tone.connect(master);
-    tone.connect(verb); verb.connect(wet); wet.connect(master);
+    const air = ac.createBiquadFilter(); air.type = 'lowpass'; air.frequency.value = 6500; air.Q.value = 0.4;
+    bus = ac.createGain();
+    musicBus = ac.createGain(); musicBus.gain.value = music ? MUSIC_VOL : 0;
+    const wetS = ac.createGain(); wetS.gain.value = 0.26;
+    const wetM = ac.createGain(); wetM.gain.value = 0.55;
+    bus.connect(air); air.connect(master); air.connect(wetS); wetS.connect(verb);
+    musicBus.connect(master); musicBus.connect(wetM); wetM.connect(verb);
+    verb.connect(master);
     master.connect(comp); comp.connect(ac.destination);
     noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
     const nd = noiseBuf.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+    // anything that knocks the context out of 'running' while we are visible
+    // (phone call, Siri, other app grabbing audio) → rebuild on the next tap
+    ac.onstatechange = () => { if (ac && ac.state !== 'running' && !document.hidden) stale = true; };
+    ends.length = 0; H.lastChange = ac.currentTime;
+    // iOS: playing a (silent) buffer inside the gesture unlocks output
+    try { const s = ac.createBufferSource(); s.buffer = ac.createBuffer(1, 1, 22050); s.connect(ac.destination); s.start(0); } catch (e) { /* ignore */ }
     return true;
   }
-  // (re)start the audio context. Called on every user gesture: iOS can leave the context
-  // 'suspended' or 'interrupted' (calls, lock screen, other apps) and only a gesture revives it.
+  function teardown() {
+    const old = ac; ac = null; bus = musicBus = master = null; ends.length = 0;
+    try { if (old) { old.onstatechange = null; old.close().catch(() => {}); } } catch (e) { /* ignore */ }
+  }
+  // (Re)arm audio. Must be called from user gestures. After the app was in the
+  // background, iOS can hand back a context that claims to run but stays silent,
+  // so a stale context is thrown away and rebuilt from scratch.
   function ensure() {
     try {
+      if (stale) { teardown(); stale = false; }
       if (!ac || ac.state === 'closed') { if (!build()) return false; }
       if (ac.state !== 'running') { const p = ac.resume(); if (p && p.catch) p.catch(() => {}); }
       return true;
-    } catch (e) { return false; }
+    } catch (e) { stale = true; return false; }
   }
-  function canPlay(important) {
-    if (!ac || muted || ac.state !== 'running') return false;
+  function live(important) {
+    if (!ac || muted || stale || ac.state !== 'running') return false;
     const now = ac.currentTime;
     for (let i = ends.length - 1; i >= 0; i--) if (ends[i] < now) ends.splice(i, 1);
     return important || ends.length < MAX_VOICES;
   }
-  const midi = m => 440 * Math.pow(2, (m - 69) / 12);
-  const PENTA = [0, 2, 4, 7, 9];
-  const pent = d => 48 + 12 * Math.floor(d / 5) + PENTA[((d % 5) + 5) % 5];   // degree → midi (C3 = degree 0)
+  const hz = m => 440 * Math.pow(2, (m - 69) / 12);
+  function out(dest, pan) {
+    if (pan && ac.createStereoPanner) { const p = ac.createStereoPanner(); p.pan.value = clamp(pan, -0.7, 0.7); p.connect(dest); return p; }
+    return dest;
+  }
 
-  function panTo(node, pan) {
-    if (pan && ac.createStereoPanner) { const p = ac.createStereoPanner(); p.pan.value = clamp(pan, -0.8, 0.8); node.connect(p); p.connect(bus); }
-    else node.connect(bus);
-  }
-  // soft mallet: sine body + gentle overtones that fade faster than the fundamental
-  function mallet(m, { at = 0, vol = 0.18, dur = 0.5, bright = 0.5, pan = 0, important = false } = {}) {
-    if (!canPlay(important)) return;
-    const t = ac.currentTime + at, f = midi(m), out = ac.createGain();
-    out.gain.setValueAtTime(0.0001, t);
-    out.gain.exponentialRampToValueAtTime(vol, t + 0.005);
-    out.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    panTo(out, pan);
-    const partial = (mult, type, level, decay) => {
-      const o = ac.createOscillator(), g = ac.createGain();
-      o.type = type; o.frequency.setValueAtTime(f * mult * 1.012, t); o.frequency.exponentialRampToValueAtTime(f * mult, t + 0.03);
-      g.gain.setValueAtTime(level, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur * decay);
-      o.connect(g); g.connect(out); o.start(t); o.stop(t + dur + 0.05);
-    };
-    partial(1, 'sine', 1, 1);
-    if (bright > 0) { partial(2, 'sine', 0.32 * bright, 0.45); partial(4.01, 'sine', 0.1 * bright, 0.18); }
+  // ── instruments ─────────────────────────────────────────────────
+  // celesta / glass bell: FM with a fast-decaying modulation index → "ding"
+  function bell(m, { at = 0, vol = 0.12, dur = 0.9, bright = 0.6, pan = 0, important = false, dest = null } = {}) {
+    if (!live(important)) return;
+    const t = ac.currentTime + at, f = hz(m);
+    const g = ac.createGain(); g.connect(out(dest || bus, pan));
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    const car = ac.createOscillator(), mod = ac.createOscillator(), mg = ac.createGain();
+    car.frequency.value = f; mod.frequency.value = f * 3.5;
+    mg.gain.setValueAtTime(f * 1.6 * bright, t); mg.gain.exponentialRampToValueAtTime(0.01, t + 0.18);
+    mod.connect(mg); mg.connect(car.frequency); car.connect(g);
+    const oct = ac.createOscillator(), og = ac.createGain();       // soft octave shimmer
+    oct.frequency.value = f * 2.003; og.gain.setValueAtTime(0.18 * bright, t); og.gain.exponentialRampToValueAtTime(0.0001, t + dur * 0.5);
+    oct.connect(og); og.connect(g);
+    for (const o of [car, mod, oct]) { o.start(t); o.stop(t + dur + 0.05); }
     ends.push(t + dur);
   }
-  function pad(m, { at = 0, vol = 0.05, dur = 1.4 } = {}) {
-    if (!canPlay(true)) return;
-    const t = ac.currentTime + at, o = ac.createOscillator(), g = ac.createGain();
-    o.type = 'sine'; o.frequency.value = midi(m);
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.18); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(g); g.connect(bus); o.start(t); o.stop(t + dur + 0.05);
+  // music box: pure tine with a quick metallic partial
+  function box(m, { at = 0, vol = 0.07, dur = 0.7, pan = 0, important = false, dest = null } = {}) {
+    if (!live(important)) return;
+    const t = ac.currentTime + at, f = hz(m), g = ac.createGain(); g.connect(out(dest || bus, pan));
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    const a = ac.createOscillator(); a.frequency.value = f; a.connect(g);
+    const b = ac.createOscillator(), bg = ac.createGain(); b.frequency.value = f * 4.07;
+    bg.gain.setValueAtTime(0.25, t); bg.gain.exponentialRampToValueAtTime(0.0001, t + 0.09); b.connect(bg); bg.connect(g);
+    for (const o of [a, b]) { o.start(t); o.stop(t + dur + 0.05); }
     ends.push(t + dur);
   }
-  function noise({ at = 0, dur = 0.06, vol = 0.03, type = 'bandpass', f0 = 1800, f1 = f0, q = 1.2, important = false }) {
-    if (!canPlay(important)) return;
+  // harp pluck: bright attack that mellows (lowpass sweep)
+  function harp(m, { at = 0, vol = 0.09, dur = 1.2, pan = 0, important = false } = {}) {
+    if (!live(important)) return;
+    const t = ac.currentTime + at, f = hz(m), g = ac.createGain(), lp = ac.createBiquadFilter();
+    lp.type = 'lowpass'; lp.Q.value = 0.7; lp.frequency.setValueAtTime(f * 7, t); lp.frequency.exponentialRampToValueAtTime(f * 1.5, t + 0.35);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = f;
+    o.connect(lp); lp.connect(g); g.connect(out(bus, pan));
+    o.start(t); o.stop(t + dur + 0.05);
+    ends.push(t + dur);
+  }
+  function pad(m, { at = 0, vol = 0.03, attack = 1.6, dur = 6, dest = null } = {}) {
+    if (!ac || muted || stale || ac.state !== 'running') return;
+    const t = ac.currentTime + at, g = ac.createGain(), lp = ac.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 1100;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    for (const [k, type] of [[1, 'triangle'], [1.004, 'sine']]) { const o = ac.createOscillator(); o.type = type; o.frequency.value = hz(m) * k; o.connect(lp); o.start(t); o.stop(t + dur + 0.05); }
+    lp.connect(g); g.connect(dest || bus);
+  }
+  // airy noise: flour puff / magic whoosh / glitter
+  function air({ at = 0, dur = 0.3, vol = 0.03, type = 'bandpass', f0 = 1500, f1 = f0, q = 1, important = false } = {}) {
+    if (!live(important)) return;
     const t = ac.currentTime + at, s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
-    s.buffer = noiseBuf; s.loop = true;
-    f.type = type; f.Q.value = q; f.frequency.setValueAtTime(f0, t);
-    if (f1 !== f0) f.frequency.exponentialRampToValueAtTime(Math.max(40, f1), t + dur);
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.buffer = noiseBuf; s.loop = true; f.type = type; f.Q.value = q;
+    f.frequency.setValueAtTime(f0, t); if (f1 !== f0) f.frequency.exponentialRampToValueAtTime(Math.max(40, f1), t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + Math.min(0.12, dur * 0.35)); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     s.connect(f); f.connect(g); g.connect(bus);
-    s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.03);
+    s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.05);
     ends.push(t + dur);
   }
-  const arp = (notes, step, o) => notes.forEach((n, i) => mallet(n, { ...o, at: (o.at || 0) + i * step }));
+  const sparkle = (n, at, lo = 86, hi = 103, vol = 0.03) => { const tt = tones(lo, hi); for (let i = 0; i < n; i++) box(tt[(Math.random() * tt.length) | 0], { at: at + i * 0.055 + Math.random() * 0.02, vol: vol * (0.6 + Math.random() * 0.4), dur: 0.5 }); };
+  const gliss = (lo, hi, step, o) => tones(lo, hi).forEach((m, i) => harp(m, { ...o, at: (o.at || 0) + i * step }));
+
+  // ── ambient music: slow pad swells + rare music-box twinkles ─────
+  function padSwell(at) {
+    if (!ac || !music) return;
+    const pcs = PROG[H.chord], root = ROOT[H.chord];
+    const third = root + ((pcs[1] - pcs[0] + 12) % 12), fifth = root + 7;
+    pad(root, { at, vol: 0.05, dest: musicBus }); pad(fifth, { at, vol: 0.038, dest: musicBus });
+    pad(third + 12, { at, vol: 0.03, dest: musicBus });
+  }
+  let nextSwell = 0, nextTwinkle = 0;
+  function musicTick() {
+    if (!ac || muted || stale || !music || ac.state !== 'running' || document.hidden) return;
+    const now = ac.currentTime;
+    if (now - H.lastChange > 9) nextChord();          // drift on when nobody is tapping
+    if (now > nextSwell) { padSwell(0.05); nextSwell = now + 4.8 + Math.random() * 1.5; }
+    if (now > nextTwinkle) {
+      const tt = tones(79, 98), m = tt[(Math.random() * tt.length) | 0];
+      box(m, { vol: 0.034, dur: 1.4, dest: musicBus, pan: (Math.random() - 0.5) * 0.9 });
+      if (Math.random() < 0.35) box(tt[Math.min(tt.length - 1, tt.indexOf(m) + 1)], { at: 0.22, vol: 0.024, dur: 1.4, dest: musicBus });
+      nextTwinkle = now + 2.2 + Math.random() * 4;
+    }
+  }
+  setInterval(musicTick, 250);
 
   return {
     unlock: ensure,
-    resumeIfPossible() { try { if (ac && ac.state !== 'running' && ac.state !== 'closed') ac.resume().catch(() => {}); } catch (e) { /* ignore */ } },
+    markStale() { if (ac) stale = true; },          // app went to the background
+    resumeIfPossible() { try { if (ac && !stale && ac.state !== 'running' && ac.state !== 'closed') ac.resume().catch(() => {}); } catch (e) { /* ignore */ } },
     get muted() { return muted; },
+    get music() { return music; },
     toggle() {
       muted = !muted; store.set('bm.muted', muted);
       if (master) master.gain.setTargetAtTime(muted ? 0 : VOL, ac.currentTime, 0.02);
       return muted;
     },
+    toggleMusic() {
+      music = !music; store.set('bm.music', music);
+      if (musicBus) musicBus.gain.setTargetAtTime(music ? MUSIC_VOL : 0, ac.currentTime, 0.3);
+      return music;
+    },
+    // every drop plays the next note of a music-box phrase over the current chord
     drop(pan) {
-      mallet(67, { vol: 0.07, dur: 0.14, bright: 0.15, pan });
-      noise({ dur: 0.025, vol: 0.02, f0: 1100, q: 2 });
+      if (!ac) return;
+      if (ac.currentTime - H.lastDrop > 3.5) H.step = 0;
+      H.lastDrop = ac.currentTime;
+      if (H.step > 0 && H.step % 4 === 0) nextChord();
+      const tt = tones(72, 100), m = tt[DROP_PATTERN[H.step % DROP_PATTERN.length] + 1];
+      H.step++;
+      box(m, { vol: 0.075, dur: 0.75, pan });
+      air({ dur: 0.05, vol: 0.012, f0: 2200, q: 2 });
     },
+    // merges ring a celesta note from the current chord; bigger pastries ring lower,
+    // and every combo step climbs one chord tone higher → combos become arpeggios
     merge(tier, chain, golden, pan) {
-      const d = 13 - tier + Math.min(chain - 1, 7), m = pent(d);
-      mallet(m, { vol: 0.2, dur: 0.42 + tier * 0.035, bright: 0.6, pan });
-      noise({ dur: 0.035, vol: 0.018, f0: 2400, q: 1.5 });
-      if (tier >= 5) mallet(m - 12, { vol: 0.1 + tier * 0.006, dur: 0.7, bright: 0.1 });
-      if (golden) {
-        mallet(m + 12, { at: 0.07, vol: 0.07, dur: 0.6, bright: 0.9, pan });
-        mallet(pent(d + 7), { at: 0.13, vol: 0.06, dur: 0.6, bright: 0.9, pan });
-        for (let i = 0; i < 3; i++) mallet(pent(d + 10 + ((Math.random() * 5) | 0)), { at: 0.2 + i * 0.06, vol: 0.03, dur: 0.3, bright: 1 });
-      }
+      if (!ac) return;
+      const tt = tones(43, 100), top = tt.findIndex(m => m >= 84);
+      const i = clamp(top - Math.round(tier * 1.3) + Math.min(chain - 1, 8), 0, tt.length - 1), m = tt[i];
+      bell(m, { vol: 0.12 + Math.min(tier, 10) * 0.004, dur: 0.9 + tier * 0.06, bright: 0.55, pan });
+      if (tier >= 4) harp(m - 12, { vol: 0.06 + tier * 0.004, dur: 1.4 });
+      if (chain >= 3) box(tt[Math.min(tt.length - 1, i + 5)], { at: 0.07, vol: 0.035, dur: 0.6, pan });
+      if (golden) { sparkle(4, 0.08, 88, 103, 0.035); air({ at: 0.02, dur: 0.5, vol: 0.02, type: 'highpass', f0: 6000 }); }
     },
-    tick() { mallet(84, { vol: 0.05, dur: 0.25, bright: 0.5 }); },
+    tick() { box(tones(84, 96)[0], { vol: 0.05, dur: 0.5 }); },
     gateOpen() {
-      noise({ dur: 0.6, vol: 0.04, type: 'lowpass', f0: 400, f1: 2600, q: 0.6, important: true });
-      arp([72, 76, 79, 84, 88], 0.07, { vol: 0.12, dur: 0.55, bright: 0.7, important: true });
-      pad(60, { vol: 0.04, dur: 1.2 }); pad(67, { vol: 0.03, dur: 1.2 });
+      nextChord();
+      air({ dur: 0.9, vol: 0.045, type: 'bandpass', f0: 500, f1: 3200, q: 0.8, important: true });
+      gliss(60, 96, 0.035, { vol: 0.055, dur: 1.4, important: true });
+      if (music) padSwell(0.1);
+    },
+    spell() {   // fairy-dust levitation during the stage change
+      air({ dur: 1.6, vol: 0.03, type: 'highpass', f0: 5000, f1: 8000, important: true });
+      sparkle(9, 0.1, 84, 103, 0.03);
     },
     land() {
-      mallet(36, { vol: 0.18, dur: 0.35, bright: 0.05, important: true });
-      noise({ dur: 0.16, vol: 0.04, type: 'lowpass', f0: 500, important: true });
+      harp(ROOT[H.chord] - 12 + 24, { vol: 0.08, dur: 1.2, important: true });
+      air({ dur: 0.35, vol: 0.035, type: 'lowpass', f0: 700, f1: 200, important: true });
     },
     golden() {
-      arp([72, 76, 79, 84, 88, 91, 96], 0.075, { vol: 0.11, dur: 0.7, bright: 0.8, important: true });
-      pad(48, { vol: 0.06, dur: 1.8 }); pad(55, { vol: 0.045, dur: 1.8 }); pad(64, { vol: 0.035, dur: 1.8 });
-      for (let i = 0; i < 10; i++) mallet(pent(25 + ((Math.random() * 7) | 0)), { at: 0.55 + i * 0.07, vol: 0.035, dur: 0.35, bright: 1, important: true });
+      const tt = tones(60, 100);
+      tt.slice(0, 12).forEach((m, i) => bell(m, { at: i * 0.06, vol: 0.075, dur: 1.4, bright: 0.7, important: true }));
+      sparkle(10, 0.75, 88, 105, 0.035);
+      air({ at: 0.1, dur: 1.4, vol: 0.025, type: 'highpass', f0: 5500, important: true });
+      const r = ROOT[H.chord]; pad(r, { vol: 0.05, attack: 0.4, dur: 3 }); pad(r + 7, { vol: 0.04, attack: 0.4, dur: 3 }); pad(r + 16, { vol: 0.03, attack: 0.4, dur: 3 });
     },
     jackpot() {
       this.golden();
-      arp([84, 88, 91, 96, 100, 103, 108], 0.06, { at: 0.6, vol: 0.07, dur: 0.6, bright: 0.9, important: true });
+      gliss(72, 103, 0.03, { at: 0.8, vol: 0.05, dur: 1.2, important: true });
     },
-    discover() { arp([79, 84, 88], 0.07, { vol: 0.08, dur: 0.4, bright: 0.6 }); },
-    danger() { mallet(45, { vol: 0.13, dur: 0.2, bright: 0.1, important: true }); mallet(45, { at: 0.16, vol: 0.1, dur: 0.22, bright: 0.1, important: true }); },
-    gameOver() { arp([67, 64, 62, 60], 0.2, { vol: 0.12, dur: 0.8, bright: 0.3, important: true }); pad(48, { at: 0.6, vol: 0.05, dur: 1.6 }); },
-    ui() { mallet(84, { vol: 0.05, dur: 0.12, bright: 0.3, important: true }); },
+    discover() { tones(79, 96).slice(0, 3).forEach((m, i) => box(m, { at: i * 0.09, vol: 0.06, dur: 0.8 })); },
+    danger() { bell(ROOT[H.chord] + 12, { vol: 0.08, dur: 0.5, bright: 0.15, important: true }); },
+    gameOver() {
+      [76, 72, 69, 67, 64].forEach((m, i) => box(m, { at: i * 0.24, vol: 0.08, dur: 1.2, important: true }));
+      pad(45, { at: 0.6, vol: 0.04, attack: 0.8, dur: 3.5 }); pad(52, { at: 0.6, vol: 0.03, attack: 0.8, dur: 3.5 });
+    },
+    ui() { box(tones(84, 96)[1], { vol: 0.045, dur: 0.4, important: true }); },
+    _musicTick: musicTick,
+    _debug: () => ({ state: ac && ac.state, stale, voices: ends.length, chord: H.chord, step: H.step }),
   };
 })();
 
@@ -1208,6 +1303,7 @@ const FX = {
       const p = this.parts[i];
       p.life += dt;
       if (p.life >= p.max) { this.parts[i] = this.parts[this.parts.length - 1]; this.parts.pop(); continue; }
+      if (p.flow && typeof flowAt === 'function' && G.flow) { const f = flowAt(p.x, p.y), a = Math.min(1, dt * 0.004); p.vx += (f.x / 16.67 * 1.3 - p.vx) * a; p.vy += (f.y / 16.67 * 1.3 + 0.012 - p.vy) * a; }
       p.vy += p.g * dt;
       if (p.drag) { p.vx *= 1 - p.drag * dt * 0.5; p.vy *= 1 - p.drag * dt * 0.3; }
       p.x += p.vx * dt; p.y += p.vy * dt;
@@ -1260,6 +1356,12 @@ const FX = {
       } else if (p.k === 'star') {
         const tw = Math.sin(q * Math.PI);
         this.drawStar(c, p.x, p.y, p.size * (0.4 + tw * 0.8), p.rot, p.col, a * (0.6 + 0.4 * tw));
+      } else if (p.k === 'fairy') {
+        const tw = 0.6 + 0.4 * Math.sin(p.life * 0.02 + p.rot * 5), s = p.size * (q < 0.15 ? q / 0.15 : 1);
+        c.globalAlpha = a * tw * 0.35; c.fillStyle = p.col; circ(c, p.x, p.y, s * 2.6); c.fill();
+        c.globalAlpha = a * tw; circ(c, p.x, p.y, s); c.fill();
+        c.fillStyle = '#ffffff'; circ(c, p.x, p.y, s * 0.45); c.fill();
+        c.globalAlpha = 1;
       } else if (p.k === 'confetti') {
         c.save(); c.globalAlpha = a; c.translate(p.x + Math.sin(p.life * 0.008 + p.wob) * 3, p.y); c.rotate(p.rot);
         c.scale(1, Math.abs(Math.cos(p.life * 0.012 + p.wob)) * 0.9 + 0.1);
@@ -1326,6 +1428,8 @@ const GROW_MS = 130;              // merged pastry grows into place
 const GOLD_MULT = 10;             // golden merges are worth ×10
 const DOOR_T = 90, WALL_T = 240;
 const ZOOM_OUT_MS = 420, OPEN_DELAY = 400, SLIDE_MS = 300, ZOOM_IN_MS = 560;
+// fairy-dust drift during the stage change (ms after the doors open)
+const SPELL_IN = 220, SPELL_HOLD = 1150, SPELL_OUT = 1650;
 
 const reqFor = s => Math.round(12 + 4 * (s - 1) + 0.5 * (s - 1) * (s - 1));
 const basePts = t => 10 * (1 + t * (t + 1));
@@ -1416,7 +1520,7 @@ function newRun() {
     aimX: W / 2, heldX: W / 2, dropReadyAt: G.rtime + 250, heldPop: G.rtime, drops: 0,
     since: [0, 0, 0, 0, 0, 0], lastPick: -1, reached: [], chain: 0, lastMergeAt: -1e9, bestChain: 0,
     dangerT: 0, graceUntil: 0, nextDangerSfx: 0, camY: camFor(0), zoom: 1, gateT: 0, fallT: 0, opened: false, landedAt: 0, zoomInStart: 0,
-    pastries: [], queuedDrop: false, maxTier: 0, goldMade: 0, jackpots: 0, nextGate: null, badgePop: 0,
+    pastries: [], queuedDrop: false, flow: null, maxTier: 0, goldMade: 0, jackpots: 0, nextGate: null, badgePop: 0,
   });
   placeWalls();
   G.gate = makeGate(0);
@@ -1574,6 +1678,7 @@ function openGate() {
   const viewTop = fieldTop() - TOP, viewBot = floorY(G.chamber + 1) + FLOOR_VIS;
   G.zMin = VH / (viewBot - viewTop + 30);
   G.camMid = (viewTop + viewBot) / 2 - VH / 2;
+  G.flow = makeFlow();
   const gy = floorY() + FLOOR_VIS / 2;
   FX.ring(W / 2, gy, 10, 90, '255,214,110', 5, 600);
   for (let i = 0; i < 16; i++) FX.star(W / 2, gy, 30, 2);
@@ -1591,7 +1696,8 @@ function updateGate(dt) {
     G.state = 'fall'; G.fallT = 0;
     G.chain = 0;
     Sfx.gateOpen(); haptic(25);
-    FX.banner(`Stage ${G.stage}`, `Points ×${G.mult}` + (STAGE_NEWS[G.stage] ? ' · ' + STAGE_NEWS[G.stage] : ''), { max: 2200, y: 0.3 });
+    setTimeout(() => Sfx.spell(), 60);
+    FX.banner(`Stage ${G.stage}`, `Points ×${G.mult}` + (STAGE_NEWS[G.stage] ? ' · ' + STAGE_NEWS[G.stage] : ''), { max: 2200, y: 0.13 });
     UI.onStage();
   }
   const g = G.gate;
@@ -1617,23 +1723,93 @@ function updateGate(dt) {
     if (!G.landedAt) {
       let low = -1e9; for (const b of G.pastries) low = Math.max(low, b.bounds.max.y);
       const landed = low > fy - 6;
-      if (landed || G.pastries.length === 0 || G.fallT > 1900) {
+      if (landed || G.pastries.length === 0 || G.fallT > 2600) {
         G.landedAt = t;
-        G.zoomInStart = Math.max(t + 160, ZOOM_OUT_MS);
         if (landed) {
-          Sfx.land(); FX.shake(0.3); haptic(15);
+          Sfx.land(); FX.shake(0.22); haptic(15);
           for (let i = 0; i < 14; i++) FX.add({ k: 'dust', x: Math.random() * W, y: fy - 6, vx: (Math.random() - 0.5) * 0.1, vy: -0.02 - Math.random() * 0.03, g: 0, life: 0, max: 700, size: 10 + Math.random() * 14, col: '255,248,235' });
         }
       }
     }
+    // push the camera back in once the spell fades and the first pastries have landed
+    if (!G.zoomInStart && G.landedAt && G.fallT >= SPELL_HOLD) G.zoomInStart = Math.max(t + 80, ZOOM_OUT_MS);
     if (G.zoomInStart && t >= G.zoomInStart + ZOOM_IN_MS) {
       let slow = true;
       for (const b of G.pastries) if (Body.getSpeed(b) > 1.2) { slow = false; break; }
-      if (slow || t > G.landedAt + 2600) finishFall();
+      if (slow || t > G.zoomInStart + ZOOM_IN_MS + 2200) finishFall();
     }
   }
 }
+
+// ── the fairy-dust drift ───────────────────────────────────────────
+// A smooth, divergence-free "curl noise" air current (sum of three random
+// travelling waves of a stream function) plus size-dependent buoyancy:
+// small pastries float down slowly and get carried around, big ones sink
+// first. Every stage draws a new current, so every transition reshuffles
+// the board differently — but the motion stays smooth and natural.
+function makeFlow() {
+  const waves = [];
+  let ksum = 0;
+  for (let i = 0; i < 3; i++) {
+    const th = Math.random() * TAU, k = TAU / lerp(230, 430, Math.random());
+    waves.push({ kx: Math.cos(th) * k, ky: Math.sin(th) * k, w: lerp(0.9, 2.1, Math.random()) * (Math.random() < 0.5 ? -1 : 1), p: Math.random() * TAU });
+    ksum += k;
+  }
+  return { waves, norm: 5.4 / ksum * 1.5, t0: G.time };
+}
+function flowAt(x, y) {
+  const f = G.flow; if (!f) return { x: 0, y: 0 };
+  const tau = (G.time - f.t0) / 1000;
+  let vx = 0, vy = 0;
+  for (const w of f.waves) { const c = Math.cos(w.kx * x + w.ky * y + w.w * tau + w.p); vx += w.ky * c; vy -= w.kx * c; }
+  return { x: vx * f.norm, y: vy * f.norm * 0.45 };
+}
+function spellLevel() {
+  if (G.state !== 'fall') return 0;
+  const t = G.fallT;
+  return t < SPELL_IN ? t / SPELL_IN : t < SPELL_HOLD ? 1 : Math.max(0, 1 - (t - SPELL_HOLD) / (SPELL_OUT - SPELL_HOLD));
+}
+function applySpell() {
+  const S = spellLevel();
+  if (S <= 0) return;
+  const gs = engine.gravity.y * engine.gravity.scale, kStep = STEP / (1000 / 60), tau = (G.time - G.flow.t0) / 1000;
+  for (const b of G.pastries) {
+    const T = TIER_DEFS[b.pastry.tier], size = clamp((T.r - 14) / 68, 0, 1);
+    // buoyancy: small pastries float down at ~20 % gravity, the biggest sink at ~60 %
+    b.force.y -= b.mass * gs * S * (0.8 - 0.4 * size);
+    // drift with the air current (light pastries follow it more)
+    const v = Body.getVelocity(b), f = flowAt(b.position.x, b.position.y), k = (0.075 - 0.045 * size) * S * kStep;
+    Body.setVelocity(b, { x: v.x + (f.x - v.x) * k, y: v.y + (f.y - v.y) * k * 0.18 });
+    // a slow, floaty tumble
+    const av = Body.getAngularVelocity(b), target = 0.03 * Math.sin(tau * 1.4 + b.id * 1.7) * (1 - 0.6 * size);
+    Body.setAngularVelocity(b, av + (target - av) * 0.05 * S * kStep);
+    b.pastry.happyUntil = Math.max(b.pastry.happyUntil, G.rtime + 200);
+  }
+  // the packed pile loosens into a floating cloud, so pastries can pass each other
+  const arr = G.pastries, n = arr.length;
+  for (let i = 0; i < n; i++) {
+    const a = arr[i], Ra = TIER_DEFS[a.pastry.tier].maxR * 0.82 * a.pastry.scale;
+    for (let j = i + 1; j < n; j++) {
+      const c = arr[j], Rc = TIER_DEFS[c.pastry.tier].maxR * 0.82 * c.pastry.scale;
+      const dx = c.position.x - a.position.x, dy = c.position.y - a.position.y, d = Math.hypot(dx, dy) || 1, minD = (Ra + Rc) * 1.2;
+      if (d >= minD) continue;
+      const push = (1 - d / minD) * 0.22 * S * kStep, nx = dx / d, ny = dy / d, wa = c.mass / (a.mass + c.mass), wc = 1 - wa;
+      const va = Body.getVelocity(a), vc = Body.getVelocity(c);
+      Body.setVelocity(a, { x: va.x - nx * push * wa, y: va.y - ny * push * wa * 0.5 });
+      Body.setVelocity(c, { x: vc.x + nx * push * wc, y: vc.y + ny * push * wc * 0.5 });
+    }
+  }
+  // fairy dust riding the current (makes the motion readable)
+  const top = fieldTop() - FH, bot = floorY();
+  for (let i = 0; i < 3; i++) if (Math.random() < S) {
+    const cols = ['#fff6c9', '#ffd23e', '#ffc4e1', '#d9c4ff', '#ffffff'];
+    FX.add({ k: Math.random() < 0.35 ? 'star' : 'fairy', x: Math.random() * W, y: lerp(top + 40, bot - 20, Math.random()), vx: 0, vy: 0, g: 0, life: 0, max: 900 + Math.random() * 900,
+      size: Math.random() < 0.35 ? 3.5 + Math.random() * 3.5 : 2.6 + Math.random() * 3, col: cols[(Math.random() * cols.length) | 0], rot: Math.random() * TAU, vr: 0.003, flow: true });
+  }
+}
+
 function finishFall() {
+  G.flow = null;
   removeGate(G.gate);
   G.gate = G.nextGate; G.nextGate = null;
   G.camY = camFor(G.chamber); G.zoom = 1;
@@ -1722,6 +1898,7 @@ function gameOver() {
 function physicsStep() {
   growPastries(STEP);
   if (G.state === 'gate' || G.state === 'fall') updateGate(STEP);
+  if (G.state === 'fall' && !G.noSpell) applySpell();
   Engine.update(engine, STEP);
   G.time += STEP;
   sanitize();
@@ -1982,6 +2159,12 @@ const Render = {
     c.restore();
   },
   overlay(c) {
+    const S = typeof spellLevel === 'function' ? spellLevel() : 0;
+    if (S > 0) {
+      c.save(); c.globalAlpha = S;
+      c.fillStyle = rg(c, VW / 2, VH * 0.55, VH * 0.15, VW / 2, VH * 0.55, VH * 0.75, [[0, 'rgba(255,230,250,0.10)'], [0.6, 'rgba(220,190,255,0.12)'], [1, 'rgba(150,110,210,0.22)']]);
+      c.fillRect(0, 0, VW, VH); c.restore();
+    }
     if (G.state === 'over') {
       c.fillStyle = 'rgba(80,30,10,0.12)'; c.fillRect(0, 0, VW, VH);
     }
@@ -2017,6 +2200,7 @@ const UI = {
     $('btn-restart').onclick = () => { Sfx.ui(); this.start(); };
     $('btn-pause').onclick = () => { Sfx.unlock(); this.setPaused(!G.paused); };
     $('btn-sound').onclick = $('btn-sound2').onclick = () => { Sfx.unlock(); Sfx.toggle(); this.soundIcon(); Sfx.ui(); };
+    $('btn-music').onclick = () => { Sfx.unlock(); Sfx.toggleMusic(); this.soundIcon(); Sfx.ui(); };
     this.soundIcon();
     document.querySelectorAll('.ver').forEach(el => { el.textContent = `v${VERSION} · alpha`; });
     $('title-best').textContent = G.best ? `Best: ${fmt(G.best)}` : '';
@@ -2039,9 +2223,10 @@ const UI = {
     addEventListener('keyup', e => this.key(e, false));
     addEventListener('blur', () => { this.keys = {}; });
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) { if (this.inRun()) this.setPaused(true); } else Sfx.resumeIfPossible();
+      // leaving the app (e.g. to answer a message): pause, and rebuild audio on the next tap
+      if (document.hidden) { if (this.inRun()) this.setPaused(true); Sfx.markStale(); }
     });
-    addEventListener('pageshow', () => Sfx.resumeIfPossible());
+    addEventListener('pagehide', () => Sfx.markStale());
     // iOS only accepts some events (touchend / click) as permission to (re)start audio:
     // re-arm the audio context on every one of them, so sound can never get stuck off.
     for (const ev of ['touchend', 'pointerup', 'click', 'keydown']) document.addEventListener(ev, () => { if (!Sfx.muted) Sfx.unlock(); }, { capture: true, passive: true });
@@ -2066,6 +2251,7 @@ const UI = {
   soundIcon() {
     $('btn-sound').innerHTML = Sfx.muted ? ICON_SOUND_OFF : ICON_SOUND_ON;
     $('btn-sound2').textContent = 'Sound: ' + (Sfx.muted ? 'off' : 'on');
+    $('btn-music').textContent = 'Music: ' + (Sfx.music ? 'on' : 'off');
   },
   key(e, down) {
     const k = e.code;
@@ -2080,6 +2266,7 @@ const UI = {
       tryDrop();
     } else if (k === 'KeyP' || k === 'Escape') { this.setPaused(!G.paused); }
     else if (k === 'KeyM') { Sfx.toggle(); this.soundIcon(); }
+    else if (k === 'KeyN') { Sfx.toggleMusic(); this.soundIcon(); }
     else if (G.debug && this.inRun()) {
       if (/^Digit\d$/.test(k)) { G.cur.tier = +k.slice(5); G.heldPop = G.rtime; }
       else if (k === 'Minus') { G.cur.tier = TOP_TIER; G.heldPop = G.rtime; }

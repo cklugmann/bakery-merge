@@ -6,6 +6,24 @@ version marks a larger iteration and a **patch** marks fixes and tuning.
 The current version is shown on the title and pause screens
 (`VERSION` constant at the top of the script in `index.html`).
 
+## 0.3.0 — The magic bakery
+
+- **New stage transition: fairy-dust drift.** When the gate opens, a spell catches the
+  falling pastries: the pile loosens into a slowly sinking cloud, carried by a gentle,
+  swirling air current — a new random one every stage. Big pastries sink first, small
+  ones float down after them. The board gets genuinely reshuffled, pastries can merge on
+  the way down, and small pieces stuck under big ones get a second chance.
+- **New soundscape — "a fairy in a magical bakery":** celesta, music-box and harp tones
+  in a soft hall. Everything follows one slow chord progression: every drop plays the
+  next note of a music-box tune (tap quickly and a melody appears), merges ring chord
+  tones and combos climb as arpeggios, the gate opens with a harp glissando.
+- **Ambient music:** soft pads and rare music-box twinkles. Toggle it separately in the
+  pause menu (*Music: on/off*, key **N**); **M** still mutes everything.
+- **Fixed: sound gone after switching apps on mobile.** Leaving the app now pauses the
+  game, and the audio engine is rebuilt from scratch on the next tap. The same recovery
+  kicks in after interruptions while playing (calls, Siri, other apps taking audio).
+- The stage banner sits higher, so it no longer covers the falling pastries.
+
 ## 0.2.2 — Player feedback patch
 
 - **Late tiers no longer jam the board.** Bread, Black Forest cake and Wedding Cake keep
