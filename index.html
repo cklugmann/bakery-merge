@@ -88,6 +88,24 @@ h2{font-weight:700;font-size:2rem;color:#7a3a0e;line-height:1.1}
 .stat span{font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:#b0703a;font-weight:600}
 #over-icon{width:56px;height:56px;display:block;margin:0 auto 2px}
 .hint{font-size:.72rem;color:#b88a5c;margin-top:10px}
+/* volume sliders — custom, so touch, mouse and keyboard behave the same everywhere */
+#sound{z-index:60}
+.linkbtn{font-family:var(--font);font-weight:600;font-size:.88rem;color:#b0642a;background:none;border:0;padding:10px 12px 2px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.linkbtn svg{width:17px;height:17px}
+.vol{margin:12px 0 2px;text-align:left}
+.vol-row{margin:4px 0 6px}
+.vol-head{display:flex;justify-content:space-between;align-items:center;font-weight:600;color:#6b3410;font-size:.95rem;padding:0 4px}
+.vol-head span{display:inline-flex;align-items:center;gap:7px}
+.vol-head svg{width:19px;height:19px;color:#e2853a}
+.vol-val{font-variant-numeric:tabular-nums;color:#a86a36;font-weight:600;font-size:.88rem;min-width:3.2em;text-align:right}
+.slider{position:relative;height:44px;touch-action:none;cursor:pointer;outline:none;-webkit-user-select:none;user-select:none}
+.sl-track{position:absolute;left:15px;right:15px;top:50%;height:10px;margin-top:-5px;border-radius:6px;background:#f1dcb9;box-shadow:inset 0 1px 2px rgba(120,60,10,.22)}
+.sl-fill{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:6px;background:linear-gradient(90deg,#ffc56b,#f07a2a)}
+.sl-thumb{position:absolute;top:50%;left:0;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;background:#fff;border:3px solid #f07a2a;box-shadow:0 2px 6px rgba(120,60,10,.3);transition:transform .1s}
+.slider:focus-visible .sl-thumb{box-shadow:0 0 0 5px rgba(240,122,42,.35),0 2px 6px rgba(120,60,10,.3)}
+.slider.drag .sl-thumb{transform:scale(1.15)}
+.slider.zero .sl-thumb{border-color:#cfa77a}
+.vol-note{font-size:.72rem;color:#b88a5c;text-align:center;margin-top:2px;min-height:1em}
 @media (pointer:coarse){.hint{display:none}}
 .ver{font-size:.68rem;color:#c49a70;margin-top:8px;letter-spacing:.04em}
 @media (max-height:760px){.card{padding:18px 18px 18px;border-radius:24px}h1{font-size:2.1rem}.tag{margin:4px 0 2px}#title-cv{height:112px}.tips{font-size:.8rem;margin:4px 2px 12px;line-height:1.38}.btn{padding:11px 42px}}
@@ -127,6 +145,7 @@ h2{font-weight:700;font-size:2rem;color:#7a3a0e;line-height:1.1}
       <li>Don't let the pile rest above the red line.</li>
     </ul>
     <button class="btn" id="btn-play">Play</button>
+    <div><button class="linkbtn" id="btn-sound-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>Sound &amp; music</button></div>
     <div class="best" id="title-best"></div>
     <div class="ver"></div>
   </div>
@@ -137,9 +156,17 @@ h2{font-weight:700;font-size:2rem;color:#7a3a0e;line-height:1.1}
     <h2>Paused</h2>
     <div class="row"><button class="btn" id="btn-resume">Resume</button></div>
     <div class="row"><button class="btn ghost" id="btn-restart">Restart</button></div>
-    <div class="row"><button class="btn ghost" id="btn-sound2">Sound: on</button><button class="btn ghost" id="btn-music">Music: on</button></div>
-    <div class="hint">Space / click to drop · ← → to aim · P pause · M sound · N music</div>
+    <div class="vol"></div>
+    <div class="hint">Space / click to drop · ← → to aim · P pause · M mute · N music</div>
     <div class="ver"></div>
+  </div>
+</div>
+
+<div class="screen" id="sound">
+  <div class="card">
+    <h2>Sound &amp; music</h2>
+    <div class="vol"></div>
+    <div class="row"><button class="btn" id="btn-sound-done">Done</button></div>
   </div>
 </div>
 
@@ -163,7 +190,7 @@ h2{font-weight:700;font-size:2rem;color:#7a3a0e;line-height:1.1}
 // ═══════════════════════════════════════════════════════════════════
 //  UTILITIES
 // ═══════════════════════════════════════════════════════════════════
-const VERSION = '0.3.1';   // bump with every release — see CHANGELOG.md
+const VERSION = '0.3.2';   // bump with every release — see CHANGELOG.md
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -1004,10 +1031,25 @@ function drawFace(c, T, mood, golden) {
 // ═══════════════════════════════════════════════════════════════════
 const Sfx = (() => {
   let ac = null, bus = null, musicBus = null, master = null, noiseBuf = null;
-  let muted = store.get('bm.muted', false), music = store.get('bm.music', true);
+  // ── volumes ──────────────────────────────────────────────────────
+  // Two sliders (0…1), heard through a perceptual curve (gain = v²), so 50 % sounds
+  // about half as loud. Defaults keep the music a calm bed ~10 dB under the effects
+  // (clearly audible, never competing); at 100 % / 100 % it comes up to ~2 dB under them.
+  const DEFAULT_SFX = 0.8, DEFAULT_MUSIC = 0.5, MUSIC_MAX = 2.3;
+  let muted = store.get('bm.muted', false);
+  const vol = (() => {
+    const v = store.get('bm.vol', null);
+    if (v && typeof v.sfx === 'number' && typeof v.music === 'number') return { sfx: clamp(v.sfx, 0, 1), music: clamp(v.music, 0, 1) };
+    // first start (or coming from ≤ 0.3.1): sensible defaults, but keep an old "music off" / "sound off"
+    const old = { sfx: DEFAULT_SFX, music: store.get('bm.music', true) === false ? 0 : DEFAULT_MUSIC };
+    if (muted) { old.sfx = 0; old.music = 0; muted = false; store.set('bm.muted', false); }
+    return old;
+  })();
+  const curve = v => v * v;
+  const musicOn = () => vol.music > 0.004 && !muted;
   let stale = false;                 // context must be rebuilt on the next user gesture
   const ends = [];                   // end times of sounding notes (voice limiting)
-  const MAX_VOICES = 30, VOL = 0.85, MUSIC_VOL = 0.9;
+  const MAX_VOICES = 30, VOL = 1.15;
 
   // ── the tune: an enchanted 3/4 waltz, one chord per two bars ──────
   //   C6/9 – A7 – Dm7 – G7 – Cmaj7 – E7 – F6 – Fm6 (→ C): bright major with the
@@ -1041,8 +1083,8 @@ const Sfx = (() => {
     const verb = ac.createConvolver(); verb.buffer = ir;
     const air = ac.createBiquadFilter(); air.type = 'lowpass'; air.frequency.value = 9000; air.Q.value = 0.4;
     const lowcut = ac.createBiquadFilter(); lowcut.type = 'highpass'; lowcut.frequency.value = 110; lowcut.Q.value = 0.5;
-    bus = ac.createGain();
-    musicBus = ac.createGain(); musicBus.gain.value = music ? MUSIC_VOL : 0;
+    bus = ac.createGain(); bus.gain.value = curve(vol.sfx);
+    musicBus = ac.createGain(); musicBus.gain.value = curve(vol.music) * MUSIC_MAX;
     const wetS = ac.createGain(); wetS.gain.value = 0.16;
     const wetM = ac.createGain(); wetM.gain.value = 0.2;
     bus.connect(air); musicBus.connect(air);
@@ -1075,8 +1117,10 @@ const Sfx = (() => {
     } catch (e) { stale = true; return false; }
   }
   const running = () => ac && !stale && ac.state === 'running';
-  function live(important) {
+  // music notes go to musicBus and follow the music slider; everything else follows the effects slider
+  function live(important, dest) {
     if (!running() || muted) return false;
+    if (dest && dest === musicBus ? vol.music <= 0.004 : vol.sfx <= 0.004) return false;
     const now = ac.currentTime;
     for (let i = ends.length - 1; i >= 0; i--) if (ends[i] < now) ends.splice(i, 1);
     return important || ends.length < MAX_VOICES;
@@ -1093,7 +1137,7 @@ const Sfx = (() => {
   // ── instruments ─────────────────────────────────────────────────
   // celesta: FM with a fast-decaying modulation index → bright "ding"
   function bell(m, { at = 0, vol = 0.12, dur = 0.8, bright = 0.6, pan = 0, important = false, dest = null } = {}) {
-    if (!live(important)) return;
+    if (!live(important, dest)) return;
     const t = ac.currentTime + at, f = hz(m), g = ac.createGain(); g.connect(out(dest || bus, pan)); env(g, t, vol, 0.004, dur);
     const car = ac.createOscillator(), mod = ac.createOscillator(), mg = ac.createGain();
     car.frequency.value = f; mod.frequency.value = f * 3.5;
@@ -1107,7 +1151,7 @@ const Sfx = (() => {
   }
   // music box / glockenspiel tine
   function box(m, { at = 0, vol = 0.07, dur = 0.6, pan = 0, important = false, dest = null } = {}) {
-    if (!live(important)) return;
+    if (!live(important, dest)) return;
     const t = ac.currentTime + at, f = hz(m), g = ac.createGain(); g.connect(out(dest || bus, pan)); env(g, t, vol, 0.003, dur);
     const a = ac.createOscillator(); a.frequency.value = f; a.connect(g);
     const b = ac.createOscillator(), bg = ac.createGain(); b.frequency.value = f * 4.07;
@@ -1117,7 +1161,7 @@ const Sfx = (() => {
   }
   // marimba: warm wooden bar (fundamental + quick 4th partial)
   function marimba(m, { at = 0, vol = 0.05, dur = 0.32, pan = 0, important = false, dest = null } = {}) {
-    if (!live(important)) return;
+    if (!live(important, dest)) return;
     const t = ac.currentTime + at, f = hz(m), g = ac.createGain(); g.connect(out(dest || bus, pan)); env(g, t, vol, 0.003, dur);
     const a = ac.createOscillator(); a.frequency.value = f; a.connect(g);
     const b = ac.createOscillator(), bg = ac.createGain(); b.frequency.value = f * 3.93;
@@ -1127,7 +1171,7 @@ const Sfx = (() => {
   }
   // pizzicato bass: short, round, bouncy
   function pizz(m, { at = 0, vol = 0.08, dur = 0.38, dest = null } = {}) {
-    if (!live(false)) return;
+    if (!live(false, dest)) return;
     const t = ac.currentTime + at, f = hz(m), g = ac.createGain(), lp = ac.createBiquadFilter();
     lp.type = 'lowpass'; lp.frequency.setValueAtTime(f * 6, t); lp.frequency.exponentialRampToValueAtTime(f * 2, t + 0.18);
     env(g, t, vol, 0.005, dur);
@@ -1137,7 +1181,7 @@ const Sfx = (() => {
   }
   // breathy flute / tin whistle: soft attack, gentle delayed vibrato, a whisper of air
   function flute(m, { at = 0, vol = 0.04, dur = 0.6, dest = null } = {}) {
-    if (!live(false)) return;
+    if (!live(false, dest)) return;
     const t = ac.currentTime + at, f = hz(m), g = ac.createGain(), rel = Math.min(0.25, dur * 0.4);
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.07);
     g.gain.setValueAtTime(vol, t + Math.max(0.08, dur - rel)); g.gain.exponentialRampToValueAtTime(0.0001, t + dur + rel);
@@ -1157,7 +1201,7 @@ const Sfx = (() => {
   }
   // harp pluck: bright attack that mellows
   function harp(m, { at = 0, vol = 0.08, dur = 1, pan = 0, important = false, dest = null } = {}) {
-    if (!live(important)) return;
+    if (!live(important, dest)) return;
     const t = ac.currentTime + at, f = hz(m), g = ac.createGain(), lp = ac.createBiquadFilter();
     lp.type = 'lowpass'; lp.Q.value = 0.7; lp.frequency.setValueAtTime(f * 8, t); lp.frequency.exponentialRampToValueAtTime(f * 2, t + 0.3);
     env(g, t, vol, 0.004, dur);
@@ -1225,7 +1269,7 @@ const Sfx = (() => {
     while (clock.next < now + 0.3) {
       const e = clock.e, bar = Math.floor(e / 6);
       if (e % 12 === 0) H.pending = { chord: Math.floor(bar / 2) % SONG.length, at: clock.next };
-      if (music && !muted) playEighth(e, clock.next);
+      if (musicOn()) playEighth(e, clock.next);
       clock.next += EIGHTH; clock.e++;
     }
     if (H.pending && now >= H.pending.at - 0.03) { H.chord = H.pending.chord; H.pending = null; }
@@ -1237,16 +1281,28 @@ const Sfx = (() => {
     markStale() { if (ac) stale = true; },          // app went to the background
     resumeIfPossible() { try { if (ac && !stale && ac.state !== 'running' && ac.state !== 'closed') ac.resume().catch(() => {}); } catch (e) { /* ignore */ } },
     get muted() { return muted; },
-    get music() { return music; },
-    toggle() {
+    get volumes() { return { sfx: vol.sfx, music: vol.music }; },
+    defaults: { sfx: DEFAULT_SFX, music: DEFAULT_MUSIC },
+    setVolume(kind, v) {
+      vol[kind] = clamp(Math.round(v * 100) / 100, 0, 1);
+      if (muted && v > 0) { muted = false; store.set('bm.muted', false); }
+      store.set('bm.vol', vol);
+      if (ac) {
+        const t = ac.currentTime;
+        master.gain.setTargetAtTime(muted ? 0 : VOL, t, 0.02);
+        if (kind === 'sfx') bus.gain.setTargetAtTime(curve(vol.sfx), t, 0.02);
+        else musicBus.gain.setTargetAtTime(curve(vol.music) * MUSIC_MAX, t, 0.05);
+      }
+    },
+    toggle() {   // quick "mute everything" (M key / speaker button)
       muted = !muted; store.set('bm.muted', muted);
       if (master) master.gain.setTargetAtTime(muted ? 0 : VOL, ac.currentTime, 0.02);
       return muted;
     },
-    toggleMusic() {
-      music = !music; store.set('bm.music', music);
-      if (musicBus) musicBus.gain.setTargetAtTime(music ? MUSIC_VOL : 0, ac.currentTime, 0.3);
-      return music;
+    toggleMusic() {   // N key: music off ↔ back to the last level (or the default)
+      this._lastMusic = vol.music > 0 ? vol.music : this._lastMusic || DEFAULT_MUSIC;
+      this.setVolume('music', vol.music > 0 ? 0 : this._lastMusic);
+      return vol.music > 0;
     },
     // every drop plays the next note of a music-box tune over the current chord
     drop(pan) {
@@ -1300,6 +1356,7 @@ const Sfx = (() => {
       [60, 64, 67, 72].forEach((m, i) => harp(m, { at: 0.75 + i * 0.05, vol: 0.06, dur: 1.6, important: true }));
     },
     ui() { box(tones(84, 96)[1], { vol: 0.045, dur: 0.35, important: true }); },
+    preview() { const tt = tones(74, 90); bell(tt[1], { vol: 0.13, dur: 0.6, bright: 0.55, important: true }); box(tt[3], { at: 0.07, vol: 0.04, dur: 0.4, important: true }); },
     _schedule: schedule,
     _debug: () => ({ state: ac && ac.state, stale, voices: ends.length, chord: H.chord, step: H.step, eighth: clock.e }),
   };
@@ -2272,8 +2329,10 @@ const UI = {
     $('btn-resume').onclick = () => { Sfx.ui(); this.setPaused(false); };
     $('btn-restart').onclick = () => { Sfx.ui(); this.start(); };
     $('btn-pause').onclick = () => { Sfx.unlock(); this.setPaused(!G.paused); };
-    $('btn-sound').onclick = $('btn-sound2').onclick = () => { Sfx.unlock(); Sfx.toggle(); this.soundIcon(); Sfx.ui(); };
-    $('btn-music').onclick = () => { Sfx.unlock(); Sfx.toggleMusic(); this.soundIcon(); Sfx.ui(); };
+    $('btn-sound').onclick = () => { Sfx.unlock(); Sfx.toggle(); this.soundIcon(); Sfx.ui(); };
+    $('btn-sound-title').onclick = () => { Sfx.unlock(); Sfx.ui(); $('sound').classList.add('show'); };
+    $('btn-sound-done').onclick = () => { Sfx.ui(); this.closeSound(); };
+    this.initVolume();
     this.soundIcon();
     document.querySelectorAll('.ver').forEach(el => { el.textContent = `v${VERSION} · alpha`; });
     $('title-best').textContent = G.best ? `Best: ${fmt(G.best)}` : '';
@@ -2320,11 +2379,80 @@ const UI = {
     if (!this.inRun()) return;
     G.paused = p;
     $('pause').classList.toggle('show', p);
+    if (!p && document.activeElement && document.activeElement.blur) document.activeElement.blur();   // arrows aim again, not the sliders
   },
   soundIcon() {
-    $('btn-sound').innerHTML = Sfx.muted ? ICON_SOUND_OFF : ICON_SOUND_ON;
-    $('btn-sound2').textContent = 'Sound: ' + (Sfx.muted ? 'off' : 'on');
-    $('btn-music').textContent = 'Music: ' + (Sfx.music ? 'on' : 'off');
+    const v = Sfx.volumes, silent = Sfx.muted || (v.sfx === 0 && v.music === 0);
+    $('btn-sound').innerHTML = silent ? ICON_SOUND_OFF : ICON_SOUND_ON;
+    this.syncVolume();
+  },
+
+  closeSound() {
+    $('sound').classList.remove('show');
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  },
+  // ── volume sliders (pause menu + "Sound & music" panel share one implementation) ──
+  initVolume() {
+    const ICON = {
+      sfx: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.1 5.6 5.9.4-4.6 3.8 1.5 5.8L12 14.9l-4.9 3.2 1.5-5.8L4 8.5l5.9-.4z"/><circle cx="19.5" cy="18.5" r="1.6"/><circle cx="4.5" cy="18.5" r="1.1"/></svg>',
+      music: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 17.5V6.2l10-2.2v11.2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><ellipse cx="6.6" cy="17.6" rx="3" ry="2.4"/><ellipse cx="16.6" cy="15.4" rx="3" ry="2.4"/></svg>',
+    };
+    const NAME = { sfx: 'Effects', music: 'Music' };
+    document.querySelectorAll('.vol').forEach(box => {
+      box.innerHTML = ['sfx', 'music'].map(k => `
+        <div class="vol-row">
+          <div class="vol-head"><span>${ICON[k]}${NAME[k]}</span><span class="vol-val" data-val="${k}">–</span></div>
+          <div class="slider" data-kind="${k}" role="slider" tabindex="0" aria-label="${NAME[k]} volume" aria-valuemin="0" aria-valuemax="100">
+            <div class="sl-track"><div class="sl-fill"></div></div><div class="sl-thumb"></div>
+          </div>
+        </div>`).join('') + '<div class="vol-note"></div>';
+    });
+    let lastPreview = 0;
+    const preview = (kind, force) => {
+      if (kind !== 'sfx') return;
+      const now = performance.now();
+      if (force || now - lastPreview > 140) { lastPreview = now; Sfx.preview(); }
+    };
+    const set = (kind, v) => { Sfx.setVolume(kind, Math.round(clamp(v, 0, 1) * 20) / 20); this.soundIcon(); };
+    document.querySelectorAll('.slider').forEach(el => {
+      const kind = el.dataset.kind, track = el.querySelector('.sl-track');
+      const fromX = x => { const r = track.getBoundingClientRect(); return (x - r.left) / Math.max(1, r.width); };
+      el.addEventListener('pointerdown', e => {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        e.preventDefault(); Sfx.unlock(); el.focus({ preventScroll: true });
+        try { el.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
+        el.classList.add('drag'); set(kind, fromX(e.clientX)); preview(kind);
+      });
+      el.addEventListener('pointermove', e => {
+        if (!el.classList.contains('drag')) return;
+        const before = Sfx.volumes[kind]; set(kind, fromX(e.clientX));
+        if (Sfx.volumes[kind] !== before) preview(kind);
+      });
+      const end = () => { if (el.classList.contains('drag')) { el.classList.remove('drag'); preview(kind, true); } };
+      el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end); el.addEventListener('lostpointercapture', end);
+      el.addEventListener('keydown', e => {
+        const step = e.shiftKey ? 0.1 : 0.05; let v = Sfx.volumes[kind];
+        if (e.key === 'ArrowRight' || e.key === 'ArrowUp') v += step;
+        else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') v -= step;
+        else if (e.key === 'Home') v = 0;
+        else if (e.key === 'End') v = 1;
+        else return;
+        e.preventDefault(); e.stopPropagation(); Sfx.unlock(); set(kind, v); preview(kind, true);
+      });
+    });
+    this.syncVolume();
+  },
+  syncVolume() {
+    const v = Sfx.volumes;
+    document.querySelectorAll('.slider').forEach(el => {
+      const k = el.dataset.kind, p = Math.round(v[k] * 100);
+      el.querySelector('.sl-fill').style.width = p + '%';
+      el.querySelector('.sl-thumb').style.left = `calc(15px + (100% - 30px) * ${v[k]})`;
+      el.setAttribute('aria-valuenow', p); el.setAttribute('aria-valuetext', p ? p + ' %' : 'off');
+      el.classList.toggle('zero', p === 0);
+    });
+    document.querySelectorAll('[data-val]').forEach(el => { const p = Math.round(v[el.dataset.val] * 100); el.textContent = p ? p + ' %' : 'Off'; });
+    document.querySelectorAll('.vol-note').forEach(el => { el.textContent = Sfx.muted ? 'Muted — move a slider (or press M) to unmute' : ''; });
   },
   key(e, down) {
     const k = e.code;
@@ -2334,12 +2462,14 @@ const UI = {
       e.preventDefault();
       if (e.repeat) return;
       Sfx.unlock();
+      if ($('sound').classList.contains('show')) { this.closeSound(); return; }
       if (this.titleOn || G.state === 'over') { if ($('title').classList.contains('show') || $('over').classList.contains('show')) this.start(); return; }
       if (G.paused) { this.setPaused(false); return; }
       tryDrop();
-    } else if (k === 'KeyP' || k === 'Escape') { this.setPaused(!G.paused); }
-    else if (k === 'KeyM') { Sfx.toggle(); this.soundIcon(); }
-    else if (k === 'KeyN') { Sfx.toggleMusic(); this.soundIcon(); }
+    } else if (k === 'Escape' && $('sound').classList.contains('show')) { this.closeSound(); }
+    else if (k === 'KeyP' || k === 'Escape') { this.setPaused(!G.paused); }
+    else if (k === 'KeyM') { Sfx.unlock(); Sfx.toggle(); this.soundIcon(); }
+    else if (k === 'KeyN') { Sfx.unlock(); Sfx.toggleMusic(); this.soundIcon(); }
     else if (G.debug && this.inRun()) {
       if (/^Digit\d$/.test(k)) { G.cur.tier = +k.slice(5); G.heldPop = G.rtime; }
       else if (k === 'Minus') { G.cur.tier = TOP_TIER; G.heldPop = G.rtime; }

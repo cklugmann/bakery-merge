@@ -6,6 +6,20 @@ version marks a larger iteration and a **patch** marks fixes and tuning.
 The current version is shown on the title and pause screens
 (`VERSION` constant at the top of the script in `index.html`).
 
+## 0.3.2 — Volume sliders
+
+- **Separate sliders for Effects and Music** — in the pause menu and via
+  *Sound & music* on the title screen. They work the same with touch (tap anywhere on
+  the bar to jump, drag), mouse and keyboard (arrow keys ±5 %, Shift ±10 %, Home/End),
+  snap to 5 % steps, preview the effect level with a little chime while you drag, and
+  are remembered on the device.
+- **Better default balance:** Effects 80 %, Music 50 %. The sliders follow a perceptual
+  curve (50 % ≈ half as loud), and the defaults keep the music a calm bed about 10 dB
+  below the effects — clearly audible, never competing. With both at 100 % the music
+  comes up to ~2 dB below the effects; nothing clips.
+- **M** still mutes everything (moving a slider unmutes), **N** toggles the music
+  between off and its last level. Old "music off" / "sound off" choices carry over.
+
 ## 0.3.1 — An enchanted, sunnier soundtrack
 
 - **The music is cheerful and enchanted now** (it sounded like an indie horror game).
