@@ -1,10 +1,17 @@
 # Changelog
 
-All notable changes to Fairycake Falls (formerly *Bakery Merge*). Versions follow `MAJOR.MINOR.PATCH`;
+All notable changes to Bakery Merge. Versions follow `MAJOR.MINOR.PATCH`;
 while the game is in alpha the major version stays `0`, a new **minor**
 version marks a larger iteration and a **patch** marks fixes and tuning.
 The current version is shown on the title and pause screens
 (`VERSION` constant at the top of the script in `index.html`).
+
+## 0.4.1 — Bakery Merge again
+
+- **The game is called *Bakery Merge* again** — on the title screen, in the side panel
+  on wide screens, in the browser tab, on the home screen and in link previews.
+- Kept from 0.4.0: the subtitle *“Sweet magic, one drop at a time”*, the cupcake app
+  icon and the loading text.
 
 ## 0.4.0 — Fairycake Falls
 
