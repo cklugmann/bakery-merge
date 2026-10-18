@@ -1,10 +1,24 @@
 # Changelog
 
-All notable changes to Bakery Merge. Versions follow `MAJOR.MINOR.PATCH`;
+All notable changes to Fairycake Falls (formerly *Bakery Merge*). Versions follow `MAJOR.MINOR.PATCH`;
 while the game is in alpha the major version stays `0`, a new **minor**
 version marks a larger iteration and a **patch** marks fixes and tuning.
 The current version is shown on the title and pause screens
 (`VERSION` constant at the top of the script in `index.html`).
+
+## 0.4.0 — Fairycake Falls
+
+- **Bakery Merge is now *Fairycake Falls*.** The new name shows on the title screen,
+  in the side panel on wide screens, in the browser tab and on the loading screen.
+- **New subtitle:** *“Sweet magic, one drop at a time”* (replaces the technical
+  “Drop · merge · fall deeper”).
+- **App icon:** the game's own little fairy cake with a sparkle, drawn from the same
+  sprite code as in the game. It appears in the browser tab (`icons/favicon-64.png`,
+  `icons/icon-192.png`) and as the home-screen icon on iPhone/iPad
+  (`icons/apple-touch-icon.png`).
+- Page description and share title for links (`description`, `og:title`).
+- Nothing changes for players' progress: best score, discovered pastries and sound
+  settings carry over (the storage keys stay the same).
 
 ## 0.3.2 — Volume sliders
 
