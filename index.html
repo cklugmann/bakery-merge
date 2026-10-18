@@ -88,6 +88,7 @@ h2{font-weight:700;font-size:2rem;color:#7a3a0e;line-height:1.1}
 .stat span{font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:#b0703a;font-weight:600}
 #over-icon{width:56px;height:56px;display:block;margin:0 auto 2px}
 .hint{font-size:.72rem;color:#b88a5c;margin-top:10px}
+.ver{font-size:.68rem;color:#c49a70;margin-top:8px;letter-spacing:.04em}
 @media (max-height:760px){.card{padding:18px 18px 18px;border-radius:24px}h1{font-size:2.1rem}.tag{margin:4px 0 2px}#title-cv{height:112px}.tips{font-size:.8rem;margin:4px 2px 12px;line-height:1.38}.btn{padding:11px 42px}}
 @media (max-height:620px){h1{font-size:1.75rem}#title-cv{height:88px}.tips{font-size:.74rem}.tips li{margin:2px 0 2px 16px}.best{margin-top:8px}}
 @media (max-height:520px){#title-cv{display:none}.tips{font-size:.72rem;margin-bottom:10px}h1{font-size:1.6rem}}
@@ -126,6 +127,7 @@ h2{font-weight:700;font-size:2rem;color:#7a3a0e;line-height:1.1}
     </ul>
     <button class="btn" id="btn-play">Play</button>
     <div class="best" id="title-best"></div>
+    <div class="ver"></div>
   </div>
 </div>
 
@@ -135,6 +137,7 @@ h2{font-weight:700;font-size:2rem;color:#7a3a0e;line-height:1.1}
     <div class="row"><button class="btn" id="btn-resume">Resume</button></div>
     <div class="row"><button class="btn ghost" id="btn-restart">Restart</button><button class="btn ghost" id="btn-sound2">Sound: on</button></div>
     <div class="hint">Space / click to drop · ← → to aim · P to pause</div>
+    <div class="ver"></div>
   </div>
 </div>
 
@@ -158,6 +161,7 @@ h2{font-weight:700;font-size:2rem;color:#7a3a0e;line-height:1.1}
 // ═══════════════════════════════════════════════════════════════════
 //  UTILITIES
 // ═══════════════════════════════════════════════════════════════════
+const VERSION = '0.2.2';   // bump with every release — see CHANGELOG.md
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -353,7 +357,7 @@ function strokePts(c, pts) { c.beginPath(); c.moveTo(pts[0].x, pts[0].y); for (l
 const TIER_DEFS = [
   // 0 ─ COOKIE ──────────────────────────────────────────────────────
   {
-    key: 'cookie', name: 'Cookie', r: 15, outline: '#7c461b',
+    key: 'cookie', name: 'Cookie', r: 14, outline: '#7c461b',
     shape: r => [ptsCircle(r)],
     face: { x: 0, y: 0.02, s: 0.8 },
     crumbs: ['#e6ad66', '#cf8d45', '#5a2f15', '#f3c98a'],
@@ -375,7 +379,7 @@ const TIER_DEFS = [
   },
   // 1 ─ MACARON ─────────────────────────────────────────────────────
   {
-    key: 'macaron', name: 'Macaron', r: 20, outline: '#3f8c63',
+    key: 'macaron', name: 'Macaron', r: 19, outline: '#3f8c63',
     shape: r => [ptsSuper(r, r * 0.72, 2.5)],
     face: { x: 0, y: -0.36, s: 0.62 },
     crumbs: ['#a8e8c4', '#86d4aa', '#fff3df'],
@@ -404,7 +408,7 @@ const TIER_DEFS = [
   },
   // 2 ─ DONUT ───────────────────────────────────────────────────────
   {
-    key: 'donut', name: 'Donut', r: 25, outline: '#9e5a24',
+    key: 'donut', name: 'Donut', r: 24, outline: '#9e5a24',
     shape: r => [ptsCircle(r)],
     holes: [{ x: 0, y: 0, r: 0.25 }],
     face: { x: 0, y: 0.6, s: 0.5 },
@@ -451,7 +455,7 @@ const TIER_DEFS = [
   },
   // 3 ─ CUPCAKE ─────────────────────────────────────────────────────
   {
-    key: 'cupcake', name: 'Cupcake', r: 31, outline: '#7f55b8',
+    key: 'cupcake', name: 'Cupcake', r: 29, outline: '#7f55b8',
     shape: r => {
       const pts = [];
       for (let i = 0; i <= 40; i++) { const t = i / 40, y = (0.08 - t * 1.0) * r, w = 0.95 * r * Math.pow(1 - Math.pow(t, 1.7), 0.6); pts.push({ x: w, y }, { x: -w, y }); }
@@ -508,7 +512,7 @@ const TIER_DEFS = [
   },
   // 4 ─ CROISSANT ───────────────────────────────────────────────────
   {
-    key: 'croissant', name: 'Croissant', r: 42, outline: '#86440f',
+    key: 'croissant', name: 'Croissant', r: 39, outline: '#86440f',
     lobes: [[-0.9, 0.3, 0.13, 0.17, -0.95], [0.9, 0.3, 0.13, 0.17, 0.95], [-0.69, 0.15, 0.2, 0.32, -0.66], [0.69, 0.15, 0.2, 0.32, 0.66], [-0.4, 0.03, 0.25, 0.46, -0.32], [0.4, 0.03, 0.25, 0.46, 0.32], [0, -0.02, 0.29, 0.55, 0]],
     shape(r) { const pts = []; for (const [x, y, rx, ry, rot] of this.lobes) pts.push(...ptsEllipse(x * r, y * r, rx * r, ry * r, rot, 40)); return [pts]; },
     face: { x: 0, y: 0.04, s: 0.42 },
@@ -531,7 +535,7 @@ const TIER_DEFS = [
   },
   // 5 ─ CINNAMON ROLL ───────────────────────────────────────────────
   {
-    key: 'roll', name: 'Cinnamon Roll', r: 44, outline: '#8a4f22',
+    key: 'roll', name: 'Cinnamon Roll', r: 41, outline: '#8a4f22',
     shape: r => [ptsCircle(r)],
     face: { x: 0, y: 0.08, s: 0.42 },
     crumbs: ['#e8b06c', '#9b5a26', '#fffdf5', '#f6d29b'],
@@ -556,7 +560,7 @@ const TIER_DEFS = [
   },
   // 6 ─ PRETZEL ─────────────────────────────────────────────────────
   {
-    key: 'pretzel', name: 'Pretzel', r: 53, outline: '#4f2006', noHullOutline: true, noShade: true,
+    key: 'pretzel', name: 'Pretzel', r: 50, outline: '#4f2006', noHullOutline: true, noShade: true,
     rope(r) {
       const S = pts => spline(pts.map(([x, y]) => ({ x: x * r, y: y * r })), 14);
       const belly = S([[-0.86, 0.16], [-0.76, 0.48], [-0.42, 0.68], [0, 0.73], [0.42, 0.68], [0.76, 0.48], [0.86, 0.16]]);
@@ -600,7 +604,7 @@ const TIER_DEFS = [
   },
   // 7 ─ CHERRY PIE ──────────────────────────────────────────────────
   {
-    key: 'pie', name: 'Cherry Pie', r: 60, outline: '#93531d',
+    key: 'pie', name: 'Cherry Pie', r: 56, outline: '#93531d',
     shape: r => [ptsCircle(r)],
     face: { x: 0, y: 0, s: 0.36 },
     crumbs: ['#e8384f', '#f4c47d', '#b51630', '#cf8f45'],
@@ -642,136 +646,153 @@ const TIER_DEFS = [
       }
     },
   },
-  // 8 ─ BREAD LOAF ──────────────────────────────────────────────────
+  // 8 ─ BREAD LOAF (side view, plump oval so it can rock and roll) ──
   {
-    key: 'bread', name: 'Bread', r: 70, outline: '#6a3410',
-    shape: r => {
-      const pts = [];
-      for (let i = 0; i <= 80; i++) {
-        const x = lerp(-1, 1, i / 80), ax = Math.abs(x);
-        pts.push({ x: x * r, y: -0.68 * r * Math.pow(Math.max(0, 1 - Math.pow(ax, 2.3)), 1 / 2.3) }, { x: x * r, y: 0.5 * r * Math.pow(Math.max(0, 1 - Math.pow(ax, 4)), 1 / 4) });
-      }
+    key: 'bread', name: 'Bread', r: 64, outline: '#6a3410',
+    top: r => x => -0.66 * r * Math.pow(Math.max(0, 1 - Math.pow(Math.abs(x / r), 2.2)), 1 / 2.2),
+    bot: r => x => 0.5 * r * Math.pow(Math.max(0, 1 - Math.pow(Math.abs(x / r), 2.5)), 1 / 2.5),
+    shape(r) {
+      const pts = [], top = this.top(r), bot = this.bot(r);
+      for (let i = 0; i <= 120; i++) { const x = lerp(-1, 1, i / 120) * r; pts.push({ x, y: top(x) }, { x, y: bot(x) }); }
       return [pts];
     },
-    face: { x: 0, y: 0.2, s: 0.36 },
+    face: { x: 0, y: 0.17, s: 0.36 },
     crumbs: ['#cc8640', '#f7deb0', '#9c5a22', '#ffffff'],
     paint(c, r, R) {
-      const top = x => -0.68 * r * Math.pow(Math.max(0, 1 - Math.pow(Math.abs(x / r), 2.3)), 1 / 2.3);
-      c.fillStyle = lg(c, 0, -0.68 * r, 0, 0.5 * r, [[0, '#eeb469'], [0.45, '#d18b45'], [0.8, '#a9632a'], [1, '#7d4318']]);
+      const top = this.top(r);
+      c.fillStyle = lg(c, 0, -0.66 * r, 0, 0.5 * r, [[0, '#f0b86c'], [0.42, '#d48e47'], [0.78, '#ac652b'], [1, '#7f4419']]);
       c.fillRect(-2 * r, -2 * r, 4 * r, 4 * r);
-      c.fillStyle = lg(c, -r, 0, r, 0, [[0, 'rgba(90,40,10,0.35)'], [0.18, 'rgba(90,40,10,0)'], [0.82, 'rgba(90,40,10,0)'], [1, 'rgba(90,40,10,0.35)']]);
+      c.fillStyle = lg(c, -r, 0, r, 0, [[0, 'rgba(90,40,10,0.38)'], [0.2, 'rgba(90,40,10,0)'], [0.8, 'rgba(90,40,10,0)'], [1, 'rgba(90,40,10,0.38)']]);
       c.fillRect(-2 * r, -2 * r, 4 * r, 4 * r);
       speckle(c, R, 90, R => ({ x: (R() * 2 - 1) * r, y: lerp(-0.6, 0.45, R()) * r }), R => `rgba(95,45,12,${0.1 + R() * 0.2})`, r * 0.006, r * 0.014);
-      // scoring slashes
+      // three diagonal scores with crusty "ears"
       for (const sx of [-0.5, 0, 0.5]) {
-        const x = sx * r, y = top(x) + 0.27 * r, L = 0.25 * r, wv = 0.075 * r, a = -0.5;
+        const x = sx * r, y = top(x) + 0.27 * r, L = 0.26 * r, wv = 0.08 * r, a = -0.5;
         c.save(); c.translate(x, y); c.rotate(a);
         c.beginPath(); c.moveTo(-L, 0); c.quadraticCurveTo(0, -wv * 1.6, L, 0); c.quadraticCurveTo(0, wv * 1.6, -L, 0); c.closePath();
-        c.fillStyle = lg(c, 0, -wv, 0, wv, [[0, '#fbe7c0'], [0.6, '#efcf98'], [1, '#d9ab6a']]); c.fill();
+        c.fillStyle = 'rgba(80,35,5,0.3)'; c.save(); c.translate(0.01 * r, 0.018 * r); c.fill(); c.restore();
+        c.fillStyle = lg(c, 0, -wv, 0, wv, [[0, '#fdebc6'], [0.6, '#f0d09a'], [1, '#d8aa68']]); c.fill();
         c.strokeStyle = 'rgba(100,45,10,0.6)'; c.lineWidth = 0.022 * r; c.stroke();
         c.beginPath(); c.moveTo(-L * 0.95, -0.005 * r); c.quadraticCurveTo(0, -wv * 1.75, L * 0.95, -0.005 * r);
-        c.strokeStyle = '#f2b866'; c.lineWidth = 0.035 * r; c.lineCap = 'round'; c.stroke();
+        c.strokeStyle = '#c47a33'; c.lineWidth = 0.04 * r; c.lineCap = 'round'; c.stroke();
+        c.strokeStyle = '#f6c06f'; c.lineWidth = 0.018 * r; c.stroke();
         c.restore();
       }
-      // flour dust
-      speckle(c, R, 150, R => { const x = (R() * 2 - 1) * 0.95 * r; return { x, y: top(x) + Math.pow(R(), 2) * 0.32 * r }; }, R => `rgba(255,252,245,${0.2 + R() * 0.45})`, r * 0.006, r * 0.02);
-      c.fillStyle = lg(c, 0, 0.25 * r, 0, 0.52 * r, [[0, 'rgba(70,30,5,0)'], [1, 'rgba(70,30,5,0.4)']]); c.fillRect(-2 * r, 0.25 * r, 4 * r, r);
+      // flour dusting on the crown
+      speckle(c, R, 160, R => { const x = (R() * 2 - 1) * 0.95 * r; return { x, y: top(x) + Math.pow(R(), 2) * 0.34 * r }; }, R => `rgba(255,252,245,${0.2 + R() * 0.45})`, r * 0.006, r * 0.02);
+      c.fillStyle = lg(c, 0, 0.22 * r, 0, 0.52 * r, [[0, 'rgba(70,30,5,0)'], [1, 'rgba(70,30,5,0.42)']]); c.fillRect(-2 * r, 0.22 * r, 4 * r, r);
     },
   },
-  // 9 ─ BLACK FOREST TORTE ──────────────────────────────────────────
+  // 9 ─ BLACK FOREST CAKE (side view, soft drum with a slice cut out) ─
   {
-    key: 'torte', name: 'Black Forest', r: 79, outline: '#24100a',
-    shape: r => [ptsSuper(r, 0.6 * r, 6)],
-    face: { x: 0, y: 0.2, s: 0.33, eye: 'light' },
+    key: 'torte', name: 'Black Forest', r: 72, outline: '#24100a',
+    shape: r => [ptsSuper(r, 0.6 * r, 3.2)],
+    face: { x: 0.3, y: 0.2, s: 0.32, eye: 'light' },
     crumbs: ['#5c311c', '#ffffff', '#b3122b', '#2e170c'],
     paint(c, r, R) {
-      const b = 0.6 * r;
-      c.fillStyle = lg(c, -r, 0, r, 0, [[0, '#2a150b'], [0.2, '#5f3420'], [0.45, '#7a462a'], [0.7, '#5a301c'], [1, '#26120a']]);
+      const b = 0.6 * r, n = 3.2, edge = x => b * Math.pow(Math.max(0, 1 - Math.pow(Math.abs(x / r), n)), 1 / n);
+      // chocolate-shaving coat
+      c.fillStyle = lg(c, -r, 0, r, 0, [[0, '#2a150b'], [0.25, '#5f3420'], [0.55, '#7a462a'], [0.8, '#5a301c'], [1, '#26120a']]);
       c.fillRect(-2 * r, -2 * r, 4 * r, 4 * r);
       c.lineCap = 'round';
-      for (let i = 0; i < 70; i++) {
-        const x = (R() * 2 - 1) * 0.95 * r, y = lerp(-0.25, 0.8, R()) * b, s = lerp(0.03, 0.07, R()) * r, a0 = R() * TAU;
-        c.strokeStyle = R() < 0.55 ? `rgba(160,100,62,${0.35 + R() * 0.3})` : `rgba(20,8,3,${0.3 + R() * 0.3})`;
+      for (let i = 0; i < 80; i++) {
+        const x = lerp(-0.2, 0.95, R()) * r, y = lerp(-0.3, 0.85, R()) * b, s = lerp(0.03, 0.065, R()) * r, a0 = R() * TAU;
+        c.strokeStyle = R() < 0.55 ? `rgba(165,105,65,${0.35 + R() * 0.3})` : `rgba(20,8,3,${0.3 + R() * 0.3})`;
         c.lineWidth = lerp(0.008, 0.018, R()) * r; c.beginPath(); c.arc(x, y, s, a0, a0 + 2.2); c.stroke();
       }
-      // cream top with drips
-      c.beginPath(); c.moveTo(-1.2 * r, -1.2 * b); c.lineTo(1.2 * r, -1.2 * b); c.lineTo(1.2 * r, -0.42 * b);
+      // the cut: layered cross-section on the left (sponge · cream · cherries)
+      const cx0 = -1.2 * r, cx1 = -0.22 * r;
+      c.save();
+      c.beginPath(); c.moveTo(cx0, -1.2 * b); c.lineTo(cx1, -1.2 * b); c.lineTo(cx1, 1.2 * b); c.lineTo(cx0, 1.2 * b); c.closePath(); c.clip();
+      const layers = [[-0.42, -0.12, 'sponge'], [-0.12, 0.1, 'cherry'], [0.1, 0.34, 'sponge'], [0.34, 0.52, 'cream'], [0.52, 1.2, 'sponge']];
+      for (const [y0, y1, k] of layers) {
+        const Y0 = y0 * b, Y1 = y1 * b;
+        if (k === 'sponge') {
+          c.fillStyle = lg(c, 0, Y0, 0, Y1, [[0, '#5a2e1a'], [1, '#3f1f10']]); c.fillRect(cx0, Y0, cx1 - cx0, Y1 - Y0);
+          speckle(c, R, 40, R => ({ x: lerp(cx0, cx1, R()), y: lerp(Y0, Y1, R()) }), 'rgba(140,85,50,0.45)', r * 0.006, r * 0.012);
+        } else {
+          c.fillStyle = lg(c, 0, Y0, 0, Y1, [[0, '#fffaf4'], [1, '#efe1d6']]); c.fillRect(cx0, Y0, cx1 - cx0, Y1 - Y0);
+          if (k === 'cherry') for (let x = cx1 - 0.08 * r; x > -r; x -= 0.15 * r) {
+            const cy = (Y0 + Y1) / 2 + (R() - 0.5) * 0.04 * r, cs = 0.055 * r;
+            circ(c, x, cy, cs); c.fillStyle = rg(c, x - cs * 0.3, cy - cs * 0.3, 0, x, cy, cs, [[0, '#ff4d63'], [0.6, '#b3122b'], [1, '#6e0616']]); c.fill();
+            circ(c, x - cs * 0.35, cy - cs * 0.35, cs * 0.28); c.fillStyle = 'rgba(255,255,255,0.75)'; c.fill();
+          }
+        }
+      }
+      c.fillStyle = lg(c, cx1 - 0.08 * r, 0, cx1, 0, [[0, 'rgba(40,15,5,0)'], [1, 'rgba(40,15,5,0.4)']]); c.fillRect(cx1 - 0.08 * r, -b, 0.08 * r, 2 * b);
+      c.restore();
+      c.strokeStyle = 'rgba(30,12,5,0.55)'; c.lineWidth = 0.02 * r; c.beginPath(); c.moveTo(cx1, -0.42 * b); c.lineTo(cx1, 1.1 * b); c.stroke();
+      // whipped-cream top with drips
+      c.beginPath(); c.moveTo(-1.2 * r, -1.2 * b); c.lineTo(1.2 * r, -1.2 * b); c.lineTo(1.2 * r, -0.4 * b);
       for (let x = 1.2; x >= -1.2; x -= 0.02) {
         let y = -0.42;
-        for (const d of [-0.78, -0.5, -0.14, 0.27, 0.6, 0.85]) y += 0.3 * Math.exp(-Math.pow((x - d) / 0.05, 2));
+        if (x > -0.22) for (const d of [-0.05, 0.22, 0.48, 0.72]) y += 0.32 * Math.exp(-Math.pow((x - d) / 0.05, 2));
         c.lineTo(x * r, y * b);
       }
       c.closePath();
       c.fillStyle = lg(c, 0, -b, 0, -0.2 * b, [[0, '#ffffff'], [0.6, '#fdf4ec'], [1, '#e9d6c8']]); c.fill();
       c.strokeStyle = 'rgba(120,80,60,0.3)'; c.lineWidth = 0.012 * r; c.stroke();
-      // rosettes + cherries
-      for (let i = 0; i < 7; i++) {
-        const x = lerp(-0.76, 0.76, i / 6) * r, y = -0.66 * b, s = 0.085 * r;
+      // rosettes + cherries following the rounded top edge
+      for (let i = 0; i < 6; i++) {
+        const x = lerp(-0.66, 0.66, i / 5) * r, y = -edge(x) + 0.22 * b, s = 0.085 * r;
         circ(c, x, y, s); c.fillStyle = rg(c, x - s * 0.3, y - s * 0.4, 0, x, y, s, [[0, '#ffffff'], [1, '#e6d3c6']]); c.fill();
         c.strokeStyle = 'rgba(160,125,110,0.55)'; c.lineWidth = 0.012 * r;
         c.beginPath(); for (let th = 0; th < 3.2 * Math.PI; th += 0.2) { const rr = s * 0.85 * (th / (3.2 * Math.PI)); c.lineTo(x + Math.cos(th) * rr, y + Math.sin(th) * rr * 0.8); } c.stroke();
-        if (i % 2 === 0) {
-          const cy = y - 0.075 * r, cs = 0.058 * r;
-          circ(c, x, cy, cs); c.fillStyle = rg(c, x - cs * 0.3, cy - cs * 0.3, 0, x, cy, cs, [[0, '#ff4d63'], [0.6, '#b3122b'], [1, '#6e0616']]); c.fill();
-          circ(c, x - cs * 0.35, cy - cs * 0.35, cs * 0.28); c.fillStyle = 'rgba(255,255,255,0.8)'; c.fill();
-        }
-      }
-      // chocolate curls between rosettes
-      for (let i = 0; i < 6; i++) {
-        const x = lerp(-0.64, 0.64, i / 5) * r, y = -0.8 * b;
-        c.strokeStyle = '#3b1d10'; c.lineWidth = 0.022 * r; c.beginPath(); c.arc(x, y, 0.03 * r, 0.3, 4.5); c.stroke();
-      }
-      // cream pearls at the base
-      for (let i = 0; i <= 16; i++) {
-        const x = lerp(-0.84, 0.84, i / 16) * r, y = 0.8 * b, s = 0.038 * r;
-        circ(c, x, y, s); c.fillStyle = rg(c, x - s * 0.3, y - s * 0.4, 0, x, y, s, [[0, '#ffffff'], [1, '#dcc6b8']]); c.fill();
+        const cy = y - 0.07 * r, cs = 0.058 * r;
+        circ(c, x, cy, cs); c.fillStyle = rg(c, x - cs * 0.3, cy - cs * 0.3, 0, x, cy, cs, [[0, '#ff4d63'], [0.6, '#b3122b'], [1, '#6e0616']]); c.fill();
+        circ(c, x - cs * 0.35, cy - cs * 0.35, cs * 0.28); c.fillStyle = 'rgba(255,255,255,0.8)'; c.fill();
+        c.strokeStyle = '#4a2a10'; c.lineWidth = 0.012 * r; c.beginPath(); c.moveTo(x + cs * 0.1, cy - cs * 0.85); c.quadraticCurveTo(x + cs * 0.5, cy - cs * 1.5, x + cs * 1.1, cy - cs * 1.45); c.stroke();
       }
     },
   },
-  // 10 ─ WEDDING CAKE ───────────────────────────────────────────────
+  // 10 ─ WEDDING CAKE (three soft, pillowy tiers) ─────────────────────
   {
-    key: 'wedding', name: 'Wedding Cake', r: 91, outline: '#a9837a',
-    tiers: [[-1, 0.13, 1, 0.8], [-0.69, -0.37, 0.69, 0.15], [-0.43, -0.78, 0.43, -0.35]],
-    shape(r) { return this.tiers.map(([x0, y0, x1, y1]) => ptsRoundRect(x0 * r, y0 * r, x1 * r, y1 * r, 0.07 * r)); },
-    face: { x: 0, y: 0.4, s: 0.3 },
+    key: 'wedding', name: 'Wedding Cake', r: 82, outline: '#a9837a',
+    // [centerY, halfWidth, halfHeight] per tier, bottom → top (units of r)
+    tiers: [[0.5, 1, 0.3], [0.02, 0.7, 0.24], [-0.4, 0.44, 0.21]],
+    shape(r) { return this.tiers.map(([cy, hw, hh]) => ptsSuper(hw * r, hh * r, 3.2, 160, 0, cy * r)); },
+    face: { x: 0, y: 0.47, s: 0.3 },
     crumbs: ['#ffffff', '#f7a8c4', '#fff4e8', '#d9b45a'],
     paint(c, r, R) {
-      this.tiers.forEach(([x0, y0, x1, y1], ti) => {
-        const X0 = x0 * r, X1 = x1 * r, Y0 = y0 * r, Y1 = y1 * r, hw = (X1 - X0) / 2;
-        c.save(); c.beginPath(); c.roundRect(X0, Y0, X1 - X0, Y1 - Y0, 0.07 * r); c.clip();
-        c.fillStyle = lg(c, X0, 0, X1, 0, [[0, '#e7d7cc'], [0.18, '#fbf3ec'], [0.42, '#ffffff'], [0.75, '#f8eee6'], [1, '#dccabd']]);
-        c.fillRect(X0, Y0, X1 - X0, Y1 - Y0);
-        c.fillStyle = lg(c, 0, Y0, 0, Y0 + 0.07 * r, [[0, 'rgba(255,255,255,1)'], [1, 'rgba(240,225,215,0)']]); c.fillRect(X0, Y0, X1 - X0, 0.07 * r);
-        if (ti > 0) { /* nothing */ }
+      const n = 3.2;
+      this.tiers.forEach(([cyU, hwU, hhU], ti) => {
+        const cy = cyU * r, hw = hwU * r, hh = hhU * r;
+        const edge = x => hh * Math.pow(Math.max(0, 1 - Math.pow(Math.abs(x / hw), n)), 1 / n);
+        const path = new Path2D(); pathFromPts(path, ptsSuper(hw, hh, n, 120, 0, cy));
+        c.save(); c.clip(path);
+        c.fillStyle = lg(c, -hw, 0, hw, 0, [[0, '#e3d2c6'], [0.18, '#fbf3ec'], [0.42, '#ffffff'], [0.75, '#f8eee6'], [1, '#d9c6b9']]);
+        c.fillRect(-hw, cy - hh, 2 * hw, 2 * hh);
+        c.fillStyle = lg(c, 0, cy - hh, 0, cy - hh * 0.5, [[0, 'rgba(255,255,255,1)'], [1, 'rgba(240,225,215,0)']]); c.fillRect(-hw, cy - hh, 2 * hw, hh * 0.5);
         // ribbon
-        const ry = Y1 - 0.16 * r, rh = 0.075 * r;
-        c.fillStyle = lg(c, 0, ry, 0, ry + rh, [[0, '#fbc3d6'], [0.5, '#f59bbb'], [1, '#d97598']]); c.fillRect(X0, ry, X1 - X0, rh);
-        c.fillStyle = 'rgba(160,60,90,0.25)'; c.fillRect(X0, ry + rh, X1 - X0, 0.012 * r);
-        // pearls
-        for (let x = X0 + 0.06 * r; x < X1 - 0.03 * r; x += 0.075 * r) {
-          const y = Y1 - 0.045 * r, s = 0.026 * r;
+        const ry = cy + hh * 0.38, rh = 0.07 * r;
+        c.fillStyle = lg(c, 0, ry, 0, ry + rh, [[0, '#fbc3d6'], [0.5, '#f59bbb'], [1, '#d97598']]); c.fillRect(-hw, ry, 2 * hw, rh);
+        c.fillStyle = 'rgba(160,60,90,0.25)'; c.fillRect(-hw, ry + rh, 2 * hw, 0.012 * r);
+        // swags + gold trim along the top
+        c.fillStyle = '#d9b45a'; c.fillRect(-hw, cy - hh * 0.55, 2 * hw, 0.013 * r);
+        c.strokeStyle = 'rgba(236,140,175,0.85)'; c.lineWidth = 0.017 * r;
+        const k = Math.max(2, Math.round(hw / (0.24 * r)));
+        for (let i = 0; i < k; i++) { const a = lerp(-hw * 0.9, hw * 0.9, i / k), b2 = lerp(-hw * 0.9, hw * 0.9, (i + 1) / k); c.beginPath(); c.moveTo(a, cy - hh * 0.45); c.quadraticCurveTo((a + b2) / 2, cy - hh * 0.05, b2, cy - hh * 0.45); c.stroke(); }
+        c.restore();
+        // pearls along the lower edge
+        for (let x = -hw * 0.82; x <= hw * 0.82 + 1e-6; x += 0.075 * r) {
+          const y = cy + edge(x) - 0.05 * r, s = 0.024 * r;
           circ(c, x, y + 0.006 * r, s); c.fillStyle = 'rgba(150,110,100,0.35)'; c.fill();
           circ(c, x, y, s); c.fillStyle = rg(c, x - s * 0.3, y - s * 0.4, 0, x, y, s, [[0, '#ffffff'], [1, '#e9dbd2']]); c.fill();
         }
-        // swags
-        c.strokeStyle = 'rgba(236,140,175,0.85)'; c.lineWidth = 0.018 * r;
-        const n = Math.max(2, Math.round(hw / (0.24 * r)));
-        for (let i = 0; i < n; i++) { const a = lerp(X0, X1, i / n), b2 = lerp(X0, X1, (i + 1) / n); c.beginPath(); c.moveTo(a, Y0 + 0.08 * r); c.quadraticCurveTo((a + b2) / 2, Y0 + 0.2 * r, b2, Y0 + 0.08 * r); c.stroke(); }
-        // gold trim
-        c.fillStyle = '#d9b45a'; c.fillRect(X0, Y0 + 0.055 * r, X1 - X0, 0.014 * r);
-        c.restore();
-        // ledge shadow from the tier above
+        // soft shadow cast by the tier above
         if (ti < 2) {
-          const up = this.tiers[ti + 1];
-          c.fillStyle = 'rgba(120,80,70,0.22)'; c.fillRect(up[0] * r, Y0, (up[2] - up[0]) * r, 0.03 * r);
+          const [ucy, uhw, uhh] = this.tiers[ti + 1];
+          c.save(); c.clip(path);
+          c.fillStyle = rg(c, 0, (ucy + uhh) * r, 0, 0, (ucy + uhh) * r, uhw * r * 1.1, [[0, 'rgba(120,80,70,0.28)'], [1, 'rgba(120,80,70,0)']]);
+          c.fillRect(-hw, cy - hh, 2 * hw, hh); c.restore();
         }
       });
       // bow on the bottom tier
-      const bx = -0.66 * r, by = 0.8 * r - 0.125 * r;
+      const bx = -0.62 * r, by = (0.5 + 0.3 * 0.38) * r + 0.035 * r;
       c.fillStyle = '#f08db2';
-      for (const s of [-1, 1]) { c.beginPath(); c.moveTo(bx, by); c.quadraticCurveTo(bx + s * 0.14 * r, by - 0.11 * r, bx + s * 0.15 * r, by); c.quadraticCurveTo(bx + s * 0.14 * r, by + 0.1 * r, bx, by); c.fill(); }
-      circ(c, bx, by, 0.035 * r); c.fillStyle = '#d96b95'; c.fill();
-      // cascading roses
+      for (const s of [-1, 1]) { c.beginPath(); c.moveTo(bx, by); c.quadraticCurveTo(bx + s * 0.13 * r, by - 0.1 * r, bx + s * 0.14 * r, by); c.quadraticCurveTo(bx + s * 0.13 * r, by + 0.09 * r, bx, by); c.fill(); }
+      circ(c, bx, by, 0.032 * r); c.fillStyle = '#d96b95'; c.fill();
+      // cascading sugar roses
       const rose = (x, y, s) => {
         for (const [lx, ly, rot] of [[-1.1, 0.4, -0.6], [1.1, 0.5, 0.7]]) { ell(c, x + lx * s, y + ly * s, s * 0.7, s * 0.32, rot); c.fillStyle = '#86c07f'; c.fill(); }
         circ(c, x, y, s); c.fillStyle = rg(c, x - s * 0.3, y - s * 0.3, 0, x, y, s, [[0, '#ffd1e0'], [0.7, '#f489ad'], [1, '#d9618b']]); c.fill();
@@ -779,9 +800,9 @@ const TIER_DEFS = [
         for (let th = 0; th < 3 * Math.PI; th += 0.25) { const rr = s * 0.8 * (th / (3 * Math.PI)); c.lineTo(x + Math.cos(th) * rr, y + Math.sin(th) * rr); }
         c.stroke();
       };
-      for (const [x, y, s] of [[0.3, -0.42, 0.06], [0.44, -0.2, 0.07], [0.52, 0.06, 0.065], [0.7, 0.22, 0.075], [0.84, 0.42, 0.07]]) rose(x * r, y * r, s * r);
+      for (const [x, y, s] of [[0.27, -0.46, 0.06], [0.42, -0.14, 0.07], [0.52, 0.12, 0.065], [0.7, 0.36, 0.075], [0.84, 0.58, 0.065]]) rose(x * r, y * r, s * r);
       // heart on the top tier
-      const hx = 0, hy = -0.6 * r, hs = 0.085 * r;
+      const hx = -0.04 * r, hy = -0.42 * r, hs = 0.085 * r;
       c.beginPath(); c.moveTo(hx, hy + hs * 0.9);
       c.bezierCurveTo(hx - hs * 1.6, hy - hs * 0.2, hx - hs * 0.7, hy - hs * 1.3, hx, hy - hs * 0.45);
       c.bezierCurveTo(hx + hs * 0.7, hy - hs * 1.3, hx + hs * 1.6, hy - hs * 0.2, hx, hy + hs * 0.9);
@@ -852,7 +873,7 @@ function paintTier(c, T, pr) {
   const r = T.r;
   c.save();
   c.clip(T.pathDesign);
-  T.paint(c, r, mulberry32(T.idx * 7919 + 11));
+  T.paint(c, r, mulberry32(T.idx * 7919 + 11), T, pr);
   c.restore();
   if (!T.noShade) {
     // inner shadow (bottom-right) for volume
@@ -971,107 +992,148 @@ function drawFace(c, T, mood, golden) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-//  SOUND — tiny WebAudio synth, no audio files
+//  SOUND — tiny WebAudio synth, no audio files.
+//  Everything is tuned to C-major pentatonic, so overlapping sounds and
+//  combo runs always stay in harmony. Soft mallet/kalimba timbre + a
+//  little room reverb.
 // ═══════════════════════════════════════════════════════════════════
 const Sfx = (() => {
-  let ac = null, master = null, noiseBuf = null, voices = 0;
+  let ac = null, bus = null, master = null, noiseBuf = null;
   let muted = store.get('bm.muted', false);
-  const MAX_VOICES = 28;
+  const ends = [];          // end times of sounding voices (robust voice limiting)
+  const MAX_VOICES = 22;
+  const VOL = 0.55;
 
+  function build() {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return false;
+    ac = new AC();
+    master = ac.createGain(); master.gain.value = muted ? 0 : VOL;
+    const comp = ac.createDynamicsCompressor();
+    comp.threshold.value = -18; comp.knee.value = 18; comp.ratio.value = 3; comp.attack.value = 0.005; comp.release.value = 0.25;
+    bus = ac.createGain(); bus.gain.value = 1;
+    // small, soft room
+    const len = Math.floor(ac.sampleRate * 1.5), ir = ac.createBuffer(2, len, ac.sampleRate);
+    for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); }
+    const verb = ac.createConvolver(); verb.buffer = ir;
+    const wet = ac.createGain(); wet.gain.value = 0.2;
+    const tone = ac.createBiquadFilter(); tone.type = 'lowpass'; tone.frequency.value = 5200; tone.Q.value = 0.5;
+    bus.connect(tone); tone.connect(master);
+    tone.connect(verb); verb.connect(wet); wet.connect(master);
+    master.connect(comp); comp.connect(ac.destination);
+    noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
+    const nd = noiseBuf.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+    return true;
+  }
+  // (re)start the audio context. Called on every user gesture: iOS can leave the context
+  // 'suspended' or 'interrupted' (calls, lock screen, other apps) and only a gesture revives it.
   function ensure() {
     try {
-      if (!ac) {
-        const AC = window.AudioContext || window.webkitAudioContext;
-        if (!AC) return false;
-        ac = new AC();
-        const comp = ac.createDynamicsCompressor();
-        comp.threshold.value = -16; comp.knee.value = 12; comp.ratio.value = 5; comp.attack.value = 0.003; comp.release.value = 0.2;
-        master = ac.createGain(); master.gain.value = muted ? 0 : 0.6;
-        master.connect(comp); comp.connect(ac.destination);
-        noiseBuf = ac.createBuffer(1, ac.sampleRate * 1, ac.sampleRate);
-        const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-      }
-      if (ac.state === 'suspended') ac.resume();
+      if (!ac || ac.state === 'closed') { if (!build()) return false; }
+      if (ac.state !== 'running') { const p = ac.resume(); if (p && p.catch) p.catch(() => {}); }
       return true;
     } catch (e) { return false; }
   }
-  const ok = (important) => ac && master && !muted && (important || voices < MAX_VOICES);
-  const midi = m => 440 * Math.pow(2, (m - 69) / 12);
-
-  function tone({ type = 'sine', f0, f1 = f0, at = 0, dur = 0.15, vol = 0.2, attack = 0.005, glide = 0.05, detune = 0, pan = 0, important = false }) {
-    if (!ok(important)) return;
-    const t = ac.currentTime + at;
-    const o = ac.createOscillator(), g = ac.createGain();
-    o.type = type; o.detune.value = detune;
-    o.frequency.setValueAtTime(f0, t);
-    if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + Math.max(0.005, glide));
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(vol, t + attack);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    let out = g;
-    if (pan && ac.createStereoPanner) { const p = ac.createStereoPanner(); p.pan.value = clamp(pan, -1, 1); g.connect(p); out = p; }
-    o.connect(g); out.connect(master);
-    voices++; o.onended = () => { voices--; };
-    o.start(t); o.stop(t + dur + 0.02);
+  function canPlay(important) {
+    if (!ac || muted || ac.state !== 'running') return false;
+    const now = ac.currentTime;
+    for (let i = ends.length - 1; i >= 0; i--) if (ends[i] < now) ends.splice(i, 1);
+    return important || ends.length < MAX_VOICES;
   }
-  function noise({ at = 0, dur = 0.1, vol = 0.1, type = 'bandpass', f0 = 1200, f1 = f0, q = 1, important = false }) {
-    if (!ok(important)) return;
-    const t = ac.currentTime + at;
-    const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+  const midi = m => 440 * Math.pow(2, (m - 69) / 12);
+  const PENTA = [0, 2, 4, 7, 9];
+  const pent = d => 48 + 12 * Math.floor(d / 5) + PENTA[((d % 5) + 5) % 5];   // degree → midi (C3 = degree 0)
+
+  function panTo(node, pan) {
+    if (pan && ac.createStereoPanner) { const p = ac.createStereoPanner(); p.pan.value = clamp(pan, -0.8, 0.8); node.connect(p); p.connect(bus); }
+    else node.connect(bus);
+  }
+  // soft mallet: sine body + gentle overtones that fade faster than the fundamental
+  function mallet(m, { at = 0, vol = 0.18, dur = 0.5, bright = 0.5, pan = 0, important = false } = {}) {
+    if (!canPlay(important)) return;
+    const t = ac.currentTime + at, f = midi(m), out = ac.createGain();
+    out.gain.setValueAtTime(0.0001, t);
+    out.gain.exponentialRampToValueAtTime(vol, t + 0.005);
+    out.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    panTo(out, pan);
+    const partial = (mult, type, level, decay) => {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = type; o.frequency.setValueAtTime(f * mult * 1.012, t); o.frequency.exponentialRampToValueAtTime(f * mult, t + 0.03);
+      g.gain.setValueAtTime(level, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur * decay);
+      o.connect(g); g.connect(out); o.start(t); o.stop(t + dur + 0.05);
+    };
+    partial(1, 'sine', 1, 1);
+    if (bright > 0) { partial(2, 'sine', 0.32 * bright, 0.45); partial(4.01, 'sine', 0.1 * bright, 0.18); }
+    ends.push(t + dur);
+  }
+  function pad(m, { at = 0, vol = 0.05, dur = 1.4 } = {}) {
+    if (!canPlay(true)) return;
+    const t = ac.currentTime + at, o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'sine'; o.frequency.value = midi(m);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.18); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(bus); o.start(t); o.stop(t + dur + 0.05);
+    ends.push(t + dur);
+  }
+  function noise({ at = 0, dur = 0.06, vol = 0.03, type = 'bandpass', f0 = 1800, f1 = f0, q = 1.2, important = false }) {
+    if (!canPlay(important)) return;
+    const t = ac.currentTime + at, s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
     s.buffer = noiseBuf; s.loop = true;
     f.type = type; f.Q.value = q; f.frequency.setValueAtTime(f0, t);
-    if (f1 !== f0) f.frequency.exponentialRampToValueAtTime(Math.max(30, f1), t + dur);
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    s.connect(f); f.connect(g); g.connect(master);
-    voices++; s.onended = () => { voices--; };
-    s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.02);
+    if (f1 !== f0) f.frequency.exponentialRampToValueAtTime(Math.max(40, f1), t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(f); f.connect(g); g.connect(bus);
+    s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.03);
+    ends.push(t + dur);
   }
-  const PENTA = [0, 2, 4, 7, 9];
+  const arp = (notes, step, o) => notes.forEach((n, i) => mallet(n, { ...o, at: (o.at || 0) + i * step }));
+
   return {
     unlock: ensure,
+    resumeIfPossible() { try { if (ac && ac.state !== 'running' && ac.state !== 'closed') ac.resume().catch(() => {}); } catch (e) { /* ignore */ } },
     get muted() { return muted; },
     toggle() {
       muted = !muted; store.set('bm.muted', muted);
-      if (master) master.gain.setTargetAtTime(muted ? 0 : 0.6, ac.currentTime, 0.02);
+      if (master) master.gain.setTargetAtTime(muted ? 0 : VOL, ac.currentTime, 0.02);
       return muted;
     },
     drop(pan) {
-      tone({ type: 'sine', f0: 520, f1: 250, dur: 0.12, vol: 0.13, glide: 0.08, pan });
-      noise({ dur: 0.04, vol: 0.05, f0: 2400, q: 2 });
+      mallet(67, { vol: 0.07, dur: 0.14, bright: 0.15, pan });
+      noise({ dur: 0.025, vol: 0.02, f0: 1100, q: 2 });
     },
     merge(tier, chain, golden, pan) {
-      const m = 86 - tier * 2.3 + Math.min(chain - 1, 9) * 2;
-      const f = midi(m);
-      tone({ type: 'sine', f0: f * 0.62, f1: f, dur: 0.22, vol: 0.24, glide: 0.045, pan });
-      tone({ type: 'triangle', f0: f * 2, f1: f * 2.02, dur: 0.12, vol: 0.05, pan });
-      noise({ dur: 0.06, vol: 0.06, f0: 3800, q: 1.5 });
-      if (tier >= 5) tone({ type: 'sine', f0: 150 - tier * 6, f1: 55, dur: 0.28, vol: 0.2 + tier * 0.01, glide: 0.22 });
-      if (chain >= 3) { const n = midi(84 + PENTA[chain % 5] + 12 * Math.floor(Math.min(chain, 9) / 5)); tone({ type: 'triangle', f0: n, at: 0.05, dur: 0.25, vol: 0.06, pan }); }
+      const d = 13 - tier + Math.min(chain - 1, 7), m = pent(d);
+      mallet(m, { vol: 0.2, dur: 0.42 + tier * 0.035, bright: 0.6, pan });
+      noise({ dur: 0.035, vol: 0.018, f0: 2400, q: 1.5 });
+      if (tier >= 5) mallet(m - 12, { vol: 0.1 + tier * 0.006, dur: 0.7, bright: 0.1 });
       if (golden) {
-        for (let i = 0; i < 3; i++) tone({ type: 'sine', f0: f * (2 + i), at: 0.02 + i * 0.045, dur: 0.6, vol: 0.05, detune: (Math.random() - 0.5) * 12 });
-        for (let i = 0; i < 4; i++) tone({ type: 'sine', f0: midi(96 + PENTA[(Math.random() * 5) | 0]), at: 0.08 + i * 0.05, dur: 0.18, vol: 0.035 });
+        mallet(m + 12, { at: 0.07, vol: 0.07, dur: 0.6, bright: 0.9, pan });
+        mallet(pent(d + 7), { at: 0.13, vol: 0.06, dur: 0.6, bright: 0.9, pan });
+        for (let i = 0; i < 3; i++) mallet(pent(d + 10 + ((Math.random() * 5) | 0)), { at: 0.2 + i * 0.06, vol: 0.03, dur: 0.3, bright: 1 });
       }
     },
-    tick() { noise({ dur: 0.05, vol: 0.12, f0: 1500, q: 6 }); tone({ type: 'sine', f0: 880, dur: 0.06, vol: 0.05 }); },
+    tick() { mallet(84, { vol: 0.05, dur: 0.25, bright: 0.5 }); },
     gateOpen() {
-      noise({ dur: 0.7, vol: 0.12, type: 'lowpass', f0: 300, f1: 4000, q: 0.7, important: true });
-      [72, 76, 79, 84].forEach((n, i) => tone({ type: 'triangle', f0: midi(n), at: 0.06 + i * 0.075, dur: 0.35, vol: 0.13, important: true }));
-      tone({ type: 'sine', f0: 220, f1: 110, at: 0.02, dur: 0.4, vol: 0.12, glide: 0.35, important: true });
+      noise({ dur: 0.6, vol: 0.04, type: 'lowpass', f0: 400, f1: 2600, q: 0.6, important: true });
+      arp([72, 76, 79, 84, 88], 0.07, { vol: 0.12, dur: 0.55, bright: 0.7, important: true });
+      pad(60, { vol: 0.04, dur: 1.2 }); pad(67, { vol: 0.03, dur: 1.2 });
     },
-    land() { tone({ type: 'sine', f0: 120, f1: 50, dur: 0.3, vol: 0.22, glide: 0.25, important: true }); noise({ dur: 0.18, vol: 0.08, type: 'lowpass', f0: 600, important: true }); },
+    land() {
+      mallet(36, { vol: 0.18, dur: 0.35, bright: 0.05, important: true });
+      noise({ dur: 0.16, vol: 0.04, type: 'lowpass', f0: 500, important: true });
+    },
     golden() {
-      [72, 76, 79, 84, 88, 91, 96].forEach((n, i) => tone({ type: 'triangle', f0: midi(n), at: i * 0.07, dur: 0.6, vol: 0.11, important: true }));
-      for (let i = 0; i < 14; i++) tone({ type: 'sine', f0: midi(96 + PENTA[(Math.random() * 5) | 0] + (Math.random() < 0.4 ? 12 : 0)), at: 0.25 + i * 0.045, dur: 0.22, vol: 0.04, important: true });
-      tone({ type: 'sine', f0: midi(48), f1: midi(60), dur: 1.2, vol: 0.15, glide: 0.4, important: true });
+      arp([72, 76, 79, 84, 88, 91, 96], 0.075, { vol: 0.11, dur: 0.7, bright: 0.8, important: true });
+      pad(48, { vol: 0.06, dur: 1.8 }); pad(55, { vol: 0.045, dur: 1.8 }); pad(64, { vol: 0.035, dur: 1.8 });
+      for (let i = 0; i < 10; i++) mallet(pent(25 + ((Math.random() * 7) | 0)), { at: 0.55 + i * 0.07, vol: 0.035, dur: 0.35, bright: 1, important: true });
     },
     jackpot() {
       this.golden();
-      [60, 64, 67, 72, 76, 79, 84, 88].forEach((n, i) => tone({ type: 'square', f0: midi(n), at: 0.5 + i * 0.06, dur: 0.3, vol: 0.035, important: true }));
+      arp([84, 88, 91, 96, 100, 103, 108], 0.06, { at: 0.6, vol: 0.07, dur: 0.6, bright: 0.9, important: true });
     },
-    discover() { [79, 84, 88].forEach((n, i) => tone({ type: 'triangle', f0: midi(n), at: i * 0.06, dur: 0.3, vol: 0.08 })); },
-    danger() { tone({ type: 'square', f0: 330, dur: 0.09, vol: 0.04, important: true }); tone({ type: 'square', f0: 330, at: 0.13, dur: 0.09, vol: 0.035, important: true }); },
-    gameOver() { [67, 63, 60, 55].forEach((n, i) => tone({ type: 'triangle', f0: midi(n), f1: midi(n) * 0.98, at: i * 0.22, dur: 0.4, vol: 0.13, glide: 0.35, important: true })); },
-    ui() { tone({ type: 'sine', f0: 660, f1: 880, dur: 0.07, vol: 0.06, glide: 0.04, important: true }); },
+    discover() { arp([79, 84, 88], 0.07, { vol: 0.08, dur: 0.4, bright: 0.6 }); },
+    danger() { mallet(45, { vol: 0.13, dur: 0.2, bright: 0.1, important: true }); mallet(45, { at: 0.16, vol: 0.1, dur: 0.22, bright: 0.1, important: true }); },
+    gameOver() { arp([67, 64, 62, 60], 0.2, { vol: 0.12, dur: 0.8, bright: 0.3, important: true }); pad(48, { at: 0.6, vol: 0.05, dur: 1.6 }); },
+    ui() { mallet(84, { vol: 0.05, dur: 0.12, bright: 0.3, important: true }); },
   };
 })();
 
@@ -1267,13 +1329,19 @@ const ZOOM_OUT_MS = 420, OPEN_DELAY = 400, SLIDE_MS = 300, ZOOM_IN_MS = 560;
 
 const reqFor = s => Math.round(12 + 4 * (s - 1) + 0.5 * (s - 1) * (s - 1));
 const basePts = t => 10 * (1 + t * (t + 1));
+// spawn odds per stage for: cookie, macaron, donut, cupcake, croissant, cinnamon roll
 function spawnWeights(stage) {
-  if (stage <= 2) return [26, 30, 26, 18, 0];
-  if (stage === 3) return [24, 28, 25, 18, 5];
-  if (stage === 4) return [22, 25, 23, 18, 12];
-  return [21, 22, 21, 19, 17];
+  if (stage <= 2) return [26, 30, 26, 18, 0, 0];
+  if (stage === 3) return [24, 27, 24, 18, 7, 0];
+  if (stage === 4) return [22, 24, 22, 18, 11, 4];
+  if (stage === 5) return [20, 21, 20, 18, 13, 8];
+  return [19, 20, 19, 17, 14, 11];
 }
-const PASTRY_OPTS = { friction: 0.3, frictionStatic: 0.55, frictionAir: 0.006, restitution: 0.08, slop: 0.04, density: 0.0015, label: 'pastry' };
+const STAGE_NEWS = { 3: 'Croissants join the mix!', 4: 'Cinnamon rolls join the mix!' };
+// rounder, more fluid feel: lower rotational inertia than Matter's default (4) so pastries roll
+// and settle like in Suika-style games instead of locking into place
+if (window.Matter) Matter.Body._inertiaScale = 1.6;
+const PASTRY_OPTS = { friction: 0.2, frictionStatic: 0.38, frictionAir: 0.006, restitution: 0.1, slop: 0.04, density: 0.0015, label: 'pastry' };
 const fmt = n => Math.round(n).toLocaleString('en-US');
 
 let engine = null;
@@ -1284,7 +1352,7 @@ const G = {
   score: 0, best: store.get('bm.best', 0), shownScore: 0,
   cur: { tier: 0, golden: false }, next: { tier: 1 },
   aimX: W / 2, heldX: W / 2, dropReadyAt: 0, heldPop: 0, drops: 0,
-  since: [0, 0, 0, 0, 0], lastPick: -1,
+  since: [0, 0, 0, 0, 0, 0], lastPick: -1, reached: [],
   chain: 0, lastMergeAt: -1e9, bestChain: 0,
   dangerT: 0, graceUntil: 0, nextDangerSfx: 0,
   camY: -TOP, camFrom: 0, camTo: 0, camMid: 0, zoom: 1, zMin: 1,
@@ -1346,7 +1414,7 @@ function newRun() {
     state: 'play', paused: false, time: 0, slowUntil: 0,
     chamber: 0, stage: 1, mult: 1, merges: 0, req: reqFor(1), score: 0, shownScore: 0,
     aimX: W / 2, heldX: W / 2, dropReadyAt: G.rtime + 250, heldPop: G.rtime, drops: 0,
-    since: [0, 0, 0, 0, 0], lastPick: -1, chain: 0, lastMergeAt: -1e9, bestChain: 0,
+    since: [0, 0, 0, 0, 0, 0], lastPick: -1, reached: [], chain: 0, lastMergeAt: -1e9, bestChain: 0,
     dangerT: 0, graceUntil: 0, nextDangerSfx: 0, camY: camFor(0), zoom: 1, gateT: 0, fallT: 0, opened: false, landedAt: 0, zoomInStart: 0,
     pastries: [], queuedDrop: false, maxTier: 0, goldMade: 0, jackpots: 0, nextGate: null, badgePop: 0,
   });
@@ -1360,12 +1428,19 @@ function newRun() {
 function pickTier() {
   const w = spawnWeights(G.stage).slice();
   for (let i = 0; i < w.length; i++) if (w[i] > 0) w[i] *= 1 + Math.min(G.since[i], 8) * 0.22;
-  if (G.lastPick === 4) w[4] *= 0.2;
+  if (G.lastPick >= 4) w[G.lastPick] *= 0.2;   // never two big spawns of the same kind in a row
   let sum = w.reduce((a, b) => a + b, 0), r = Math.random() * sum, t = 0;
   for (; t < w.length - 1; t++) { r -= w[t]; if (r <= 0) break; }
   for (let i = 0; i < G.since.length; i++) G.since[i]++;
   G.since[t] = 0; G.lastPick = t;
   return t;
+}
+
+// per-run progress shown in the ladder (resets every game)
+function reach(tier) {
+  if (tier > G.maxTier) G.maxTier = tier;
+  if (!G.reached[tier]) { G.reached[tier] = true; UI.flashLadder(tier); }
+  UI.ladderDirty = true;
 }
 
 const heldY = tier => fieldTop() - TIER_DEFS[tier].bbox.maxY - 7;
@@ -1382,8 +1457,8 @@ function tryDrop() {
   const tier = G.cur.tier, x = clampAim(G.aimX, tier);
   const b = createPastry(tier, G.cur.golden, x, heldY(tier));
   Body.setVelocity(b, { x: 0, y: 1.2 });
-  if (tier > G.maxTier) { G.maxTier = tier; UI.ladderDirty = true; }
-  if (!G.disc.tiers[tier]) { G.disc.tiers[tier] = true; store.set('bm.disc', G.disc); UI.flashLadder(tier); }
+  reach(tier);
+  if (!G.disc.tiers[tier]) { G.disc.tiers[tier] = true; store.set('bm.disc', G.disc); }
   G.heldX = x;
   G.cur = { tier: G.next.tier, golden: false };
   G.next = { tier: pickTier() };
@@ -1438,11 +1513,11 @@ function doMerge(a, b) {
     Body.setAngularVelocity(nb, (Math.random() - 0.5) * 0.03);
     nb.pastry.happyUntil = G.rtime + 900;
     fxX = x; fxY = y;
-    if (!newGolden && newTier > G.maxTier) { G.maxTier = newTier; UI.ladderDirty = true; }
+    if (!newGolden) reach(newTier);
     if (!newGolden && !G.disc.tiers[newTier]) {
       G.disc.tiers[newTier] = true; store.set('bm.disc', G.disc);
       FX.text(W / 2, fieldTop() + 46, `New: ${T.name}!`, { size: 22, col: '#b4461a', max: 1600, vy: -0.02, tag: 'disc' });
-      Sfx.discover(); UI.ladderDirty = true; UI.flashLadder(newTier);
+      Sfx.discover();
     }
   }
 
@@ -1460,7 +1535,7 @@ function doMerge(a, b) {
   if (G.chain >= 2) UI.combo(G.chain);
 
   if (special === 'gold') {
-    G.goldMade++;
+    G.goldMade++; UI.flashLadder(TIER_DEFS.length);
     G.slowUntil = G.rtime + 700;
     FX.doFlash(0.7, '255,238,170'); FX.confetti(fxX, fxY, 90); FX.shake(0.6);
     for (let i = 0; i < 26; i++) FX.star(fxX, fxY, 70, 2.2);
@@ -1516,7 +1591,7 @@ function updateGate(dt) {
     G.state = 'fall'; G.fallT = 0;
     G.chain = 0;
     Sfx.gateOpen(); haptic(25);
-    FX.banner(`Stage ${G.stage}`, `Points ×${G.mult}` + (G.stage === 3 ? ' · Croissants incoming!' : ''), { max: 2000, y: 0.3 });
+    FX.banner(`Stage ${G.stage}`, `Points ×${G.mult}` + (STAGE_NEWS[G.stage] ? ' · ' + STAGE_NEWS[G.stage] : ''), { max: 2200, y: 0.3 });
     UI.onStage();
   }
   const g = G.gate;
@@ -1943,6 +2018,7 @@ const UI = {
     $('btn-pause').onclick = () => { Sfx.unlock(); this.setPaused(!G.paused); };
     $('btn-sound').onclick = $('btn-sound2').onclick = () => { Sfx.unlock(); Sfx.toggle(); this.soundIcon(); Sfx.ui(); };
     this.soundIcon();
+    document.querySelectorAll('.ver').forEach(el => { el.textContent = `v${VERSION} · alpha`; });
     $('title-best').textContent = G.best ? `Best: ${fmt(G.best)}` : '';
 
     const cv = $('game');
@@ -1962,7 +2038,13 @@ const UI = {
     addEventListener('keydown', e => this.key(e, true));
     addEventListener('keyup', e => this.key(e, false));
     addEventListener('blur', () => { this.keys = {}; });
-    document.addEventListener('visibilitychange', () => { if (document.hidden && this.inRun()) this.setPaused(true); });
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) { if (this.inRun()) this.setPaused(true); } else Sfx.resumeIfPossible();
+    });
+    addEventListener('pageshow', () => Sfx.resumeIfPossible());
+    // iOS only accepts some events (touchend / click) as permission to (re)start audio:
+    // re-arm the audio context on every one of them, so sound can never get stuck off.
+    for (const ev of ['touchend', 'pointerup', 'click', 'keydown']) document.addEventListener(ev, () => { if (!Sfx.muted) Sfx.unlock(); }, { capture: true, passive: true });
     let rt = 0;
     const onResize = () => { clearTimeout(rt); rt = setTimeout(() => this.layout(), 80); };
     addEventListener('resize', onResize);
@@ -2100,8 +2182,10 @@ const UI = {
     for (let i = 0; i < n; i++) {
       const slot = (vertical ? h : w) / n, cx = vertical ? w / 2 : (i + 0.5) * slot, cy = vertical ? (i + 0.5) * slot : h / 2;
       const size = Math.min(slot * 0.44, (vertical ? w : h) * 0.4);
-      const isGold = i === n - 1, known = isGold ? G.disc.gold : !!G.disc.tiers[i];
-      if (!isGold && i === G.maxTier && G.state !== 'idle') { c.fillStyle = 'rgba(240,122,42,0.18)'; circ(c, cx, cy, size * 1.22); c.fill(); }
+      // in a run the ladder shows this game's progress; on the title screen, everything ever baked
+      const idle = G.state === 'idle', isGold = i === n - 1;
+      const known = isGold ? (idle ? G.disc.gold : G.goldMade > 0) : idle ? !!G.disc.tiers[i] : !!G.reached[i];
+      if (!idle && !isGold && i === G.maxTier && G.reached[i]) { c.fillStyle = 'rgba(240,122,42,0.18)'; circ(c, cx, cy, size * 1.22); c.fill(); }
       let sc = 1;
       if (i === this.flashTier) { const q = (G.rtime - this.flashAt) / 700; if (q < 1) { sc = 1 + 0.5 * Math.sin(q * Math.PI); animating = true; } }
       if (known) drawIcon(c, isGold ? 0 : i, isGold, cx, cy, size * sc);
