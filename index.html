@@ -163,7 +163,7 @@ h2{font-weight:700;font-size:2rem;color:#7a3a0e;line-height:1.1}
 // ═══════════════════════════════════════════════════════════════════
 //  UTILITIES
 // ═══════════════════════════════════════════════════════════════════
-const VERSION = '0.3.0';   // bump with every release — see CHANGELOG.md
+const VERSION = '0.3.1';   // bump with every release — see CHANGELOG.md
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -995,24 +995,37 @@ function drawFace(c, T, mood, golden) {
 
 // ═══════════════════════════════════════════════════════════════════
 //  SOUND — a tiny WebAudio synth, no audio files.
-//  "A fairy in a magical bakery": celesta / music-box / harp timbres in a
-//  soft hall. Everything follows one slow chord progression, so drops,
-//  merges, combos and the ambient music always harmonise — tapping
-//  quickly plays a little music-box melody.
+//  "A fairy in a cosy, magical bakery" — in the spirit of Ghibli-style
+//  harp folk: a gentle 3/4 waltz of flowing harp arpeggios, a breathy
+//  flute tune every other round and glockenspiel sparkles, in a bright
+//  major key. Everything — drops, merges, combos, the music — follows the
+//  waltz's chord changes, so it always harmonises; quick taps play a
+//  music-box melody on top.
 // ═══════════════════════════════════════════════════════════════════
 const Sfx = (() => {
   let ac = null, bus = null, musicBus = null, master = null, noiseBuf = null;
   let muted = store.get('bm.muted', false), music = store.get('bm.music', true);
   let stale = false;                 // context must be rebuilt on the next user gesture
   const ends = [];                   // end times of sounding notes (voice limiting)
-  const MAX_VOICES = 26, VOL = 0.72, MUSIC_VOL = 1;
+  const MAX_VOICES = 30, VOL = 0.85, MUSIC_VOL = 0.9;
 
-  // ── harmony: Cadd9 → Am7 → Fmaj7 → G6/9 (pitch classes) ──
-  const PROG = [[0, 2, 4, 7, 11], [9, 0, 4, 7, 11], [5, 9, 0, 4, 7], [7, 11, 2, 4, 9]];
-  const ROOT = [48, 45, 41, 43];
-  const H = { chord: 0, step: 0, lastDrop: -1e9, lastChange: 0 };
-  const tones = (lo, hi, ch = H.chord) => { const out = []; for (let m = lo; m <= hi; m++) if (PROG[ch].includes(((m % 12) + 12) % 12)) out.push(m); return out; };
-  const nextChord = () => { H.chord = (H.chord + 1) % PROG.length; H.lastChange = ac ? ac.currentTime : 0; music && padSwell(0); };
+  // ── the tune: an enchanted 3/4 waltz, one chord per two bars ──────
+  //   C6/9 – A7 – Dm7 – G7 – Cmaj7 – E7 – F6 – Fm6 (→ C): bright major with the
+  //   secondary dominants and the wistful minor-iv "sparkle" of classic Disney songs
+  const BPM = 126, BEAT = 60 / BPM, EIGHTH = BEAT / 2;
+  const SONG = [
+    { pcs: [0, 4, 7, 9, 2], bass: [48, 55] },   // C6/9
+    { pcs: [9, 1, 4, 7], bass: [57, 52] },      // A7
+    { pcs: [2, 5, 9, 0], bass: [50, 57] },      // Dm7
+    { pcs: [7, 11, 2, 5], bass: [55, 50] },     // G7
+    { pcs: [0, 4, 7, 11], bass: [48, 55] },     // Cmaj7
+    { pcs: [4, 8, 11, 2], bass: [52, 59] },     // E7
+    { pcs: [5, 9, 0, 2], bass: [53, 48] },      // F6
+    { pcs: [5, 8, 0, 2], bass: [53, 48] },      // Fm6
+  ];
+  const H = { chord: 0, step: 0, lastDrop: -1e9, pending: null };
+  const clock = { next: 0, e: 0 };     // counts eighth notes
+  const tones = (lo, hi, ch = H.chord) => { const p = SONG[ch].pcs, out = []; for (let m = lo; m <= hi; m++) if (p.includes(((m % 12) + 12) % 12)) out.push(m); return out; };
   const DROP_PATTERN = [0, 2, 4, 3, 5, 4, 2, 1];   // music-box contour over the chord tones
 
   function build() {
@@ -1021,26 +1034,27 @@ const Sfx = (() => {
     ac = new AC();
     master = ac.createGain(); master.gain.value = muted ? 0 : VOL;
     const comp = ac.createDynamicsCompressor();
-    comp.threshold.value = -20; comp.knee.value = 18; comp.ratio.value = 3; comp.attack.value = 0.004; comp.release.value = 0.3;
-    // warm, airy hall
-    const len = Math.floor(ac.sampleRate * 2.4), ir = ac.createBuffer(2, len, ac.sampleRate);
-    for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.6); }
+    comp.threshold.value = -20; comp.knee.value = 18; comp.ratio.value = 3; comp.attack.value = 0.004; comp.release.value = 0.25;
+    // small, bright room — sparkle, not cathedral
+    const len = Math.floor(ac.sampleRate * 1.3), ir = ac.createBuffer(2, len, ac.sampleRate);
+    for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 4.2); }
     const verb = ac.createConvolver(); verb.buffer = ir;
-    const air = ac.createBiquadFilter(); air.type = 'lowpass'; air.frequency.value = 6500; air.Q.value = 0.4;
+    const air = ac.createBiquadFilter(); air.type = 'lowpass'; air.frequency.value = 9000; air.Q.value = 0.4;
+    const lowcut = ac.createBiquadFilter(); lowcut.type = 'highpass'; lowcut.frequency.value = 110; lowcut.Q.value = 0.5;
     bus = ac.createGain();
     musicBus = ac.createGain(); musicBus.gain.value = music ? MUSIC_VOL : 0;
-    const wetS = ac.createGain(); wetS.gain.value = 0.26;
-    const wetM = ac.createGain(); wetM.gain.value = 0.55;
-    bus.connect(air); air.connect(master); air.connect(wetS); wetS.connect(verb);
-    musicBus.connect(master); musicBus.connect(wetM); wetM.connect(verb);
-    verb.connect(master);
+    const wetS = ac.createGain(); wetS.gain.value = 0.16;
+    const wetM = ac.createGain(); wetM.gain.value = 0.2;
+    bus.connect(air); musicBus.connect(air);
+    air.connect(lowcut); lowcut.connect(master);
+    bus.connect(wetS); wetS.connect(verb); musicBus.connect(wetM); wetM.connect(verb); verb.connect(master);
     master.connect(comp); comp.connect(ac.destination);
     noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
     const nd = noiseBuf.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
     // anything that knocks the context out of 'running' while we are visible
     // (phone call, Siri, other app grabbing audio) → rebuild on the next tap
     ac.onstatechange = () => { if (ac && ac.state !== 'running' && !document.hidden) stale = true; };
-    ends.length = 0; H.lastChange = ac.currentTime;
+    ends.length = 0; clock.next = 0;
     // iOS: playing a (silent) buffer inside the gesture unlocks output
     try { const s = ac.createBufferSource(); s.buffer = ac.createBuffer(1, 1, 22050); s.connect(ac.destination); s.start(0); } catch (e) { /* ignore */ }
     return true;
@@ -1060,8 +1074,9 @@ const Sfx = (() => {
       return true;
     } catch (e) { stale = true; return false; }
   }
+  const running = () => ac && !stale && ac.state === 'running';
   function live(important) {
-    if (!ac || muted || stale || ac.state !== 'running') return false;
+    if (!running() || muted) return false;
     const now = ac.currentTime;
     for (let i = ends.length - 1; i >= 0; i--) if (ends[i] < now) ends.splice(i, 1);
     return important || ends.length < MAX_VOICES;
@@ -1071,53 +1086,92 @@ const Sfx = (() => {
     if (pan && ac.createStereoPanner) { const p = ac.createStereoPanner(); p.pan.value = clamp(pan, -0.7, 0.7); p.connect(dest); return p; }
     return dest;
   }
+  function env(g, t, vol, attack, dur) {
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  }
 
   // ── instruments ─────────────────────────────────────────────────
-  // celesta / glass bell: FM with a fast-decaying modulation index → "ding"
-  function bell(m, { at = 0, vol = 0.12, dur = 0.9, bright = 0.6, pan = 0, important = false, dest = null } = {}) {
+  // celesta: FM with a fast-decaying modulation index → bright "ding"
+  function bell(m, { at = 0, vol = 0.12, dur = 0.8, bright = 0.6, pan = 0, important = false, dest = null } = {}) {
     if (!live(important)) return;
-    const t = ac.currentTime + at, f = hz(m);
-    const g = ac.createGain(); g.connect(out(dest || bus, pan));
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    const t = ac.currentTime + at, f = hz(m), g = ac.createGain(); g.connect(out(dest || bus, pan)); env(g, t, vol, 0.004, dur);
     const car = ac.createOscillator(), mod = ac.createOscillator(), mg = ac.createGain();
     car.frequency.value = f; mod.frequency.value = f * 3.5;
-    mg.gain.setValueAtTime(f * 1.6 * bright, t); mg.gain.exponentialRampToValueAtTime(0.01, t + 0.18);
+    mg.gain.setValueAtTime(f * 1.6 * bright, t); mg.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
     mod.connect(mg); mg.connect(car.frequency); car.connect(g);
-    const oct = ac.createOscillator(), og = ac.createGain();       // soft octave shimmer
-    oct.frequency.value = f * 2.003; og.gain.setValueAtTime(0.18 * bright, t); og.gain.exponentialRampToValueAtTime(0.0001, t + dur * 0.5);
+    const oct = ac.createOscillator(), og = ac.createGain();
+    oct.frequency.value = f * 2.003; og.gain.setValueAtTime(0.2 * bright, t); og.gain.exponentialRampToValueAtTime(0.0001, t + dur * 0.5);
     oct.connect(og); og.connect(g);
     for (const o of [car, mod, oct]) { o.start(t); o.stop(t + dur + 0.05); }
     ends.push(t + dur);
   }
-  // music box: pure tine with a quick metallic partial
-  function box(m, { at = 0, vol = 0.07, dur = 0.7, pan = 0, important = false, dest = null } = {}) {
+  // music box / glockenspiel tine
+  function box(m, { at = 0, vol = 0.07, dur = 0.6, pan = 0, important = false, dest = null } = {}) {
     if (!live(important)) return;
-    const t = ac.currentTime + at, f = hz(m), g = ac.createGain(); g.connect(out(dest || bus, pan));
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    const t = ac.currentTime + at, f = hz(m), g = ac.createGain(); g.connect(out(dest || bus, pan)); env(g, t, vol, 0.003, dur);
     const a = ac.createOscillator(); a.frequency.value = f; a.connect(g);
     const b = ac.createOscillator(), bg = ac.createGain(); b.frequency.value = f * 4.07;
-    bg.gain.setValueAtTime(0.25, t); bg.gain.exponentialRampToValueAtTime(0.0001, t + 0.09); b.connect(bg); bg.connect(g);
+    bg.gain.setValueAtTime(0.22, t); bg.gain.exponentialRampToValueAtTime(0.0001, t + 0.08); b.connect(bg); bg.connect(g);
     for (const o of [a, b]) { o.start(t); o.stop(t + dur + 0.05); }
     ends.push(t + dur);
   }
-  // harp pluck: bright attack that mellows (lowpass sweep)
-  function harp(m, { at = 0, vol = 0.09, dur = 1.2, pan = 0, important = false } = {}) {
+  // marimba: warm wooden bar (fundamental + quick 4th partial)
+  function marimba(m, { at = 0, vol = 0.05, dur = 0.32, pan = 0, important = false, dest = null } = {}) {
     if (!live(important)) return;
+    const t = ac.currentTime + at, f = hz(m), g = ac.createGain(); g.connect(out(dest || bus, pan)); env(g, t, vol, 0.003, dur);
+    const a = ac.createOscillator(); a.frequency.value = f; a.connect(g);
+    const b = ac.createOscillator(), bg = ac.createGain(); b.frequency.value = f * 3.93;
+    bg.gain.setValueAtTime(0.35, t); bg.gain.exponentialRampToValueAtTime(0.0001, t + 0.05); b.connect(bg); bg.connect(g);
+    for (const o of [a, b]) { o.start(t); o.stop(t + dur + 0.05); }
+    ends.push(t + dur);
+  }
+  // pizzicato bass: short, round, bouncy
+  function pizz(m, { at = 0, vol = 0.08, dur = 0.38, dest = null } = {}) {
+    if (!live(false)) return;
     const t = ac.currentTime + at, f = hz(m), g = ac.createGain(), lp = ac.createBiquadFilter();
-    lp.type = 'lowpass'; lp.Q.value = 0.7; lp.frequency.setValueAtTime(f * 7, t); lp.frequency.exponentialRampToValueAtTime(f * 1.5, t + 0.35);
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = f;
-    o.connect(lp); lp.connect(g); g.connect(out(bus, pan));
+    lp.type = 'lowpass'; lp.frequency.setValueAtTime(f * 6, t); lp.frequency.exponentialRampToValueAtTime(f * 2, t + 0.18);
+    env(g, t, vol, 0.005, dur);
+    const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = f; o.connect(lp); lp.connect(g); g.connect(dest || bus);
     o.start(t); o.stop(t + dur + 0.05);
     ends.push(t + dur);
   }
-  function pad(m, { at = 0, vol = 0.03, attack = 1.6, dur = 6, dest = null } = {}) {
-    if (!ac || muted || stale || ac.state !== 'running') return;
-    const t = ac.currentTime + at, g = ac.createGain(), lp = ac.createBiquadFilter();
-    lp.type = 'lowpass'; lp.frequency.value = 1100;
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    for (const [k, type] of [[1, 'triangle'], [1.004, 'sine']]) { const o = ac.createOscillator(); o.type = type; o.frequency.value = hz(m) * k; o.connect(lp); o.start(t); o.stop(t + dur + 0.05); }
-    lp.connect(g); g.connect(dest || bus);
+  // breathy flute / tin whistle: soft attack, gentle delayed vibrato, a whisper of air
+  function flute(m, { at = 0, vol = 0.04, dur = 0.6, dest = null } = {}) {
+    if (!live(false)) return;
+    const t = ac.currentTime + at, f = hz(m), g = ac.createGain(), rel = Math.min(0.25, dur * 0.4);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.07);
+    g.gain.setValueAtTime(vol, t + Math.max(0.08, dur - rel)); g.gain.exponentialRampToValueAtTime(0.0001, t + dur + rel);
+    g.connect(dest || bus);
+    const o = ac.createOscillator(); o.frequency.value = f;
+    const o2 = ac.createOscillator(), g2 = ac.createGain(); o2.frequency.value = f * 2; g2.gain.value = 0.12; o2.connect(g2); g2.connect(g);
+    const vib = ac.createOscillator(), vg = ac.createGain(); vib.frequency.value = 5.2;
+    vg.gain.setValueAtTime(0, t); vg.gain.linearRampToValueAtTime(f * 0.006, t + Math.min(0.35, dur));
+    vib.connect(vg); vg.connect(o.frequency); vg.connect(o2.frequency);
+    o.connect(g);
+    const n = ac.createBufferSource(), nf = ac.createBiquadFilter(), ng = ac.createGain();
+    n.buffer = noiseBuf; n.loop = true; nf.type = 'bandpass'; nf.frequency.value = f * 2; nf.Q.value = 2.5; ng.gain.value = 0.18;
+    n.connect(nf); nf.connect(ng); ng.connect(g);
+    for (const x of [o, o2, vib]) { x.start(t); x.stop(t + dur + rel + 0.05); }
+    n.start(t, Math.random() * 0.5); n.stop(t + dur + rel + 0.05);
+    ends.push(t + dur + rel);
+  }
+  // harp pluck: bright attack that mellows
+  function harp(m, { at = 0, vol = 0.08, dur = 1, pan = 0, important = false, dest = null } = {}) {
+    if (!live(important)) return;
+    const t = ac.currentTime + at, f = hz(m), g = ac.createGain(), lp = ac.createBiquadFilter();
+    lp.type = 'lowpass'; lp.Q.value = 0.7; lp.frequency.setValueAtTime(f * 8, t); lp.frequency.exponentialRampToValueAtTime(f * 2, t + 0.3);
+    env(g, t, vol, 0.004, dur);
+    const o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = f;
+    o.connect(lp); lp.connect(g); g.connect(out(dest || bus, pan));
+    o.start(t); o.stop(t + dur + 0.05);
+    ends.push(t + dur);
+  }
+  // kitchen-timer tick / woodblock
+  function tock(m, { at = 0, vol = 0.05, important = false } = {}) {
+    if (!live(important)) return;
+    const t = ac.currentTime + at, g = ac.createGain(); env(g, t, vol, 0.002, 0.07); g.connect(bus);
+    const o = ac.createOscillator(); o.frequency.value = hz(m); o.connect(g); o.start(t); o.stop(t + 0.1);
+    ends.push(t + 0.07);
   }
   // airy noise: flour puff / magic whoosh / glitter
   function air({ at = 0, dur = 0.3, vol = 0.03, type = 'bandpass', f0 = 1500, f1 = f0, q = 1, important = false } = {}) {
@@ -1125,36 +1179,58 @@ const Sfx = (() => {
     const t = ac.currentTime + at, s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
     s.buffer = noiseBuf; s.loop = true; f.type = type; f.Q.value = q;
     f.frequency.setValueAtTime(f0, t); if (f1 !== f0) f.frequency.exponentialRampToValueAtTime(Math.max(40, f1), t + dur);
-    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + Math.min(0.12, dur * 0.35)); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + Math.min(0.1, dur * 0.35)); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     s.connect(f); f.connect(g); g.connect(bus);
     s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.05);
     ends.push(t + dur);
   }
-  const sparkle = (n, at, lo = 86, hi = 103, vol = 0.03) => { const tt = tones(lo, hi); for (let i = 0; i < n; i++) box(tt[(Math.random() * tt.length) | 0], { at: at + i * 0.055 + Math.random() * 0.02, vol: vol * (0.6 + Math.random() * 0.4), dur: 0.5 }); };
-  const gliss = (lo, hi, step, o) => tones(lo, hi).forEach((m, i) => harp(m, { ...o, at: (o.at || 0) + i * step }));
+  const sparkle = (n, at, lo = 86, hi = 103, vol = 0.03) => { const tt = tones(lo, hi); for (let i = 0; i < n; i++) box(tt[(Math.random() * tt.length) | 0], { at: at + i * 0.06 + Math.random() * 0.02, vol: vol * (0.6 + Math.random() * 0.4), dur: 0.45 }); };
+  const strum = (lo, hi, step, o) => tones(lo, hi).forEach((m, i) => harp(m, { ...o, at: (o.at || 0) + i * step }));
 
-  // ── ambient music: slow pad swells + rare music-box twinkles ─────
-  function padSwell(at) {
-    if (!ac || !music) return;
-    const pcs = PROG[H.chord], root = ROOT[H.chord];
-    const third = root + ((pcs[1] - pcs[0] + 12) % 12), fifth = root + 7;
-    pad(root, { at, vol: 0.05, dest: musicBus }); pad(fifth, { at, vol: 0.038, dest: musicBus });
-    pad(third + 12, { at, vol: 0.03, dest: musicBus });
-  }
-  let nextSwell = 0, nextTwinkle = 0;
-  function musicTick() {
-    if (!ac || muted || stale || !music || ac.state !== 'running' || document.hidden) return;
-    const now = ac.currentTime;
-    if (now - H.lastChange > 9) nextChord();          // drift on when nobody is tapping
-    if (now > nextSwell) { padSwell(0.05); nextSwell = now + 4.8 + Math.random() * 1.5; }
-    if (now > nextTwinkle) {
-      const tt = tones(79, 98), m = tt[(Math.random() * tt.length) | 0];
-      box(m, { vol: 0.034, dur: 1.4, dest: musicBus, pan: (Math.random() - 0.5) * 0.9 });
-      if (Math.random() < 0.35) box(tt[Math.min(tt.length - 1, tt.indexOf(m) + 1)], { at: 0.22, vol: 0.024, dur: 1.4, dest: musicBus });
-      nextTwinkle = now + 2.2 + Math.random() * 4;
+  // ── the waltz: look-ahead scheduler on the audio clock ────────────
+  // A 16-bar folk tune for the flute, one entry per bar: [[midi, beats], …] (0 = rest)
+  const TUNE = [
+    [[76, 2], [79, 1]], [[84, 2], [83, 1]], [[81, 2], [85, 1]], [[88, 3]],
+    [[86, 2], [84, 1]], [[81, 2], [77, 1]], [[79, 1], [81, 1], [83, 1]], [[86, 3]],
+    [[88, 2], [86, 1]], [[84, 2], [79, 1]], [[80, 2], [83, 1]], [[88, 3]],
+    [[81, 2], [84, 1]], [[86, 2], [84, 1]], [[80, 2], [77, 1]], [[79, 3]],
+  ];
+  const UP = [0, 1, 2, 3, 4, 3], DOWN = [4, 3, 2, 1, 2, 3];     // harp figures (chord-tone indices)
+  function playEighth(e, t) {
+    const at = Math.max(0, t - ac.currentTime), pos = e % 6, bar = Math.floor(e / 6);
+    const ci = Math.floor(bar / 2) % SONG.length, ch = SONG[ci], section = Math.floor(bar / 16) % 2;
+    // flowing harp arpeggio, rising on the first bar of a chord and turning down on the second
+    const tt = tones(60, 86, ci), fig = bar % 2 ? DOWN : UP;
+    harp(tt[fig[pos]], { at, vol: pos === 0 ? 0.032 : 0.025, dur: 0.9, dest: musicBus, pan: (pos - 2.5) * 0.08 });
+    if (pos === 0) pizz(ch.bass[bar % 2], { at, vol: 0.075, dest: musicBus });
+    if (pos === 2 || pos === 4) pizz(ch.bass[0] + 12, { at, vol: 0.022, dur: 0.22, dest: musicBus });
+    // celesta sparkle whenever the harmony changes — the "enchanted" glint
+    if (pos === 0 && bar % 2 === 0) tones(84, 103, ci).slice(0, 4).forEach((m, i) => bell(m, { at: at + 0.02 + i * 0.045, vol: 0.016, dur: 0.6, bright: 0.5, dest: musicBus }));
+    if (section === 0) {
+      // first round: a glockenspiel twinkle every four bars
+      if (bar % 4 === 3 && pos === 2) {
+        const hi = tones(79, 98, ci), notes = Math.floor(bar / 4) % 2 ? [hi[3] || hi[2], hi[2], hi[1]] : [hi[0], hi[1], hi[2]];
+        notes.forEach((m, i) => box(m, { at: at + i * EIGHTH, vol: 0.026, dur: 0.5, dest: musicBus }));
+      }
+    } else if (pos % 2 === 0) {
+      // second round: the flute plays the tune
+      const notes = TUNE[bar % 16]; let beat = 0;
+      for (const [m, len] of notes) { if (beat * 2 === pos && m) flute(m, { at, vol: 0.022, dur: len * BEAT * 0.92, dest: musicBus }); beat += len; }
     }
   }
-  setInterval(musicTick, 250);
+  function schedule() {
+    if (!running() || document.hidden) return;
+    const now = ac.currentTime;
+    if (clock.next < now - 0.2) clock.next = now + 0.06;          // resync after pauses / rebuilds
+    while (clock.next < now + 0.3) {
+      const e = clock.e, bar = Math.floor(e / 6);
+      if (e % 12 === 0) H.pending = { chord: Math.floor(bar / 2) % SONG.length, at: clock.next };
+      if (music && !muted) playEighth(e, clock.next);
+      clock.next += EIGHTH; clock.e++;
+    }
+    if (H.pending && now >= H.pending.at - 0.03) { H.chord = H.pending.chord; H.pending = null; }
+  }
+  setInterval(schedule, 80);
 
   return {
     unlock: ensure,
@@ -1172,63 +1248,60 @@ const Sfx = (() => {
       if (musicBus) musicBus.gain.setTargetAtTime(music ? MUSIC_VOL : 0, ac.currentTime, 0.3);
       return music;
     },
-    // every drop plays the next note of a music-box phrase over the current chord
+    // every drop plays the next note of a music-box tune over the current chord
     drop(pan) {
       if (!ac) return;
       if (ac.currentTime - H.lastDrop > 3.5) H.step = 0;
       H.lastDrop = ac.currentTime;
-      if (H.step > 0 && H.step % 4 === 0) nextChord();
       const tt = tones(72, 100), m = tt[DROP_PATTERN[H.step % DROP_PATTERN.length] + 1];
       H.step++;
-      box(m, { vol: 0.075, dur: 0.75, pan });
-      air({ dur: 0.05, vol: 0.012, f0: 2200, q: 2 });
+      box(m, { vol: 0.08, dur: 0.6, pan });
     },
     // merges ring a celesta note from the current chord; bigger pastries ring lower,
     // and every combo step climbs one chord tone higher → combos become arpeggios
     merge(tier, chain, golden, pan) {
       if (!ac) return;
-      const tt = tones(43, 100), top = tt.findIndex(m => m >= 84);
-      const i = clamp(top - Math.round(tier * 1.3) + Math.min(chain - 1, 8), 0, tt.length - 1), m = tt[i];
-      bell(m, { vol: 0.12 + Math.min(tier, 10) * 0.004, dur: 0.9 + tier * 0.06, bright: 0.55, pan });
-      if (tier >= 4) harp(m - 12, { vol: 0.06 + tier * 0.004, dur: 1.4 });
-      if (chain >= 3) box(tt[Math.min(tt.length - 1, i + 5)], { at: 0.07, vol: 0.035, dur: 0.6, pan });
-      if (golden) { sparkle(4, 0.08, 88, 103, 0.035); air({ at: 0.02, dur: 0.5, vol: 0.02, type: 'highpass', f0: 6000 }); }
+      const tt = tones(57, 101), top = tt.findIndex(m => m >= 86);
+      const i = clamp(top - Math.round(tier * 0.9) + Math.min(chain - 1, 8), 0, tt.length - 1), m = tt[i];
+      bell(m, { vol: 0.12 + Math.min(tier, 10) * 0.004, dur: 0.75 + tier * 0.04, bright: 0.55, pan });
+      if (tier >= 5) strum(tt[Math.max(0, i - 3)], m, 0.03, { vol: 0.045, dur: 0.8 });
+      if (chain >= 3) box(tt[Math.min(tt.length - 1, i + 4)], { at: 0.08, vol: 0.035, dur: 0.5, pan });
+      if (golden) { sparkle(4, 0.08, 88, 103, 0.035); air({ at: 0.02, dur: 0.4, vol: 0.018, type: 'highpass', f0: 6500 }); }
     },
-    tick() { box(tones(84, 96)[0], { vol: 0.05, dur: 0.5 }); },
+    tick() { marimba(tones(84, 96)[1], { vol: 0.05, dur: 0.3 }); },
     gateOpen() {
-      nextChord();
-      air({ dur: 0.9, vol: 0.045, type: 'bandpass', f0: 500, f1: 3200, q: 0.8, important: true });
-      gliss(60, 96, 0.035, { vol: 0.055, dur: 1.4, important: true });
-      if (music) padSwell(0.1);
+      air({ dur: 0.7, vol: 0.035, type: 'bandpass', f0: 900, f1: 4200, q: 0.8, important: true });
+      strum(67, 98, 0.032, { vol: 0.055, dur: 1, important: true });
     },
-    spell() {   // fairy-dust levitation during the stage change
-      air({ dur: 1.6, vol: 0.03, type: 'highpass', f0: 5000, f1: 8000, important: true });
-      sparkle(9, 0.1, 84, 103, 0.03);
+    spell() {   // fairy-dust drift during the stage change
+      air({ dur: 1.4, vol: 0.022, type: 'highpass', f0: 6000, f1: 9000, important: true });
+      sparkle(10, 0.1, 86, 103, 0.03);
     },
     land() {
-      harp(ROOT[H.chord] - 12 + 24, { vol: 0.08, dur: 1.2, important: true });
-      air({ dur: 0.35, vol: 0.035, type: 'lowpass', f0: 700, f1: 200, important: true });
+      air({ dur: 0.18, vol: 0.03, type: 'bandpass', f0: 1300, q: 0.9, important: true });
+      const tt = tones(60, 79); [tt[0], tt[1], tt[2], tt[4] || tt[3]].forEach((m, i) => marimba(m, { at: 0.03 + i * 0.07, vol: 0.06, dur: 0.4, important: true }));
     },
     golden() {
-      const tt = tones(60, 100);
-      tt.slice(0, 12).forEach((m, i) => bell(m, { at: i * 0.06, vol: 0.075, dur: 1.4, bright: 0.7, important: true }));
-      sparkle(10, 0.75, 88, 105, 0.035);
-      air({ at: 0.1, dur: 1.4, vol: 0.025, type: 'highpass', f0: 5500, important: true });
-      const r = ROOT[H.chord]; pad(r, { vol: 0.05, attack: 0.4, dur: 3 }); pad(r + 7, { vol: 0.04, attack: 0.4, dur: 3 }); pad(r + 16, { vol: 0.03, attack: 0.4, dur: 3 });
+      const tt = tones(67, 103);
+      tt.slice(0, 11).forEach((m, i) => bell(m, { at: i * 0.055, vol: 0.075, dur: 1.1, bright: 0.7, important: true }));
+      sparkle(10, 0.7, 88, 105, 0.035);
+      strum(60, 84, 0.04, { at: 0.65, vol: 0.05, dur: 1.4, important: true });
+      air({ at: 0.1, dur: 1.2, vol: 0.02, type: 'highpass', f0: 6500, important: true });
     },
     jackpot() {
       this.golden();
-      gliss(72, 103, 0.03, { at: 0.8, vol: 0.05, dur: 1.2, important: true });
+      strum(76, 103, 0.03, { at: 0.9, vol: 0.05, dur: 1.2, important: true });
     },
-    discover() { tones(79, 96).slice(0, 3).forEach((m, i) => box(m, { at: i * 0.09, vol: 0.06, dur: 0.8 })); },
-    danger() { bell(ROOT[H.chord] + 12, { vol: 0.08, dur: 0.5, bright: 0.15, important: true }); },
+    discover() { tones(79, 96).slice(0, 3).forEach((m, i) => box(m, { at: i * 0.09, vol: 0.06, dur: 0.6 })); },
+    // oven-timer tick-tock: urgent but friendly
+    danger() { tock(96, { vol: 0.05, important: true }); tock(91, { at: 0.16, vol: 0.045, important: true }); },
     gameOver() {
-      [76, 72, 69, 67, 64].forEach((m, i) => box(m, { at: i * 0.24, vol: 0.08, dur: 1.2, important: true }));
-      pad(45, { at: 0.6, vol: 0.04, attack: 0.8, dur: 3.5 }); pad(52, { at: 0.6, vol: 0.03, attack: 0.8, dur: 3.5 });
+      [79, 76, 72].forEach((m, i) => box(m, { at: i * 0.22, vol: 0.08, dur: 0.9, important: true }));
+      [60, 64, 67, 72].forEach((m, i) => harp(m, { at: 0.75 + i * 0.05, vol: 0.06, dur: 1.6, important: true }));
     },
-    ui() { box(tones(84, 96)[1], { vol: 0.045, dur: 0.4, important: true }); },
-    _musicTick: musicTick,
-    _debug: () => ({ state: ac && ac.state, stale, voices: ends.length, chord: H.chord, step: H.step }),
+    ui() { box(tones(84, 96)[1], { vol: 0.045, dur: 0.35, important: true }); },
+    _schedule: schedule,
+    _debug: () => ({ state: ac && ac.state, stale, voices: ends.length, chord: H.chord, step: H.step, eighth: clock.e }),
   };
 })();
 

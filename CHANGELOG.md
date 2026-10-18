@@ -6,6 +6,23 @@ version marks a larger iteration and a **patch** marks fixes and tuning.
 The current version is shown on the title and pause screens
 (`VERSION` constant at the top of the script in `index.html`).
 
+## 0.3.1 — An enchanted, sunnier soundtrack
+
+- **The music is cheerful and enchanted now** (it sounded like an indie horror game).
+  The low, slowly swelling drone and the random music-box notes in a long, dark hall
+  are gone. Instead, in the spirit of Ghibli/Disney harp folk:
+  - a gentle **3/4 waltz** of flowing **harp arpeggios** over a bouncy pizzicato bass,
+  - a little **flute tune** every other round (so it never wears out),
+  - **glockenspiel and celesta sparkles** whenever the harmony changes,
+  - classic "magic" harmony: bright major with secondary dominants and a wistful
+    minor-iv before it resolves (C – A7 – Dm – G7 – C – E7 – F – Fm → C).
+- Everything follows the waltz's chords: your quick taps still play a music-box melody
+  on top of the accompaniment; merges and combos ring in the same harmony.
+- Brighter mix: shorter, airy room sound, no rumble below ~110 Hz, nothing in the low
+  register anymore (sound energy below 250 Hz down from ~50 % to ~10 %).
+- Friendlier cues: the danger warning is an oven-timer *tick-tock*, landing is a little
+  marimba "ta-da", game over ends on a warm major chord instead of a sad descent.
+
 ## 0.3.0 — The magic bakery
 
 - **New stage transition: fairy-dust drift.** When the gate opens, a spell catches the
