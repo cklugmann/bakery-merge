@@ -52,6 +52,15 @@ body{background:#f6d8b8 radial-gradient(130% 90% at 50% 0%,#fff3e2 0%,#f8dcbc 55
 .ibtn svg{width:20px;height:20px}
 #ladder-wrap{line-height:0}
 #ladder{display:block;width:100%;border-radius:14px;background:var(--card);border:2px solid var(--line);box-shadow:0 3px 0 rgba(200,140,70,.35)}
+/* the golden bakery (body[data-gold="1…3"], one level per jackpot of the run): the room warms up,
+   gold stars in the score label, then gold trim spreading over the HUD */
+#gold-pips{display:inline-flex;gap:1px;margin-left:5px;vertical-align:-1px}
+#gold-pips svg{width:9px;height:9px;fill:#e3a51c;flex:none}
+body[data-gold="1"]{background:#f7d6ad radial-gradient(130% 90% at 50% 0%,#fff4de 0%,#f9dbb3 55%,#edc08c 100%)}
+body[data-gold="2"]{background:#f8d3a0 radial-gradient(130% 90% at 50% 0%,#fff3d6 0%,#f9d7a4 55%,#ecbc7c 100%)}
+body[data-gold="3"]{background:#f9cf90 radial-gradient(130% 90% at 50% 0%,#fff1cc 0%,#f9d394 55%,#ebb76b 100%)}
+[data-gold="1"] #score-chip,[data-gold="2"] .chip,[data-gold="3"] .chip,[data-gold="2"] #ladder,[data-gold="3"] #ladder,[data-gold="3"] .ibtn{border-color:#ecc14e;box-shadow:0 3px 0 rgba(214,160,40,.5)}
+[data-gold="3"] #game{box-shadow:0 0 0 3px #e4b54a,0 12px 30px rgba(170,110,10,.3)}
 /* narrow phones: sound toggle lives in the pause menu, everything a bit tighter */
 @media (max-width:479px){body:not(.wide) #btn-sound{display:none}}
 @media (max-width:360px){#hud{gap:4px}.chip{padding:4px 6px;border-radius:12px}#stage{font-size:16px}#mult{font-size:11px}.ibtn{width:38px}#next{width:34px;height:34px}.lbl{font-size:9px;letter-spacing:.04em}#best-line,#gate-txt{font-size:10px}}
@@ -95,6 +104,10 @@ h2{font-weight:700;font-size:2rem;color:#7a3a0e;line-height:1.1}
 .stat{background:#fff1dd;border-radius:14px;padding:8px 6px}
 .stat b{display:block;font-size:1.15rem}
 .stat span{font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:#b0703a;font-weight:600}
+.stat.jackpot{grid-column:1/-1;background:linear-gradient(#ffe9a0,#f6c84a);box-shadow:inset 0 0 0 2px #f8e3a0,0 2px 0 #c98f14}
+.stat.jackpot b{color:#7a4a00}
+.stat.jackpot span{color:#8a5a08}
+.stat.jackpot[hidden]{display:none}
 #over-icon{width:56px;height:56px;display:block;margin:0 auto 2px}
 .hint{font-size:.72rem;color:#b88a5c;margin-top:10px}
 /* volume sliders — custom, so touch, mouse and keyboard behave the same everywhere */
@@ -129,7 +142,7 @@ h2{font-weight:700;font-size:2rem;color:#7a3a0e;line-height:1.1}
   <div id="col">
     <div id="hud">
       <div id="logo">Bakery<br>Merge<small><span class="nw">Sweet magic,</span> <span class="nw">one drop at a time</span></small></div>
-      <div class="chip" id="score-chip"><div class="lbl">Score</div><div id="score">0</div><div id="best-line">Best <span id="best">0</span></div></div>
+      <div class="chip" id="score-chip"><div class="lbl">Score<span id="gold-pips"></span></div><div id="score">0</div><div id="best-line">Best <span id="best">0</span></div></div>
       <div class="chip" id="stage-chip"><div class="lbl">Stage</div><div id="stage-row"><div id="stage">1</div><div id="mult">×1</div></div><div id="gate-row" title="Merges until the gate opens"><div id="gate-bar"><div id="gate-fill"></div></div><div id="gate-txt">12</div></div></div>
       <div class="chip" id="next-chip"><div class="lbl">Next</div><canvas id="next" width="88" height="88"></canvas></div>
       <div class="btns">
@@ -151,6 +164,7 @@ h2{font-weight:700;font-size:2rem;color:#7a3a0e;line-height:1.1}
       <li>Drop pastries — two of a kind <b>merge</b> into the next one.</li>
       <li>Fill the <b>gate counter</b> and the floor opens: everything falls to the next stage, and every stage raises your <b>points multiplier</b>.</li>
       <li>Two <b>Wedding Cakes</b> turn golden ✨ — gold merges with plain pastries for <b>×10 points</b>.</li>
+      <li>Golden Wedding Cake + Wedding Cake = <b>JACKPOT</b> — both cakes cash in for a huge bonus, and your bakery turns golden.</li>
       <li>Don't let the pile rest above the red line.</li>
     </ul>
     <button class="btn" id="btn-play">Play</button>
@@ -189,6 +203,7 @@ h2{font-weight:700;font-size:2rem;color:#7a3a0e;line-height:1.1}
       <div class="stat"><b id="st-combo">0</b><span>Best combo</span></div>
       <div class="stat"><canvas id="over-icon" width="112" height="112"></canvas><span id="st-biggest">Biggest</span></div>
       <div class="stat"><b id="st-gold">0</b><span>Golden made</span></div>
+      <div class="stat jackpot" id="st-jackpot-wrap" hidden><b id="st-jackpot">0</b><span id="st-jackpot-lbl">Jackpots</span></div>
     </div>
     <div class="row"><button class="btn" id="btn-again">Play again</button></div>
   </div>
@@ -199,7 +214,7 @@ h2{font-weight:700;font-size:2rem;color:#7a3a0e;line-height:1.1}
 // ═══════════════════════════════════════════════════════════════════
 //  UTILITIES
 // ═══════════════════════════════════════════════════════════════════
-const VERSION = '0.4.1';   // bump with every release — see CHANGELOG.md
+const VERSION = '0.4.2';   // bump with every release — see CHANGELOG.md
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -1134,7 +1149,10 @@ const Sfx = (() => {
     for (let i = ends.length - 1; i >= 0; i--) if (ends[i] < now) ends.splice(i, 1);
     return important || ends.length < MAX_VOICES;
   }
-  const hz = m => 440 * Math.pow(2, (m - 69) / 12);
+  // the golden bakery (see applyGold): after each jackpot of a run the whole soundscape — tune,
+  // drops, merges — moves up a semitone and the waltz gains a layer (0 … 3)
+  let gold = 0, transpose = 0;
+  const hz = m => 440 * Math.pow(2, (m + transpose - 69) / 12);
   function out(dest, pan) {
     if (pan && ac.createStereoPanner) { const p = ac.createStereoPanner(); p.pan.value = clamp(pan, -0.7, 0.7); p.connect(dest); return p; }
     return dest;
@@ -1189,8 +1207,8 @@ const Sfx = (() => {
     ends.push(t + dur);
   }
   // breathy flute / tin whistle: soft attack, gentle delayed vibrato, a whisper of air
-  function flute(m, { at = 0, vol = 0.04, dur = 0.6, dest = null } = {}) {
-    if (!live(false, dest)) return;
+  function flute(m, { at = 0, vol = 0.04, dur = 0.6, dest = null, important = false } = {}) {
+    if (!live(important, dest)) return;
     const t = ac.currentTime + at, f = hz(m), g = ac.createGain(), rel = Math.min(0.25, dur * 0.4);
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.07);
     g.gain.setValueAtTime(vol, t + Math.max(0.08, dur - rel)); g.gain.exponentialRampToValueAtTime(0.0001, t + dur + rel);
@@ -1269,6 +1287,21 @@ const Sfx = (() => {
       // second round: the flute plays the tune
       const notes = TUNE[bar % 16]; let beat = 0;
       for (const [m, len] of notes) { if (beat * 2 === pos && m) flute(m, { at, vol: 0.022, dur: len * BEAT * 0.92, dest: musicBus }); beat += len; }
+    }
+    // ── the golden bakery: one more layer per jackpot of the run ──
+    if (gold >= 1 && pos === 0) {
+      // I: the harp doubles its downbeat an octave up and a music-box twinkle falls on every bar
+      harp(tt[fig[0]] + 12, { at, vol: 0.016, dur: 0.8, dest: musicBus });
+      const hi = tones(91, 103, ci); box(hi[(bar * 5 + 2) % hi.length], { at: at + 0.02, vol: 0.02, dur: 0.5, dest: musicBus });
+    }
+    if (gold >= 2) {
+      // II: off-beat glockenspiel sparkle in the first round, an octave echo of the flute tune in the second
+      if (section === 0 && (pos === 3 || pos === 5)) { const hi = tones(84, 98, ci); box(hi[(bar + pos) % hi.length], { at, vol: 0.018, dur: 0.4, dest: musicBus, pan: pos === 3 ? -0.2 : 0.2 }); }
+      else if (section === 1 && pos % 2 === 1) { const notes = TUNE[bar % 16]; let beat = 0; for (const [m, len] of notes) { if (beat * 2 === pos - 1 && m) box(m + 12, { at, vol: 0.016, dur: 0.35, dest: musicBus }); beat += len; } }
+    }
+    if (gold >= 3 && pos === 0 && bar % 2 === 0) {
+      // III: a soft, sustained bell chord under every change of harmony
+      tones(64, 79, ci).slice(0, 3).forEach((m, i) => bell(m, { at: at + i * 0.03, vol: 0.02, dur: 2.6, bright: 0.3, dest: musicBus }));
     }
   }
   function schedule() {
@@ -1353,9 +1386,55 @@ const Sfx = (() => {
       strum(60, 84, 0.04, { at: 0.65, vol: 0.05, dur: 1.4, important: true });
       air({ at: 0.1, dur: 1.2, vol: 0.02, type: 'highpass', f0: 6500, important: true });
     },
-    jackpot() {
-      this.golden();
-      strum(76, 103, 0.03, { at: 0.9, vol: 0.05, dur: 1.2, important: true });
+    // ── the jackpot show (see `Jackpot`): every cue follows the chord the waltz is on ──
+    jackpotHit() {   // impact: a falling whoosh, a long shimmer and a deep golden chord; the music ducks
+      air({ dur: 0.55, vol: 0.06, type: 'lowpass', f0: 2600, f1: 160, q: 0.7, important: true });
+      air({ at: 0.02, dur: 1.6, vol: 0.028, type: 'highpass', f0: 5000, f1: 9000, important: true });
+      const tt = tones(55, 79);
+      [tt[0], tt[2] || tt[1], tt[4] || tt[3]].forEach((m, i) => bell(m, { at: i * 0.02, vol: 0.11, dur: 1.8, bright: 0.45, important: true }));
+      this.duckMusic(3.8);
+    },
+    jackpotLetter(i) {   // J·A·C·K·P·O·T: a rising scale of chord tones, each with a wooden slam
+      const tt = tones(72, 103), m = tt[Math.min(tt.length - 1, i + 1)];
+      tock(60 + i * 2, { vol: 0.06, important: true });
+      box(m, { vol: 0.09, dur: 0.55, important: true });
+      bell(Math.min(m + 12, 108), { at: 0.01, vol: 0.03, dur: 0.4, bright: 0.5, important: true });
+    },
+    jackpotFanfare() {   // a little flute "ta-da-da-DAA" over a harp sweep
+      strum(60, 96, 0.028, { vol: 0.05, dur: 1.4, important: true });
+      const tt = tones(67, 91), motif = [[tt[0], 0, 0.16], [tt[1], 0.16, 0.16], [tt[2], 0.32, 0.2], [tt[4] || tt[3], 0.54, 1.0]];
+      for (const [m, at, dur] of motif) { flute(m, { at, vol: 0.05, dur, important: true }); marimba(m, { at, vol: 0.05, dur: 0.3, important: true }); }
+    },
+    jackpotTick(p) { tock(84 + Math.round(p * 14), { vol: 0.028 + p * 0.012, important: true }); },   // the rolling counter
+    jackpotDing() {   // the counter lands
+      const tt = tones(79, 103);
+      tt.slice(0, 4).forEach((m, i) => bell(m, { at: i * 0.012, vol: 0.1, dur: 1.6, bright: 0.75, important: true }));
+      strum(72, 103, 0.022, { at: 0.05, vol: 0.045, dur: 1.2, important: true });
+      sparkle(12, 0.3, 88, 105, 0.035);
+    },
+    jackpotWhoosh() { air({ dur: 0.5, vol: 0.022, type: 'bandpass', f0: 500, f1: 3200, q: 1.2, important: true }); },
+    jackpotPop() {
+      air({ dur: 0.12, vol: 0.06, type: 'bandpass', f0: 1600, q: 0.6, important: true });
+      air({ dur: 0.35, vol: 0.02, type: 'highpass', f0: 6000, important: true });
+      sparkle(3, 0.05, 90, 105, 0.025);
+    },
+    jackpotGolden() {   // the bakery turns golden: a harp sweep and sparkles, already in the new key
+      strum(64, 100, 0.02, { vol: 0.045, dur: 1.3, important: true });
+      sparkle(8, 0.25, 90, 105, 0.03);
+    },
+    jackpotCheer() {   // the whole bakery hops: an upward harp run and three music-box "yays"
+      strum(55, 98, 0.024, { vol: 0.045, dur: 1, important: true });
+      const tt = tones(84, 100); [0, 1, 2].forEach(i => box(tt[i] || tt[tt.length - 1], { at: 0.1 + i * 0.07, vol: 0.05, dur: 0.5, important: true }));
+    },
+    // the golden bakery level (0 … 3): key up one semitone per level, extra layers in the waltz
+    setGold(level) { gold = clamp(level | 0, 0, 3); transpose = gold; },
+    get gold() { return gold; },
+    duckMusic(sec) {   // pull the music down under the show and bring it back afterwards
+      if (!ac || !musicBus) return;
+      const t = ac.currentTime, full = curve(vol.music) * MUSIC_MAX;
+      musicBus.gain.cancelScheduledValues(t);
+      musicBus.gain.setTargetAtTime(full * 0.3, t, 0.12);
+      musicBus.gain.setTargetAtTime(full, t + sec, 0.5);
     },
     discover() { tones(79, 96).slice(0, 3).forEach((m, i) => box(m, { at: i * 0.09, vol: 0.06, dur: 0.6 })); },
     // oven-timer tick-tock: urgent but friendly
@@ -1381,7 +1460,7 @@ const REDUCED_MOTION = (() => { try { return matchMedia('(prefers-reduced-motion
 const FX = {
   parts: [], rings: [], texts: [], ghosts: [], banners: [],
   trauma: 0, flash: 0, flashCol: '255,255,255', t: 0,
-  MAX_PARTS: 520,
+  MAX_PARTS: 820,
   reset() { this.parts.length = 0; this.rings.length = 0; this.texts.length = 0; this.ghosts.length = 0; this.banners.length = 0; this.trauma = 0; this.flash = 0; },
   shake(a) { this.trauma = Math.min(1, this.trauma + a * (REDUCED_MOTION ? 0.3 : 1)); },
   doFlash(a, col = '255,255,255') { this.flash = Math.max(this.flash, a); this.flashCol = col; },
@@ -1497,14 +1576,20 @@ const FX = {
         this.drawStar(c, p.x, p.y, p.size * (0.4 + tw * 0.8), p.rot, p.col, a * (0.6 + 0.4 * tw));
       } else if (p.k === 'fairy') {
         const tw = 0.6 + 0.4 * Math.sin(p.life * 0.02 + p.rot * 5), s = p.size * (q < 0.15 ? q / 0.15 : 1);
-        c.globalAlpha = a * tw * 0.35; c.fillStyle = p.col; circ(c, p.x, p.y, s * 2.6); c.fill();
-        c.globalAlpha = a * tw; circ(c, p.x, p.y, s); c.fill();
-        c.fillStyle = '#ffffff'; circ(c, p.x, p.y, s * 0.45); c.fill();
+        const fx = p.sway ? p.x + Math.sin(p.life * 0.0011 + p.rot * 3) * p.sway : p.x;   // golden motes drift sideways
+        c.globalAlpha = a * tw * 0.35; c.fillStyle = p.col; circ(c, fx, p.y, s * 2.6); c.fill();
+        c.globalAlpha = a * tw; circ(c, fx, p.y, s); c.fill();
+        c.fillStyle = '#ffffff'; circ(c, fx, p.y, s * 0.45); c.fill();
         c.globalAlpha = 1;
       } else if (p.k === 'confetti') {
         c.save(); c.globalAlpha = a; c.translate(p.x + Math.sin(p.life * 0.008 + p.wob) * 3, p.y); c.rotate(p.rot);
         c.scale(1, Math.abs(Math.cos(p.life * 0.012 + p.wob)) * 0.9 + 0.1);
         c.fillStyle = p.col; c.fillRect(-p.size, -p.size * 0.55, p.size * 2, p.size * 1.1); c.restore();
+      } else if (p.k === 'spark') {
+        // firework spark: a short bright streak along its own velocity
+        c.globalAlpha = a; c.strokeStyle = p.col; c.lineCap = 'round'; c.lineWidth = p.size;
+        c.beginPath(); c.moveTo(p.x - p.vx * 30, p.y - p.vy * 30); c.lineTo(p.x, p.y); c.stroke();
+        c.globalAlpha = 1;
       }
     }
   },
@@ -1545,6 +1630,227 @@ const FX = {
 };
 
 // ═══════════════════════════════════════════════════════════════════
+//  THE JACKPOT SHOW — a choreographed celebration on its own real-time clock
+// ═══════════════════════════════════════════════════════════════════
+// Timeline (ms of real time after the merge):
+//     0  impact: flash, shockwave, the world drops into deep slow motion, a spotlight closes in,
+//        light rays start turning behind the title, the music ducks
+//   260… J·A·C·K·P·O·T slams in one letter at a time, each on a rising chord tone
+//   900  ribbon for high stages (BIG / SUPER / MEGA / ULTRA), flute fanfare, first firework
+//   950… the counter rolls up slot-machine style (the HUD score follows it) under a firework finale
+//  1250  the whole bakery cheers: every pastry smiles and hops in a wave from the merge point
+//  2450  DING — the counter lands; a record badge if it is one
+//  2700  the golden bakery levels up: scenery, HUD and music change for the rest of the run (applyGold)
+//  3150… everything fades; the gate (if it was due) opens at JACKPOT_HOLD
+const Jackpot = {
+  active: false, t: 0, info: null, fired: null, rockets: [], rocketPlan: [], lastTick: 0, punching: false, adj: '',
+  LETTERS: 'JACKPOT', LETTER_AT: 260, LETTER_GAP: 95, RIBBON_AT: 900, COUNT_AT: 950, COUNT_MS: 1500, WAVE_AT: 1250, DING_AT: 2450, SUB_AT: 1400, GOLD_AT: 2700, FADE_AT: 3150, END: 3850,
+  HOP: 5,              // upward kick of a cheering pastry (≈ 23 px for a free one, a jostle inside the pile)
+  COLS: [['#ffd23e', '#fff6c9'], ['#ff8fb8', '#ffd5e5'], ['#7ee0c0', '#e0fff5'], ['#ffffff', '#ffe9a6'], ['#f6a623', '#ffe0b0']],
+
+  // o = { x, y (world merge point), pts, mult, level (golden bakery level after this jackpot), badge }
+  start(o) {
+    this.active = true; this.t = 0; this.info = o; this.fired = new Set(); this.rockets.length = 0; this.lastTick = 0;
+    this.adj = o.mult >= 10 ? 'ULTRA' : o.mult >= 7 ? 'MEGA' : o.mult >= 5 ? 'SUPER' : o.mult >= 3 ? 'BIG' : '';
+    o.levelText = o.level <= G.goldLevel ? '✨ Golden bakery · max level' : o.level === 1 ? '✨ The bakery turns golden!' : `✨ Golden bakery · level ${o.level}`;
+    this.rocketPlan = [950, 1150, 1320, 1520, 1700, 1900].map(at => ({ at, x: 50 + Math.random() * (W - 100) }));
+    this.punching = G.state === 'play' && !REDUCED_MOTION;
+    Sfx.jackpotHit();
+  },
+  reset() { if (this.punching) G.zoom = 1; this.active = false; this.punching = false; this.rockets.length = 0; },
+  // deep bullet time at the impact, easing back to full speed over a second
+  timeScale() {
+    if (!this.active) return 1;
+    const t = this.t;
+    return t < 450 ? 0.16 : t < 1450 ? lerp(0.16, 1, easeInOutCubic((t - 450) / 1000)) : 1;
+  },
+  counterValue() { const q = clamp((this.t - this.COUNT_AT) / this.COUNT_MS, 0, 1); return Math.round(this.info.pts * easeOutCubic(q)); },
+  // the part of the prize the counter has not shown yet (the HUD score waits for it)
+  pending() { return this.active && this.t < this.DING_AT ? this.info.pts - this.counterValue() : 0; },
+  once(key, at, fn) { if (this.t >= at && !this.fired.has(key)) { this.fired.add(key); fn(); } },
+
+  // rdt: real ms, wdt: world ms (slowed with the rest of the game)
+  update(rdt, wdt) {
+    if (!this.active) return;
+    this.t += rdt;
+    const t = this.t;
+    for (let i = 0; i < this.LETTERS.length; i++) this.once('L' + i, this.LETTER_AT + i * this.LETTER_GAP, () => { Sfx.jackpotLetter(i); FX.shake(0.08); });
+    this.once('fanfare', this.RIBBON_AT, () => { Sfx.jackpotFanfare(); FX.confetti(W / 2, fieldTop() - 20, 110, 1.6); haptic(14); });
+    if (t >= this.COUNT_AT && t < this.COUNT_AT + this.COUNT_MS && t - this.lastTick > 58) { this.lastTick = t; Sfx.jackpotTick((t - this.COUNT_AT) / this.COUNT_MS); }
+    this.once('wave', this.WAVE_AT, () => this.cheer());
+    this.once('ding', this.DING_AT, () => {
+      Sfx.jackpotDing(); FX.doFlash(0.3, '255,240,190'); FX.shake(0.25); haptic([20, 30, 60]);
+      const p = this.toWorld(VW / 2, VH * 0.40 + 42);
+      for (let i = 0; i < 28; i++) FX.star(p.x, p.y, 60, 2.4);
+    });
+    // the lasting part: the bakery itself turns (more) golden — scenery, HUD and music, until the run ends
+    this.once('golden', this.GOLD_AT, () => {
+      applyGold(this.info.level);
+      FX.doFlash(0.32, '255,215,100'); UI.flashLadder(TIER_DEFS.length);
+      for (let i = 0; i < 40; i++) { const p = this.toWorld(Math.random() * VW, Math.random() * VH); FX.star(p.x, p.y, 10, 1.2, '#ffd86a'); }
+      Sfx.jackpotGolden(); haptic([15, 30, 15]);
+    });
+    for (const r of this.rocketPlan) this.once('R' + r.at, r.at, () => this.launch(r.x));
+    // rockets fly in world time so they match their own sparks
+    for (let i = this.rockets.length - 1; i >= 0; i--) {
+      const r = this.rockets[i];
+      r.life += wdt; r.x += r.vx * wdt; r.y += r.vy * wdt; r.vy += 0.00035 * wdt; r.trail += wdt;
+      while (r.trail > 14) { r.trail -= 14; FX.add({ k: 'spark', x: r.x, y: r.y, vx: -r.vx * 0.3 + (Math.random() - 0.5) * 0.03, vy: 0.03 + Math.random() * 0.03, g: 0.0003, life: 0, max: 220 + Math.random() * 200, size: 1.4 + Math.random() * 1.4, col: r.col[1] }); }
+      if (r.life >= r.burstAt) { this.burst(r); this.rockets.splice(i, 1); }
+    }
+    // a gentle camera push-in with the impact, released as time speeds up again
+    if (this.punching) {
+      if (G.state !== 'play' || t >= 900) { G.zoom = 1; this.punching = false; }
+      else { const q = t / 900; G.zoom = 1 + 0.07 * (q < 0.1 ? easeOutCubic(q / 0.1) : 1 - easeInOutCubic((q - 0.1) / 0.9)); }
+    }
+    if (t >= this.END) this.reset();
+  },
+  toWorld(sx, sy) {   // screen (virtual canvas) → world, for effects anchored to the overlay
+    const v = Render.view, z = G.zoom || 1;
+    return { x: v.left + sx / z, y: v.top + sy / z };
+  },
+  launch(x) {
+    const col = this.COLS[(Math.random() * this.COLS.length) | 0];
+    this.rockets.push({ x, y: floorY() - 24, vx: (Math.random() - 0.5) * 0.05, vy: -(0.64 + Math.random() * 0.1), life: 0, burstAt: 520 + Math.random() * 180, col, trail: 0 });
+    Sfx.jackpotWhoosh();
+  },
+  burst(r) {
+    const n = 30;
+    for (let i = 0; i < n; i++) {
+      const a = (TAU * i) / n + (Math.random() - 0.5) * 0.12, sp = 0.13 + Math.random() * 0.17;
+      FX.add({ k: 'spark', x: r.x, y: r.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, g: 0.00034, drag: 0.0028, life: 0, max: 700 + Math.random() * 500, size: 2.2 + Math.random() * 1.6, col: i % 3 ? r.col[0] : r.col[1] });
+    }
+    for (let i = 0; i < 6; i++) FX.star(r.x, r.y, 14, 1.6, r.col[1]);
+    FX.ring(r.x, r.y, 6, 64, '255,240,200', 3, 380);
+    FX.doFlash(0.1, '255,240,200');
+    Sfx.jackpotPop(); haptic(8);
+  },
+  // every pastry smiles and hops once, in a wave rolling out from the merge point
+  cheer() {
+    if (G.state !== 'play') return;
+    const o = this.info, line = fieldTop();
+    for (const b of G.pastries) {
+      const p = b.pastry;
+      if (p.dead) continue;
+      p.happyUntil = Math.max(p.happyUntil, G.rtime + 3000);
+      if (b.bounds.min.y < line + 12) continue;   // never nudge a pastry that is already up at the danger line
+      p.hopAt = G.rtime + Math.hypot(b.position.x - o.x, b.position.y - o.y) * 1.7;
+    }
+    Sfx.jackpotCheer(); haptic(12);
+  },
+  // called from the physics step: hand out the hops whose time has come
+  hop() {
+    if (G.state !== 'play') return;
+    for (const b of G.pastries) {
+      const p = b.pastry;
+      if (!p.hopAt || G.rtime < p.hopAt) continue;
+      p.hopAt = 0;
+      const v = Body.getVelocity(b);
+      Body.setVelocity(b, { x: v.x, y: Math.min(v.y, -this.HOP) });
+      Body.setAngularVelocity(b, (Math.random() - 0.5) * 0.05);
+      for (let i = 0; i < 3; i++) FX.add({ k: 'dust', x: b.position.x + (Math.random() - 0.5) * 20, y: b.bounds.max.y - 4, vx: (Math.random() - 0.5) * 0.05, vy: -0.01, g: 0, life: 0, max: 320, size: 6 + Math.random() * 6, col: '255,250,240' });
+    }
+  },
+  // rockets, drawn inside the world transform
+  drawWorld(c) {
+    for (const r of this.rockets) {
+      c.fillStyle = rgba(r.col[0], 0.35); circ(c, r.x, r.y, 7); c.fill();
+      c.fillStyle = '#ffffff'; circ(c, r.x, r.y, 2.6); c.fill();
+    }
+  },
+  // the overlay, drawn in screen space over everything else
+  draw(c, w, h) {
+    if (!this.active) return;
+    const t = this.t, o = this.info;
+    const fade = t < this.FADE_AT ? 1 : 1 - clamp((t - this.FADE_AT) / (this.END - this.FADE_AT), 0, 1);
+    const rise = (1 - fade) * 30, cx = w / 2, cy = h * 0.40;
+    // spotlight and slowly turning light rays
+    const vig = Math.min(1, t / 260) * fade;
+    c.save();
+    c.fillStyle = rg(c, cx, cy, h * 0.16, cx, cy, h * 0.8, [[0, 'rgba(70,30,5,0)'], [0.5, `rgba(70,30,5,${0.22 * vig})`], [1, `rgba(60,22,4,${0.6 * vig})`]]);
+    c.fillRect(0, 0, w, h);
+    const rays = 14, ra = (0.07 + 0.05 * Math.sin(t * 0.004)) * vig;
+    c.translate(cx, cy); c.rotate(t * 0.00035);
+    c.fillStyle = `rgba(255,220,110,${ra})`;
+    for (let i = 0; i < rays; i++) { c.rotate(TAU / rays); c.beginPath(); c.moveTo(0, 0); c.lineTo(h, -h * 0.06); c.lineTo(h, h * 0.06); c.closePath(); c.fill(); }
+    c.restore();
+
+    c.save();
+    c.translate(0, -rise);
+    c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineJoin = 'round';
+    // the letters
+    const size = 62, track = 3, ly = cy - 12;
+    c.font = `700 ${size}px ${FONT}`;
+    const widths = [...this.LETTERS].map(ch => c.measureText(ch).width);
+    let x = cx - (widths.reduce((a, b) => a + b, 0) + track * (widths.length - 1)) / 2;
+    for (let i = 0; i < widths.length; i++) {
+      const at = this.LETTER_AT + i * this.LETTER_GAP, q = clamp((t - at) / 240, 0, 1), lx = x + widths[i] / 2, ch = this.LETTERS[i];
+      x += widths[i] + track;
+      if (q <= 0) continue;
+      const s = lerp(2.4, 1, easeOutBack(q, 1.6)), bob = t > at + 240 ? Math.sin(t * 0.006 + i * 0.8) * 2.5 : 0;
+      c.save(); c.globalAlpha = fade * Math.min(1, q * 3); c.translate(lx, ly + bob); c.scale(s, s); c.rotate((1 - q) * (i % 2 ? 0.25 : -0.25));
+      c.font = `700 ${size}px ${FONT}`;
+      c.strokeStyle = '#5a2a00'; c.lineWidth = 9; c.strokeText(ch, 0, 0);
+      c.fillStyle = lg(c, 0, -size / 2, 0, size / 2, [[0, '#fff6c4'], [0.45, '#ffd23e'], [0.55, '#f2a600'], [1, '#c97400']]); c.fillText(ch, 0, 0);
+      c.save(); c.beginPath(); c.rect(-size, -size / 2, size * 2, size * 0.2); c.clip(); c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillText(ch, 0, 0); c.restore();
+      c.restore();
+      if (q < 0.5) FX.drawStar(c, lx, ly, 20 * (1 - q * 2), q * 2, '#ffffff', (0.5 - q) * 2 * fade);
+    }
+    // ribbon for the higher stages
+    if (this.adj && t >= this.RIBBON_AT) {
+      const q = clamp((t - this.RIBBON_AT) / 300, 0, 1), txt = `★  ${this.adj}  ★`;
+      c.save(); c.globalAlpha = fade * Math.min(1, q * 2); c.translate(cx, ly - 56); c.scale(easeOutBack(q, 1.6), easeOutBack(q, 1.6));
+      c.font = `700 17px ${FONT}`;
+      const tw = c.measureText(txt).width + 30;
+      c.fillStyle = '#5a2a00'; c.beginPath(); c.roundRect(-tw / 2, -16, tw, 32, 16); c.fill();
+      c.fillStyle = lg(c, 0, -14, 0, 14, [[0, '#fff1b0'], [1, '#f4bb2a']]); c.beginPath(); c.roundRect(-tw / 2 + 3, -13, tw - 6, 26, 13); c.fill();
+      c.fillStyle = '#5a2a00'; c.fillText(txt, 0, 1);
+      c.restore();
+    }
+    // the counter
+    if (t >= this.COUNT_AT) {
+      const done = t >= this.DING_AT, bq = done ? clamp((t - this.DING_AT) / 320, 0, 1) : 0;
+      const s = done ? lerp(1.35, 1, easeOutBack(bq, 1.4)) : 1 + Math.sin(t * 0.03) * 0.012, txt = '+' + fmt(this.counterValue());
+      c.save(); c.globalAlpha = fade; c.translate(cx, cy + 42); c.scale(s, s);
+      c.font = `700 44px ${FONT}`;
+      c.strokeStyle = '#5a2a00'; c.lineWidth = 8; c.strokeText(txt, 0, 0);
+      c.fillStyle = done ? '#fff6c4' : '#ffffff'; c.fillText(txt, 0, 0);
+      c.restore();
+    }
+    // what just happened
+    if (t >= this.SUB_AT) {
+      const q = clamp((t - this.SUB_AT) / 300, 0, 1), txt = `Stage ×${o.mult} · both cakes cashed in`;
+      c.save(); c.globalAlpha = fade * q; c.translate(cx, cy + 84 + (1 - q) * 8);
+      c.font = `600 16px ${FONT}`;
+      c.strokeStyle = '#4a2000'; c.lineWidth = 5; c.strokeText(txt, 0, 0);
+      c.fillStyle = '#ffe9a6'; c.fillText(txt, 0, 0);
+      c.restore();
+    }
+    // the golden bakery level-up
+    if (t >= this.GOLD_AT) {
+      const q = clamp((t - this.GOLD_AT) / 320, 0, 1);
+      c.save(); c.globalAlpha = fade * q; c.translate(cx, cy + 110 + (1 - q) * 8);
+      c.font = `700 17px ${FONT}`;
+      c.strokeStyle = '#4a2000'; c.lineWidth = 5; c.strokeText(o.levelText, 0, 0);
+      c.fillStyle = '#fff3c0'; c.fillText(o.levelText, 0, 0);
+      c.restore();
+    }
+    // record badge
+    if (o.badge && t >= this.DING_AT + 150) {
+      const q = clamp((t - this.DING_AT - 150) / 320, 0, 1);
+      c.save(); c.globalAlpha = fade * Math.min(1, q * 2); c.translate(cx, cy + 146); c.scale(easeOutBack(q, 1.8), easeOutBack(q, 1.8)); c.rotate(-0.03);
+      c.font = `700 16px ${FONT}`;
+      const tw = c.measureText(o.badge).width + 30;
+      c.fillStyle = '#b2410f'; c.beginPath(); c.roundRect(-tw / 2, -15, tw, 32, 16); c.fill();
+      c.fillStyle = lg(c, 0, -14, 0, 14, [[0, '#ff9a3d'], [1, '#ea5f1c']]); c.beginPath(); c.roundRect(-tw / 2, -17, tw, 30, 15); c.fill();
+      c.fillStyle = '#ffffff'; c.fillText(o.badge, 0, -2);
+      c.restore();
+    }
+    c.restore();
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════
 //  GAME — physics world, rules, stages, scoring
 // ═══════════════════════════════════════════════════════════════════
 const { Engine, Body, Bodies, Composite } = window.Matter || {};
@@ -1565,6 +1871,13 @@ const CHAIN_WINDOW = 750;         // ms between merges to keep a combo alive
 const DANGER_MS = 2600;           // time above the line before game over
 const GROW_MS = 130;              // merged pastry grows into place
 const GOLD_MULT = 10;             // golden merges are worth ×10
+// Scoring specials (all × the stage multiplier):
+//   two Wedding Cakes            → Golden Cookie, +GOLD_BONUS, counts 3 toward the gate
+//   golden + plain, same tier    → next tier stays golden, points ×GOLD_MULT, counts 2
+//   golden Wedding Cake + Wedding Cake → JACKPOT: both cakes cash in for +JACKPOT_BONUS
+//                                  (no new pastry — the board space is part of the prize), counts 10
+const GOLD_BONUS = 5000, JACKPOT_BONUS = 30000;
+const JACKPOT_HOLD = 3500;        // ms (real time) the gate waits after a jackpot so the show (see Jackpot) plays out first
 const DOOR_T = 90, WALL_T = 240;
 const ZOOM_OUT_MS = 420, OPEN_DELAY = 400, SLIDE_MS = 300, ZOOM_IN_MS = 560;
 // fairy-dust drift during the stage change (ms after the doors open)
@@ -1599,10 +1912,11 @@ const G = {
   chain: 0, lastMergeAt: -1e9, bestChain: 0,
   dangerT: 0, graceUntil: 0, nextDangerSfx: 0,
   camY: -TOP, camFrom: 0, camTo: 0, camMid: 0, zoom: 1, zMin: 1,
-  gate: null, nextGate: null, gateT: 0, fallT: 0, opened: false, landedAt: 0, zoomInStart: 0,
+  gate: null, nextGate: null, gateT: 0, fallT: 0, opened: false, landedAt: 0, zoomInStart: 0, gateHoldUntil: 0,
   pastries: [], walls: [], overAt: 0, queuedDrop: false,
-  maxTier: 0, goldMade: 0, jackpots: 0, badgePop: 0,
-  disc: (() => { const d = store.get('bm.disc', null) || {}; const t = Array.isArray(d.tiers) ? d.tiers : []; for (let i = 0; i < 4; i++) t[i] = true; return { tiers: t, gold: !!d.gold }; })(),
+  maxTier: 0, goldMade: 0, jackpots: 0, bestJackpot: 0, goldLevel: 0, badgePop: 0,
+  // discovered pastries (shown on the title screen) + lifetime golden / jackpot trophies
+  disc: (() => { const d = store.get('bm.disc', null) || {}; const t = Array.isArray(d.tiers) ? d.tiers : []; for (let i = 0; i < 4; i++) t[i] = true; return { tiers: t, gold: !!d.gold, jackpots: Math.max(0, d.jackpots | 0), bestJackpot: Math.max(0, d.bestJackpot | 0) }; })(),
   debug: /[?&]debug/.test(location.search),
 };
 const fieldTop = (k = G.chamber) => k * FH;
@@ -1618,7 +1932,7 @@ function createPastry(tier, golden, x, y, scale = 1) {
   if (scale !== 1) Body.scale(body, scale, scale);
   body.pastry = {
     tier, golden, scale, growFrom: scale, growT: scale < 1 ? 0 : GROW_MS,
-    born: G.time, bornR: G.rtime, popAt: scale < 1 ? G.rtime : 0, happyUntil: 0,
+    born: G.time, bornR: G.rtime, popAt: scale < 1 ? G.rtime : 0, happyUntil: 0, hopAt: 0,
     blinkP: 2600 + Math.random() * 2600, blinkO: Math.random() * 5000, danger: false, dead: false, glintAt: 0,
   };
   Composite.add(engine.world, body);
@@ -1658,14 +1972,25 @@ function newRun() {
     chamber: 0, stage: 1, mult: 1, merges: 0, req: reqFor(1), score: 0, shownScore: 0,
     aimX: W / 2, heldX: W / 2, dropReadyAt: G.rtime + 250, heldPop: G.rtime, drops: 0,
     since: [0, 0, 0, 0, 0, 0], lastPick: -1, reached: [], chain: 0, lastMergeAt: -1e9, bestChain: 0,
-    dangerT: 0, graceUntil: 0, nextDangerSfx: 0, camY: camFor(0), zoom: 1, gateT: 0, fallT: 0, opened: false, landedAt: 0, zoomInStart: 0,
-    pastries: [], queuedDrop: false, flow: null, maxTier: 0, goldMade: 0, jackpots: 0, nextGate: null, badgePop: 0,
+    dangerT: 0, graceUntil: 0, nextDangerSfx: 0, camY: camFor(0), zoom: 1, gateT: 0, fallT: 0, opened: false, landedAt: 0, zoomInStart: 0, gateHoldUntil: 0,
+    pastries: [], queuedDrop: false, flow: null, maxTier: 0, goldMade: 0, jackpots: 0, bestJackpot: 0, nextGate: null, badgePop: 0,
   });
   placeWalls();
   G.gate = makeGate(0);
   G.cur = { tier: pickTier(), golden: false };
   G.next = { tier: pickTier() };
   FX.reset();
+  Jackpot.reset();
+  applyGold(0);
+}
+
+// The golden bakery: every jackpot of the run leaves the bakery a little more golden, for the
+// rest of the run (up to level 3) — warm light and drifting motes in the scenery, gold trim on
+// the HUD, and the music moves up a semitone and gains a layer. Reset with every new run.
+function applyGold(level) {
+  G.goldLevel = clamp(level | 0, 0, 3);
+  Sfx.setGold(G.goldLevel);
+  UI.onGold();
 }
 
 function pickTier() {
@@ -1740,8 +2065,10 @@ function doMerge(a, b) {
   let pts = basePts(t) * G.mult * combo * (golden ? GOLD_MULT : 1);
   let gateCount = golden ? 2 : 1, newTier = t + 1, newGolden = golden, special = null;
   if (t === TOP_TIER) {
-    if (golden) { special = 'jackpot'; newTier = -1; pts += 30000 * G.mult; gateCount = 10; }
-    else { special = 'gold'; newTier = 0; newGolden = true; pts += 5000 * G.mult; gateCount = 3; }
+    // the top of the ladder: two Wedding Cakes become the Golden Cookie; a golden Wedding Cake
+    // and a plain one are the JACKPOT — no new pastry, both cakes cash in for the bonus
+    if (golden) { special = 'jackpot'; newTier = -1; pts += JACKPOT_BONUS * G.mult; gateCount = 10; }
+    else { special = 'gold'; newTier = 0; newGolden = true; pts += GOLD_BONUS * G.mult; gateCount = 3; }
   }
   pts = Math.round(pts);
   G.score += pts;
@@ -1762,12 +2089,24 @@ function doMerge(a, b) {
       FX.text(W / 2, fieldTop() + 46, `New: ${T.name}!`, { size: 22, col: '#b4461a', max: 1600, vy: -0.02, tag: 'disc' });
       Sfx.discover();
     }
+    // the jackpot pair: whenever a Wedding Cake appears whose golden twin is (or could be) on the
+    // board, say what it is for — otherwise players have no way of knowing the jackpot exists
+    if (newTier === TOP_TIER) {
+      const twin = G.pastries.some(b => b !== nb && !b.pastry.dead && b.pastry.tier === TOP_TIER && b.pastry.golden !== newGolden);
+      if (newGolden) {
+        FX.banner('Golden Wedding Cake!', twin ? 'Touch it to the Wedding Cake for the JACKPOT!' : 'Merge it with a Wedding Cake for the JACKPOT', { gold: true, bg: 'rgba(150,92,0,0.93)', max: 3200 });
+        FX.doFlash(0.35, '255,238,170'); for (let i = 0; i < 18; i++) FX.star(x, y, 90, 2);
+        Sfx.golden(); haptic([20, 30, 50]);
+      } else if (twin) {
+        FX.banner('Wedding Cake!', 'Touch it to your golden one for the JACKPOT!', { gold: true, bg: 'rgba(150,92,0,0.93)', max: 2800 });
+      }
+    }
   }
 
   // feedback
   const T0 = TIER_DEFS[t], pan = (mx / W - 0.5) * 0.8;
-  FX.burst(fxX, fxY, Math.max(0, newTier), golden || special === 'gold', 1);
-  FX.text(fxX, fxY - Math.min(40, T0.r * 0.6), '+' + fmt(pts), {
+  FX.burst(fxX, fxY, special === 'jackpot' ? TOP_TIER : Math.max(0, newTier), golden || special === 'gold', special === 'jackpot' ? 1.6 : 1);
+  if (special !== 'jackpot') FX.text(fxX, fxY - Math.min(40, T0.r * 0.6), '+' + fmt(pts), {   // the jackpot's counter is part of its show
     size: Math.round(15 + Math.min(t, 10) * 1.1 + (golden ? 4 : 0)),
     col: golden ? '#b87800' : '#6b3410',
     sub: G.chain >= 2 ? `COMBO ×${G.chain}` : null,
@@ -1787,20 +2126,26 @@ function doMerge(a, b) {
     FX.banner('Golden Cookie!', first ? 'Gold merges with plain pastries · ×10 points' : '×10 points for every golden merge', { gold: true, bg: 'rgba(150,92,0,0.93)', max: 2600 });
     Sfx.golden(); haptic([30, 40, 70]);
   } else if (special === 'jackpot') {
-    G.jackpots++;
-    G.slowUntil = G.rtime + 900;
+    // records: this run's biggest, the lifetime count and the lifetime biggest (title screen)
+    const d = G.disc, first = !(d.jackpots | 0), record = pts > (d.bestJackpot | 0);
+    G.jackpots++; G.bestJackpot = Math.max(G.bestJackpot, pts);
+    d.jackpots = (d.jackpots | 0) + 1; if (record) d.bestJackpot = pts; store.set('bm.disc', d);
+    UI.flashLadder(TIER_DEFS.length);
     FX.doFlash(0.85, '255,236,160'); FX.confetti(mx, my, 160, 1.3); FX.shake(0.9);
     for (let i = 0; i < 40; i++) FX.star(mx, my, 110, 3);
     FX.ring(mx, my, 20, 260, '255,215,80', 8, 900);
-    FX.banner('JACKPOT!', '+' + fmt(pts) + ' points', { gold: true, bg: 'rgba(150,92,0,0.93)', max: 2800 });
-    Sfx.jackpot(); haptic([40, 50, 90, 50, 120]);
+    haptic([40, 50, 90, 50, 120]);
+    // the show (slow motion, letters, counter, fireworks, the cheering bakery, then the golden bakery level-up)
+    Jackpot.start({ x: mx, y: my, pts, mult: G.mult, level: Math.min(3, G.jackpots), badge: first ? 'YOUR FIRST JACKPOT!' : record ? 'NEW RECORD!' : null });
+    // let the celebration land before the floor opens (released in physicsStep)
+    G.gateHoldUntil = G.rtime + JACKPOT_HOLD;
   }
 
   G.merges += gateCount; G.badgePop = G.rtime;
   if (G.state === 'play') {
     const left = G.req - G.merges;
     if (left > 0 && left <= 3) Sfx.tick();
-    if (left <= 0) openGate();
+    if (left <= 0 && !G.gateHoldUntil) openGate();
   }
   UI.onScore();
 }
@@ -2042,6 +2387,12 @@ function physicsStep() {
   G.time += STEP;
   sanitize();
   if (G.state !== 'over') collectMerges();
+  if (Jackpot.active) Jackpot.hop();   // the cheering wave
+  // a jackpot holds the gate for a moment so the celebration isn't cut short by the stage change
+  if (G.gateHoldUntil && G.rtime >= G.gateHoldUntil) {
+    G.gateHoldUntil = 0;
+    if (G.state === 'play' && G.merges >= G.req) openGate();
+  }
   checkDanger(STEP);
 }
 
@@ -2102,6 +2453,7 @@ const Render = {
     if (G.gate) this.gate(c, G.gate, true);
     this.pastries(c);
     FX.drawWorld(c);
+    Jackpot.drawWorld(c);
     this.rails(c);
     this.held(c);
     this.dangerBadge(c);
@@ -2109,29 +2461,48 @@ const Render = {
     c.restore();
     this.overlay(c);
     FX.drawScreen(c, VW, VH);
+    Jackpot.draw(c, VW, VH);
   },
 
   background(c) {
-    const y0 = this.view.top - 20, y1 = this.view.bot + 20;
+    const y0 = this.view.top - 20, y1 = this.view.bot + 20, L = G.goldLevel || 0;
     for (let k = Math.floor(y0 / FH); k <= Math.floor(y1 / FH); k++) {
       const top = k * FH, [a, b] = stageCol(Math.max(0, k));
       c.fillStyle = lg(c, 0, top, 0, top + FH, [[0, a], [1, b]]);
       c.fillRect(-RAIL, top, W + RAIL * 2, FH + 1);
       if (this.pattern) { c.fillStyle = this.pattern; c.fillRect(0, top, W, FH + 1); }
+      if (L) {
+        // the golden bakery: warm light falling in from above, a little more with every jackpot
+        c.fillStyle = lg(c, 0, top, 0, top + FH, [[0, `rgba(255,205,70,${0.05 + 0.05 * L})`], [1, `rgba(255,185,50,${0.015 + 0.02 * L})`]]);
+        c.fillRect(-RAIL, top, W + RAIL * 2, FH + 1);
+      }
       if (k >= 0) {
         c.save(); c.font = `700 210px ${FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle';
-        c.fillStyle = 'rgba(120,60,20,0.055)'; c.fillText(String(k + 1), W / 2, top + FH * 0.56); c.restore();
+        c.fillStyle = L ? 'rgba(190,130,20,0.075)' : 'rgba(120,60,20,0.055)'; c.fillText(String(k + 1), W / 2, top + FH * 0.56); c.restore();
       } else this.awning(c, top + FH);
       if (k >= 1 && k !== G.chamber) {
         c.fillStyle = 'rgba(110,55,20,0.18)'; c.fillRect(0, top - 2, W, 4);
       }
     }
+    if (L >= 2) this.sunRays(c, L);
+  },
+  sunRays(c, L) {
+    // golden bakery II+: soft sun rays swaying down into the current chamber
+    const top = fieldTop(), t = G.rtime;
+    c.save(); c.beginPath(); c.rect(0, top - TOP, W, FH + TOP); c.clip();
+    c.translate(W / 2, top - TOP - 30); c.rotate(Math.sin(t * 0.00025) * 0.22);
+    c.fillStyle = `rgba(255,228,120,${L >= 3 ? 0.085 : 0.06})`;
+    for (let i = -4; i <= 4; i++) {
+      const a = i * 0.21 + Math.sin(t * 0.0004 + i) * 0.03;
+      c.beginPath(); c.moveTo(0, 0); c.lineTo(Math.sin(a - 0.035) * 900, Math.cos(a - 0.035) * 900); c.lineTo(Math.sin(a + 0.035) * 900, Math.cos(a + 0.035) * 900); c.closePath(); c.fill();
+    }
+    c.restore();
   },
   awning(c, bottom) {
-    // striped bakery awning at the very top of the world (only visible on stage 1)
+    // striped bakery awning at the very top of the world (only visible on stage 1); gold once the bakery is
     const y = -TOP, h = 20, n = 10, sw = W / n;
     for (let i = 0; i < n; i++) {
-      c.fillStyle = i % 2 ? '#fff6ea' : '#f27c93';
+      c.fillStyle = i % 2 ? '#fff6ea' : G.goldLevel ? '#f2b53a' : '#f27c93';
       c.beginPath(); c.moveTo(i * sw, y); c.lineTo((i + 1) * sw, y); c.lineTo((i + 1) * sw, y + h);
       c.arc((i + 0.5) * sw, y + h, sw / 2, 0, Math.PI); c.closePath(); c.fill();
     }
@@ -2220,11 +2591,14 @@ const Render = {
         for (let k = Math.floor(y0 / FH); k * FH < y0 + h; k++) { c.fillStyle = 'rgba(60,28,10,0.3)'; c.fillRect(x0, k * FH - 3, x1 - x0, 6); }
       }
     }
+    const L = G.goldLevel || 0;
     for (const x of [-RAIL, W]) {
       c.fillStyle = lg(c, x, 0, x + RAIL, 0, x < 0 ? [[0, '#7f4c26'], [0.55, '#b9804d'], [1, '#d39a63']] : [[0, '#d39a63'], [0.45, '#b9804d'], [1, '#7f4c26']]);
       c.fillRect(x, y0, RAIL, h);
       c.fillStyle = 'rgba(60,30,10,0.35)'; c.fillRect(x < 0 ? -1.5 : W, y0, 1.5, h);
-      c.fillStyle = 'rgba(255,230,190,0.25)'; c.fillRect(x + (x < 0 ? 3 : 4), y0, 1.5, h);
+      // the golden bakery: the rails get a gold trim (I), then gold rivets (II)
+      c.fillStyle = L ? 'rgba(255,214,90,0.6)' : 'rgba(255,230,190,0.25)'; c.fillRect(x + (x < 0 ? 3 : 4), y0, L ? 2 : 1.5, h);
+      if (L >= 2) { c.fillStyle = 'rgba(255,222,110,0.75)'; for (let y = Math.floor(y0 / 48) * 48; y < y0 + h; y += 48) { circ(c, x + RAIL / 2 + (x < 0 ? 0.5 : -0.5), y, 1.8); c.fill(); } }
     }
   },
   pastries(c) {
@@ -2327,6 +2701,7 @@ function drawIcon(c, tier, golden, cx, cy, size, opts = {}) {
 const $ = id => document.getElementById(id);
 const ICON_SOUND_ON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>';
 const ICON_SOUND_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>';
+const ICON_STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.8l3.2 6.6 7.2 1-5.2 5.1 1.2 7.2L12 18.3l-6.4 3.4 1.2-7.2L1.6 9.4l7.2-1z"/></svg>';
 
 const UI = {
   ladderDirty: true, flashTier: -1, flashAt: 0, comboTimer: 0, lastScoreTxt: '', pointerDown: false, keys: {},
@@ -2344,7 +2719,7 @@ const UI = {
     this.initVolume();
     this.soundIcon();
     document.querySelectorAll('.ver').forEach(el => { el.textContent = `v${VERSION} · alpha`; });
-    $('title-best').textContent = G.best ? `Best: ${fmt(G.best)}` : '';
+    if (G.best) this.titleBest();
 
     const cv = $('game');
     const toX = e => { const r = cv.getBoundingClientRect(); return ((e.clientX - r.left) / r.width) * VW - RAIL; };
@@ -2521,7 +2896,14 @@ const UI = {
 
   onScore() {
     const el = $('best');
-    el.textContent = fmt(Math.max(G.best, G.score));
+    el.textContent = fmt(Math.max(G.best, G.score - Jackpot.pending()));
+  },
+  // the golden bakery level on the HUD: gold stars in the score label (inline SVG, like the other HUD
+  // icons, so they look the same on every device), gold trim via body[data-gold]
+  onGold() {
+    const L = G.goldLevel | 0;
+    if (L) document.body.dataset.gold = L; else delete document.body.dataset.gold;
+    $('gold-pips').innerHTML = ICON_STAR.repeat(L);
   },
   onStage() {
     $('stage').textContent = G.stage;
@@ -2566,11 +2948,21 @@ const UI = {
     $('st-combo').textContent = '×' + Math.max(1, G.bestChain);
     $('st-gold').textContent = G.goldMade;
     $('st-biggest').textContent = TIER_DEFS[G.maxTier].name;
+    // the jackpot row only appears when there is one to celebrate
+    $('st-jackpot').textContent = `🎉 ${G.jackpots}`;
+    $('st-jackpot-lbl').textContent = `Jackpot${G.jackpots === 1 ? '' : 's'} · biggest +${fmt(G.bestJackpot)}`;
+    $('st-jackpot-wrap').hidden = !(G.jackpots > 0);
     const ic = $('over-icon'), c = ic.getContext('2d');
     c.clearRect(0, 0, ic.width, ic.height);
     drawIcon(c, G.maxTier, false, ic.width / 2, ic.height / 2, ic.width * 0.42, { face: 'happy' });
     $('over').classList.add('show');
-    $('title-best').textContent = `Best: ${fmt(G.best)}`;
+    this.titleBest();
+  },
+  // "Best: …" on the title card, with the lifetime jackpot trophies once there are any
+  titleBest() {
+    const j = G.disc.jackpots | 0, el = $('title-best');
+    el.textContent = `Best: ${fmt(G.best)}`;
+    if (j > 0) { el.appendChild(document.createElement('br')); el.appendChild(document.createTextNode(`🎉 ${j} jackpot${j === 1 ? '' : 's'} · biggest +${fmt(G.disc.bestJackpot | 0)}`)); }
   },
 
   drawLadder() {
@@ -2616,10 +3008,12 @@ const UI = {
   },
 
   frame(rdt) {
-    // score count-up
-    if (this.shownScore !== G.score) {
-      this.shownScore += (G.score - this.shownScore) * (1 - Math.exp(-rdt / 110));
-      if (Math.abs(G.score - this.shownScore) < 1) this.shownScore = G.score;
+    // score count-up (during a jackpot the HUD follows the show's rolling counter)
+    const target = G.score - Jackpot.pending();
+    if (this.shownScore !== target) {
+      this.shownScore += (target - this.shownScore) * (1 - Math.exp(-rdt / 110));
+      if (Math.abs(target - this.shownScore) < 1) this.shownScore = target;
+      if (Jackpot.active) $('best').textContent = fmt(Math.max(G.best, this.shownScore));
       const txt = fmt(this.shownScore);
       if (txt !== this.lastScoreTxt) {
         const grew = txt.length !== this.lastScoreTxt.length;
@@ -2640,7 +3034,8 @@ let lastT = 0, acc = 0;
 function loop(now) {
   const rdt = lastT ? clamp(now - lastT, 0, 100) : 16; lastT = now;
   G.rtime += rdt;
-  const ts = G.rtime < G.slowUntil ? 0.32 : 1;
+  // time scale: the jackpot show runs its own bullet-time curve, other specials a plain slow motion
+  const ts = Jackpot.active ? Jackpot.timeScale() : G.rtime < G.slowUntil ? 0.32 : 1;
   const sim = engine && !G.paused && (UI.inRun() || (G.state === 'over' && G.time - G.overAt < 1500));
   if (sim) {
     acc += rdt * ts;
@@ -2651,6 +3046,7 @@ function loop(now) {
   if (G.queuedDrop && canDrop()) tryDrop();
   if (!G.paused) {
     FX.update(rdt * ts);
+    Jackpot.update(rdt, rdt * ts);
     const kb = (UI.keys.ArrowLeft || UI.keys.KeyA ? -1 : 0) + (UI.keys.ArrowRight || UI.keys.KeyD ? 1 : 0);
     if (kb) G.aimX = clampAim(clampAim(G.aimX, G.cur.tier) + kb * 0.42 * rdt, G.cur.tier);
     G.heldX += (clampAim(G.aimX, G.cur.tier) - G.heldX) * (1 - Math.exp(-rdt / 32));
@@ -2661,6 +3057,11 @@ function loop(now) {
       p.glintAt = G.rtime + 90 + Math.random() * 160;
       const T = TIER_DEFS[p.tier], pt = T.inside[(Math.random() * T.inside.length) | 0], ca = Math.cos(b.angle), sa = Math.sin(b.angle);
       FX.glint(b.position.x + (pt.x * ca - pt.y * sa) * p.scale, b.position.y + (pt.x * sa + pt.y * ca) * p.scale);
+    }
+    // the golden bakery: sparkling motes drift up through the light, more with every level
+    if (G.goldLevel && UI.inRun() && FX.parts.length < 520 && Math.random() < rdt * 0.0045 * G.goldLevel) {
+      const warm = Math.random() < 0.7;
+      FX.add({ k: 'fairy', x: 8 + Math.random() * (W - 16), y: fieldTop() - TOP + 10 + Math.random() * (FH + TOP - 20), vx: 0, vy: -0.006 - Math.random() * 0.01, g: 0, life: 0, max: 3200 + Math.random() * 2800, size: 1.3 + Math.random() * 1.6, col: warm ? '#ffd86a' : '#fff6d6', rot: Math.random() * TAU, sway: 4 + Math.random() * 5 });
     }
   }
   if (engine) Render.frame();

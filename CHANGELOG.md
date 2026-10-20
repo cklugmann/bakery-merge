@@ -6,6 +6,47 @@ version marks a larger iteration and a **patch** marks fixes and tuning.
 The current version is shown on the title and pause screens
 (`VERSION` constant at the top of the script in `index.html`).
 
+## 0.4.2 — The jackpot show & the golden bakery
+
+- **Fixed: the jackpot felt like nothing happened.** Merging a **golden Wedding Cake with a
+  Wedding Cake** has always been the game's *jackpot*: on purpose no new pastry appears — both
+  cakes are cashed in for **+30,000 × stage multiplier** (on top of the regular ×10 golden-merge
+  points, e.g. +41,100 at stage 1, +246,600 at stage 6), two giant cakes' worth of board space
+  is freed and **10 merges** are credited toward the gate. But nothing in the game said so, and
+  all it showed was a small "JACKPOT!" banner that the stage change cut short. Players who
+  expected an item saw two cakes vanish and reported "no reward". The points are unchanged; the
+  experience is new:
+- **The jackpot show** (about four seconds, the floor waits for it): the cakes dissolve in a
+  golden flash and the world drops into deep slow motion with a gentle camera push-in; a spotlight
+  closes in with turning light rays; **J·A·C·K·P·O·T slams in letter by letter**, each on a rising
+  chord tone; a ribbon says **BIG / SUPER / MEGA / ULTRA** from stage 3 / 5 / 7 / 10 on; a flute
+  fanfare; the prize **rolls up slot-machine style** (the score in the HUD climbs with it) under a
+  **firework finale**; **the whole bakery cheers** — every pastry smiles and hops in a wave rolling
+  out from the merge point; a bell *DING* lands the counter; *YOUR FIRST JACKPOT!* / *NEW RECORD!*
+  badges. Every sound cue follows the chord the waltz is on; the music ducks under the show.
+- **The golden bakery — a reward that lasts.** Every jackpot of a run leaves the bakery a little
+  more golden for the rest of that run, up to **level 3** (★ / ★★ / ★★★ next to the score):
+  - *scenery:* warm golden light falls into every chamber (a bit more per level), sparkling motes
+    drift up through it (more per level), the awning and the rails get gold trim, from level 2 soft
+    sun rays sway down into the stage, rivets on the rails, and the HUD's gold trim spreads over
+    all the chips, the ladder and the board.
+  - *music:* the whole soundscape moves **up a semitone per level** — the waltz, your drop melody,
+    the merge bells — and the waltz gains a layer per level: an octave harp double and a music-box
+    twinkle on every bar (I), off-beat glockenspiel sparkle and an octave echo of the flute tune
+    (II), a soft sustained bell chord under every change of harmony (III). The extra layers stay
+    quiet, under the music slider like everything else.
+  - It resets with every new run — it is this run's trophy.
+- **Jackpots are recorded where you can see them:** a gold *Jackpots* tile on the game-over screen
+  (count and this run's biggest, only when you hit one) and a lifetime tally with your biggest
+  jackpot under *Best* on the title screen.
+- **The game explains it now:** the title screen says *Golden Wedding Cake + Wedding Cake =
+  JACKPOT — both cakes cash in for a huge bonus, and your bakery turns golden*; making a golden
+  Wedding Cake gets its own banner (*Merge it with a Wedding Cake for the JACKPOT*), and making a
+  plain one while a golden one is on the board says *Touch it to your golden one for the JACKPOT!*
+- The scoring specials are documented in one place in the code (`GOLD_BONUS`, `JACKPOT_BONUS`,
+  `JACKPOT_HOLD` next to `GOLD_MULT`); the show lives in `Jackpot`, the lasting part in
+  `applyGold` / `Sfx.setGold` / `body[data-gold]`.
+
 ## 0.4.1 — Bakery Merge again
 
 - **The game is called *Bakery Merge* again** — on the title screen, in the side panel
