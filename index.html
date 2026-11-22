@@ -16,6 +16,8 @@
 <!-- physics: local copy first (works offline), CDN as fallback -->
 <script src="vendor/matter.min.js"></script>
 <script>window.Matter || document.write('<script src="https://cdn.jsdelivr.net/npm/matter-js@0.20.0/build/matter.min.js"><\/script>');</script>
+<!-- the Christmas ladder (festive mode, 23 Nov – 6 Jan); the game is plain classic if this file is missing -->
+<script src="festive.js"></script>
 <style>
 @font-face{font-family:"Fredoka";src:url("vendor/fonts/fredoka-latin-wght.woff2") format("woff2");font-weight:300 700;font-style:normal;font-display:swap}
 :root{--ink:#5a2d0c;--ink2:#8a4a1c;--card:#fff8ee;--line:#e9c48f;--accent:#f07a2a;--accent2:#e2531b;--font:"Fredoka","Nunito","Trebuchet MS",system-ui,sans-serif}
@@ -110,6 +112,16 @@ h2{font-weight:700;font-size:2rem;color:#7a3a0e;line-height:1.1}
 .stat.jackpot[hidden]{display:none}
 #over-icon{width:56px;height:56px;display:block;margin:0 auto 2px}
 .hint{font-size:.72rem;color:#b88a5c;margin-top:10px}
+/* festive / classic switch (title + game-over cards, only during the season) */
+.mode-switch{display:inline-flex;gap:2px;background:#f4e1c2;border-radius:999px;padding:3px;margin:6px 0 2px;box-shadow:inset 0 1px 2px rgba(120,60,10,.18)}
+.mode-switch[hidden]{display:none}
+.mode-switch button{font-family:var(--font);font-weight:600;font-size:.84rem;line-height:1;color:#a86a36;background:none;border:0;border-radius:999px;padding:4px 13px 4px 6px;min-height:36px;display:inline-flex;align-items:center;gap:5px;cursor:pointer;transition:background .15s,color .15s}
+.mode-switch button[aria-pressed="true"]{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(120,60,10,.28)}
+.mode-switch button:focus-visible{outline:3px solid rgba(240,122,42,.45);outline-offset:1px}
+.mode-switch canvas{width:26px;height:26px;display:block;flex:none}
+#mode-over{margin-top:12px}
+.mode-note{font-size:.72rem;color:#b88a5c;margin-top:3px;min-height:1em}
+.mode-note[hidden]{display:none}
 /* volume sliders — custom, so touch, mouse and keyboard behave the same everywhere */
 #sound{z-index:60}
 .linkbtn{font-family:var(--font);font-weight:600;font-size:.88rem;color:#b0642a;background:none;border:0;padding:10px 12px 2px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
@@ -159,8 +171,9 @@ h2{font-weight:700;font-size:2rem;color:#7a3a0e;line-height:1.1}
   <div class="card">
     <h1>Bakery<br><span>Merge</span></h1>
     <p class="tag"><span class="nw">Sweet magic,</span> <span class="nw">one drop at a time</span></p>
+    <div class="mode-switch" id="mode-title" role="group" aria-label="Game mode" hidden></div>
     <canvas id="title-cv"></canvas>
-    <ul class="tips">
+    <ul class="tips" id="tips">
       <li>Drop pastries — two of a kind <b>merge</b> into the next one.</li>
       <li>Fill the <b>gate counter</b> and the floor opens: everything falls to the next stage, and every stage raises your <b>points multiplier</b>.</li>
       <li>Two <b>Wedding Cakes</b> turn golden ✨ — gold merges with plain pastries for <b>×10 points</b>.</li>
@@ -206,6 +219,8 @@ h2{font-weight:700;font-size:2rem;color:#7a3a0e;line-height:1.1}
       <div class="stat jackpot" id="st-jackpot-wrap" hidden><b id="st-jackpot">0</b><span id="st-jackpot-lbl">Jackpots</span></div>
     </div>
     <div class="row"><button class="btn" id="btn-again">Play again</button></div>
+    <div class="mode-switch" id="mode-over" role="group" aria-label="Game mode for the next run" hidden></div>
+    <div class="mode-note" id="mode-note" hidden></div>
   </div>
 </div>
 
@@ -255,6 +270,35 @@ const store = {
     try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* ignore */ }
   },
 };
+
+// ── the season ─────────────────────────────────────────────────────
+// Festive (Christmas) mode is offered from 23 November to 6 January inclusive, in the player's
+// local time, every year. Outside that window the game is plain classic and has no switch.
+// For testing on any day:  ?season=on | ?season=off   force the season on or off
+//                          ?date=2026-12-24           pretend it is that day (local noon)
+//                          ?date=2027-01-06T23:59:30  … or that exact local time; the fake clock keeps running
+const Season = (() => {
+  let force = null, fake = null;
+  const t0 = Date.now();
+  try {
+    const q = new URLSearchParams(location.search), s = (q.get('season') || '').toLowerCase();
+    if (s === 'on' || s === '1' || s === 'true') force = true;
+    else if (s === 'off' || s === '0' || s === 'false') force = false;
+    const m = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T ](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/.exec(q.get('date') || '');
+    if (m) { const d = new Date(+m[1], +m[2] - 1, +m[3], m[4] === undefined ? 12 : +m[4], +(m[5] || 0), +(m[6] || 0)); if (!isNaN(d.getTime())) fake = d.getTime(); }
+  } catch (e) { /* no URL API: no overrides */ }
+  const now = () => (fake == null ? new Date() : new Date(fake + (Date.now() - t0)));
+  const inWindow = d => { const m = d.getMonth() + 1, day = d.getDate(); return (m === 11 && day >= 23) || m === 12 || (m === 1 && day <= 6); };
+  const id = d => d.getFullYear() - (d.getMonth() < 6 ? 1 : 0);   // a season is named after the year it starts in
+  return {
+    now, inWindow, id,
+    available() { return force != null ? force : inWindow(now()); },
+    // the player's explicit choice on the switch — remembered for this season only; a new season starts festive again
+    choice() { const c = store.get('bm.season', null); return c && c.y === id(now()) && typeof c.festive === 'boolean' ? c.festive : null; },
+    choose(festive) { store.set('bm.season', { y: id(now()), festive: !!festive }); },
+    wanted() { if (!this.available()) return false; const c = this.choice(); return c == null ? true : c; },
+  };
+})();
 
 // ── geometry ───────────────────────────────────────────────────────
 function ptsCircle(r, n = 96, cx = 0, cy = 0) {
@@ -407,7 +451,7 @@ function strokePts(c, pts) { c.beginPath(); c.moveTo(pts[0].x, pts[0].y); for (l
 // ───────────────────────────────────────────────────────────────────
 //  The ladder. r = nominal half-width in world units.
 // ───────────────────────────────────────────────────────────────────
-const TIER_DEFS = [
+const CLASSIC_TIERS = [
   // 0 ─ COOKIE ──────────────────────────────────────────────────────
   {
     key: 'cookie', name: 'Cookie', r: 14, outline: '#7c461b',
@@ -864,7 +908,24 @@ const TIER_DEFS = [
     },
   },
 ];
-const TOP_TIER = TIER_DEFS.length - 1;
+const TOP_TIER = CLASSIC_TIERS.length - 1;
+
+// ───────────────────────────────────────────────────────────────────
+//  Ladders. The game plays one ladder per run: the classic pastries, or — during the season
+//  (see Season) — the Christmas ladder from festive.js. Both have the same number of tiers and
+//  the same rules; `things` / `tops` / `news` are the words the texts use for them.
+// ───────────────────────────────────────────────────────────────────
+const LADDERS = {
+  classic: { id: 'classic', tiers: CLASSIC_TIERS, things: 'pastries', tops: 'cakes', news: { 3: 'Croissants join the mix!', 4: 'Cinnamon rolls join the mix!' } },
+};
+if (typeof FESTIVE_TIERS !== 'undefined' && Array.isArray(FESTIVE_TIERS) && FESTIVE_TIERS.length === CLASSIC_TIERS.length) {
+  let ok = true;
+  for (let i = 0; i < FESTIVE_TIERS.length; i++) if (!FESTIVE_TIERS[i] || typeof FESTIVE_TIERS[i].paint !== 'function') ok = false;
+  const many = T => T.plural || T.name + 's';
+  if (ok) LADDERS.festive = { id: 'festive', tiers: FESTIVE_TIERS, things: 'treats', tops: 'houses', news: { 3: `${many(FESTIVE_TIERS[4])} join the mix!`, 4: `${many(FESTIVE_TIERS[5])} join the mix!` } };
+}
+let LADDER = LADDERS.classic, TIER_DEFS = LADDER.tiers;   // the ladder in play (switched by setMode)
+const Mode = { festive: false };                           // true while the Christmas ladder and scenery are on
 
 // ───────────────────────────────────────────────────────────────────
 //  Build: hulls, physics polygons, Matter-consistent centre, paths
@@ -905,7 +966,9 @@ function buildTier(T, idx) {
   T.ow = clamp(r * 0.075, 1.6, 3.4);
   T.faceLocal = T.face ? { x: T.face.x * r - T.C.x, y: T.face.y * r - T.C.y, u: T.face.s * r, light: T.face.eye === 'light' } : null;
 }
-TIER_DEFS.forEach(buildTier);
+CLASSIC_TIERS.forEach(buildTier);
+// a broken festive ladder must never take the classic game down with it
+if (LADDERS.festive) { try { LADDERS.festive.tiers.forEach(buildTier); } catch (e) { delete LADDERS.festive; if (window.console) console.error('festive ladder disabled:', e); } }
 
 // ───────────────────────────────────────────────────────────────────
 //  Sprite rendering (cached per pixel ratio)
@@ -986,11 +1049,11 @@ function makeSprite(T, pr, golden) {
 }
 
 const Sprites = {
-  pr: 0, normal: [], gold: [],
+  pr: 0, ladder: null, normal: [], gold: [],
   ensure(pr) {
     pr = Math.round(pr * 4) / 4;
-    if (pr === this.pr) return;
-    this.pr = pr;
+    if (pr === this.pr && this.ladder === LADDER) return;
+    this.pr = pr; this.ladder = LADDER;
     this.normal = TIER_DEFS.map(T => makeSprite(T, pr, false));
     this.gold = new Array(TIER_DEFS.length).fill(null);
   },
@@ -1002,7 +1065,7 @@ const Sprites = {
   // silhouette (for "undiscovered" ladder slots)
   silhouettes: {},
   silhouette(tier, pr, color) {
-    const key = tier + '|' + pr + '|' + color;
+    const key = LADDER.id + '|' + tier + '|' + pr + '|' + color;
     if (this.silhouettes[key]) return this.silhouettes[key];
     const s = makeSprite(TIER_DEFS[tier], pr, false), c = s.cv.getContext('2d');
     c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'source-in'; c.fillStyle = color; c.fillRect(0, 0, s.cv.width, s.cv.height);
@@ -1152,6 +1215,7 @@ const Sfx = (() => {
   // the golden bakery (see applyGold): after each jackpot of a run the whole soundscape — tune,
   // drops, merges — moves up a semitone and the waltz gains a layer (0 … 3)
   let gold = 0, transpose = 0;
+  let festive = false;               // festive mode: Christmas layers (see setFestive)
   const hz = m => 440 * Math.pow(2, (m + transpose - 69) / 12);
   function out(dest, pan) {
     if (pan && ac.createStereoPanner) { const p = ac.createStereoPanner(); p.pan.value = clamp(pan, -0.7, 0.7); p.connect(dest); return p; }
@@ -1429,6 +1493,9 @@ const Sfx = (() => {
     // the golden bakery level (0 … 3): key up one semitone per level, extra layers in the waltz
     setGold(level) { gold = clamp(level | 0, 0, 3); transpose = gold; },
     get gold() { return gold; },
+    // festive mode (see setMode): the Christmas colours of the soundscape
+    setFestive(on) { festive = !!on; },
+    get festive() { return festive; },
     duckMusic(sec) {   // pull the music down under the show and bring it back afterwards
       if (!ac || !musicBus) return;
       const t = ac.currentTime, full = curve(vol.music) * MUSIC_MAX;
@@ -1470,7 +1537,7 @@ const FX = {
     const T = TIER_DEFS[tier], s = 0.6 + T.r / 45;
     const n = Math.round((10 + tier * 2.2) * scale);
     const cols = golden ? ['#ffd84a', '#fff4b8', '#e8a817', '#ffffff'] : T.crumbs;
-    const sprinkly = !golden && (T.key === 'donut' || T.key === 'cupcake');
+    const sprinkly = !golden && (T.key === 'donut' || T.key === 'cupcake' || !!T.sprinkles);
     for (let i = 0; i < n; i++) {
       const a = Math.random() * TAU, sp = (0.06 + Math.random() * 0.22) * (0.7 + s * 0.4);
       this.add({
@@ -1618,6 +1685,7 @@ const FX = {
       c.font = `700 34px ${FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle';
       const tw = Math.max(c.measureText(b.title).width, b.sub ? (c.font = `600 15px ${FONT}`, c.measureText(b.sub).width) : 0) + 44;
       const bh = b.sub ? 86 : 60;
+      if (Mode.festive && tw > w - 12) { const k = (w - 12) / tw; c.scale(k, k); }   // the Christmas names are longer: never wider than the board
       c.fillStyle = b.bg; c.beginPath(); c.roundRect(-tw / 2, -bh / 2, tw, bh, 20); c.fill();
       if (b.gold) { c.strokeStyle = 'rgba(255,230,140,0.9)'; c.lineWidth = 3; c.stroke(); }
       c.font = `700 34px ${FONT}`; c.lineJoin = 'round';
@@ -1819,7 +1887,7 @@ const Jackpot = {
     }
     // what just happened
     if (t >= this.SUB_AT) {
-      const q = clamp((t - this.SUB_AT) / 300, 0, 1), txt = `Stage ×${o.mult} · both cakes cashed in`;
+      const q = clamp((t - this.SUB_AT) / 300, 0, 1), txt = `Stage ×${o.mult} · both ${LADDER.tops} cashed in`;
       c.save(); c.globalAlpha = fade * q; c.translate(cx, cy + 84 + (1 - q) * 8);
       c.font = `600 16px ${FONT}`;
       c.strokeStyle = '#4a2000'; c.lineWidth = 5; c.strokeText(txt, 0, 0);
@@ -1893,7 +1961,6 @@ function spawnWeights(stage) {
   if (stage === 5) return [20, 21, 20, 18, 13, 8];
   return [19, 20, 19, 17, 14, 11];
 }
-const STAGE_NEWS = { 3: 'Croissants join the mix!', 4: 'Cinnamon rolls join the mix!' };
 // rounder, more fluid feel: lower rotational inertia than Matter's default (4) so pastries roll
 // and settle like in Suika-style games instead of locking into place
 if (window.Matter) Matter.Body._inertiaScale = 1.6;
@@ -1916,9 +1983,33 @@ const G = {
   pastries: [], walls: [], overAt: 0, queuedDrop: false,
   maxTier: 0, goldMade: 0, jackpots: 0, bestJackpot: 0, goldLevel: 0, badgePop: 0,
   // discovered pastries (shown on the title screen) + lifetime golden / jackpot trophies
-  disc: (() => { const d = store.get('bm.disc', null) || {}; const t = Array.isArray(d.tiers) ? d.tiers : []; for (let i = 0; i < 4; i++) t[i] = true; return { tiers: t, gold: !!d.gold, jackpots: Math.max(0, d.jackpots | 0), bestJackpot: Math.max(0, d.bestJackpot | 0) }; })(),
+  disc: loadDisc('bm.disc'),
   debug: /[?&]debug/.test(location.search),
 };
+// Saved progress is kept per mode: the classic best score and discoveries stay in bm.best / bm.disc,
+// exactly as they always were; the Christmas ladder has its own pair, which waits for next year.
+const SAVE = { classic: { best: 'bm.best', disc: 'bm.disc' }, festive: { best: 'bm.xmas.best', disc: 'bm.xmas.disc' } };
+function loadDisc(key) { const d = store.get(key, null) || {}; const t = Array.isArray(d.tiers) ? d.tiers : []; for (let i = 0; i < 4; i++) t[i] = true; return { tiers: t, gold: !!d.gold, jackpots: Math.max(0, d.jackpots | 0), bestJackpot: Math.max(0, d.bestJackpot | 0) }; }
+const saveDisc = () => store.set(SAVE[LADDER.id].disc, G.disc);
+const saveBest = () => store.set(SAVE[LADDER.id].best, G.best);
+
+// Switch between the classic and the festive game. Only ever called between runs (boot, the switch
+// on the title card, the start of a run), so a run always finishes in the mode it started in.
+function setMode(festive) {
+  festive = !!festive && !!LADDERS.festive;
+  const apply = on => {
+    LADDER = on ? LADDERS.festive : LADDERS.classic; TIER_DEFS = LADDER.tiers; Mode.festive = on;
+    if (Sprites.pr) { const pr = Sprites.pr; Sprites.pr = 0; Sprites.ensure(pr); }
+  };
+  try { apply(festive); } catch (e) { delete LADDERS.festive; festive = false; apply(false); if (window.console) console.error('festive ladder disabled:', e); }
+  if (festive) document.body.dataset.season = 'xmas'; else delete document.body.dataset.season;
+  G.best = store.get(SAVE[LADDER.id].best, 0); G.disc = loadDisc(SAVE[LADDER.id].disc);
+  Sfx.setFestive(festive);
+  if (Render.c) Render.makePattern(Render.scale * Render.dpr);
+  UI.onMode();
+}
+// festive mode is on offer: it is the season (or forced by URL) and the Christmas ladder loaded
+const festiveOffered = () => !!LADDERS.festive && Season.available();
 const fieldTop = (k = G.chamber) => k * FH;
 const floorY = (k = G.chamber) => (k + 1) * FH;
 const camFor = k => k * FH - TOP;
@@ -2026,7 +2117,7 @@ function tryDrop() {
   const b = createPastry(tier, G.cur.golden, x, heldY(tier));
   Body.setVelocity(b, { x: 0, y: 1.2 });
   reach(tier);
-  if (!G.disc.tiers[tier]) { G.disc.tiers[tier] = true; store.set('bm.disc', G.disc); }
+  if (!G.disc.tiers[tier]) { G.disc.tiers[tier] = true; saveDisc(); }
   G.heldX = x;
   G.cur = { tier: G.next.tier, golden: false };
   G.next = { tier: pickTier() };
@@ -2085,7 +2176,7 @@ function doMerge(a, b) {
     fxX = x; fxY = y;
     if (!newGolden) reach(newTier);
     if (!newGolden && !G.disc.tiers[newTier]) {
-      G.disc.tiers[newTier] = true; store.set('bm.disc', G.disc);
+      G.disc.tiers[newTier] = true; saveDisc();
       FX.text(W / 2, fieldTop() + 46, `New: ${T.name}!`, { size: 22, col: '#b4461a', max: 1600, vy: -0.02, tag: 'disc' });
       Sfx.discover();
     }
@@ -2094,11 +2185,11 @@ function doMerge(a, b) {
     if (newTier === TOP_TIER) {
       const twin = G.pastries.some(b => b !== nb && !b.pastry.dead && b.pastry.tier === TOP_TIER && b.pastry.golden !== newGolden);
       if (newGolden) {
-        FX.banner('Golden Wedding Cake!', twin ? 'Touch it to the Wedding Cake for the JACKPOT!' : 'Merge it with a Wedding Cake for the JACKPOT', { gold: true, bg: 'rgba(150,92,0,0.93)', max: 3200 });
+        FX.banner(`Golden ${T.name}!`, twin ? `Touch it to the ${T.name} for the JACKPOT!` : `Merge it with a ${T.name} for the JACKPOT`, { gold: true, bg: 'rgba(150,92,0,0.93)', max: 3200 });
         FX.doFlash(0.35, '255,238,170'); for (let i = 0; i < 18; i++) FX.star(x, y, 90, 2);
         Sfx.golden(); haptic([20, 30, 50]);
       } else if (twin) {
-        FX.banner('Wedding Cake!', 'Touch it to your golden one for the JACKPOT!', { gold: true, bg: 'rgba(150,92,0,0.93)', max: 2800 });
+        FX.banner(`${T.name}!`, 'Touch it to your golden one for the JACKPOT!', { gold: true, bg: 'rgba(150,92,0,0.93)', max: 2800 });
       }
     }
   }
@@ -2122,14 +2213,14 @@ function doMerge(a, b) {
     FX.doFlash(0.7, '255,238,170'); FX.confetti(fxX, fxY, 90); FX.shake(0.6);
     for (let i = 0; i < 26; i++) FX.star(fxX, fxY, 70, 2.2);
     const first = !G.disc.gold;
-    if (first) { G.disc.gold = true; store.set('bm.disc', G.disc); UI.ladderDirty = true; }
-    FX.banner('Golden Cookie!', first ? 'Gold merges with plain pastries · ×10 points' : '×10 points for every golden merge', { gold: true, bg: 'rgba(150,92,0,0.93)', max: 2600 });
+    if (first) { G.disc.gold = true; saveDisc(); UI.ladderDirty = true; }
+    FX.banner(`Golden ${TIER_DEFS[0].name}!`, first ? `Gold merges with plain ${LADDER.things} · ×10 points` : '×10 points for every golden merge', { gold: true, bg: 'rgba(150,92,0,0.93)', max: 2600 });
     Sfx.golden(); haptic([30, 40, 70]);
   } else if (special === 'jackpot') {
     // records: this run's biggest, the lifetime count and the lifetime biggest (title screen)
     const d = G.disc, first = !(d.jackpots | 0), record = pts > (d.bestJackpot | 0);
     G.jackpots++; G.bestJackpot = Math.max(G.bestJackpot, pts);
-    d.jackpots = (d.jackpots | 0) + 1; if (record) d.bestJackpot = pts; store.set('bm.disc', d);
+    d.jackpots = (d.jackpots | 0) + 1; if (record) d.bestJackpot = pts; saveDisc();
     UI.flashLadder(TIER_DEFS.length);
     FX.doFlash(0.85, '255,236,160'); FX.confetti(mx, my, 160, 1.3); FX.shake(0.9);
     for (let i = 0; i < 40; i++) FX.star(mx, my, 110, 3);
@@ -2181,7 +2272,7 @@ function updateGate(dt) {
     G.chain = 0;
     Sfx.gateOpen(); haptic(25);
     setTimeout(() => Sfx.spell(), 60);
-    FX.banner(`Stage ${G.stage}`, `Points ×${G.mult}` + (STAGE_NEWS[G.stage] ? ' · ' + STAGE_NEWS[G.stage] : ''), { max: 2200, y: 0.13 });
+    FX.banner(`Stage ${G.stage}`, `Points ×${G.mult}` + (LADDER.news[G.stage] ? ' · ' + LADDER.news[G.stage] : ''), { max: 2200, y: 0.13 });
     UI.onStage();
   }
   const g = G.gate;
@@ -2374,7 +2465,7 @@ function gameOver() {
   if (G.state === 'over') return;
   G.state = 'over'; G.overAt = G.time;
   const isBest = G.score > G.best;
-  if (isBest) { G.best = G.score; store.set('bm.best', G.best); }
+  if (isBest) { G.best = G.score; saveBest(); }
   Sfx.gameOver(); haptic([40, 60, 40]); FX.shake(0.4);
   setTimeout(() => UI.showOver(isBest), 1000);
 }
@@ -2720,6 +2811,7 @@ const UI = {
     this.soundIcon();
     document.querySelectorAll('.ver').forEach(el => { el.textContent = `v${VERSION} · alpha`; });
     if (G.best) this.titleBest();
+    this.initModeSwitch();
 
     const cv = $('game');
     const toX = e => { const r = cv.getBoundingClientRect(); return ((e.clientX - r.left) / r.width) * VW - RAIL; };
@@ -2755,6 +2847,8 @@ const UI = {
   start() {
     ['title', 'over', 'pause'].forEach(id => $(id).classList.remove('show'));
     this.titleOn = false;
+    // the mode is settled here, between runs: the player's choice while the season lasts, classic once it is over
+    if ((festiveOffered() && Season.wanted()) !== Mode.festive) setMode(Season.wanted());
     newRun();
     this.shownScore = 0; this.lastScoreTxt = '0'; $('score').textContent = '0'; this.fitScore(); this.ladderDirty = true;
     this.onScore(); this.onStage(); this.onNext();
@@ -2842,6 +2936,7 @@ const UI = {
     const k = e.code;
     this.keys[k] = down;
     if (!down) return;
+    if ((k === 'Space' || k === 'Enter') && e.target && e.target.closest && e.target.closest('.mode-switch')) return;   // the focused switch button handles it
     if (k === 'Space' || k === 'Enter' || k === 'ArrowDown' || k === 'KeyS') {
       e.preventDefault();
       if (e.repeat) return;
@@ -2955,8 +3050,64 @@ const UI = {
     const ic = $('over-icon'), c = ic.getContext('2d');
     c.clearRect(0, 0, ic.width, ic.height);
     drawIcon(c, G.maxTier, false, ic.width / 2, ic.height / 2, ic.width * 0.42, { face: 'happy' });
+    this.syncModeSwitch();
     $('over').classList.add('show');
     this.titleBest();
+  },
+
+  // ── festive / classic switch ──────────────────────────────────────
+  // Two segments, each with a treat from its ladder as an icon. On the title card the game
+  // changes at once; on the game-over card the finished run stays as it is and the choice
+  // applies to the next run.
+  initModeSwitch() {
+    document.querySelectorAll('.mode-switch').forEach(box => {
+      box.innerHTML = [['festive', 'Christmas'], ['classic', 'Classic']].map(([m, name]) => `<button type="button" data-mode="${m}" aria-pressed="false"><canvas width="52" height="52" aria-hidden="true"></canvas>${name}</button>`).join('');
+      box.querySelectorAll('button').forEach(b => { b.onclick = e => { Sfx.unlock(); Sfx.ui(); this.chooseMode(b.dataset.mode === 'festive'); if (e.detail && b.blur) b.blur(); }; });
+    });
+    this.syncModeSwitch();
+  },
+  chooseMode(festive) {
+    if (!festiveOffered()) { this.syncModeSwitch(); return; }
+    Season.choose(festive);
+    if (G.state === 'idle') setMode(Season.wanted()); else this.syncModeSwitch();
+  },
+  syncModeSwitch() {
+    const offered = festiveOffered(), want = offered && Season.wanted();
+    document.querySelectorAll('.mode-switch').forEach(box => {
+      box.hidden = !offered;
+      box.querySelectorAll('button').forEach(b => {
+        const festive = b.dataset.mode === 'festive';
+        b.setAttribute('aria-pressed', String(festive === want));
+        const L = festive ? LADDERS.festive : LADDERS.classic, cv = b.querySelector('canvas');
+        if (!L || !cv || cv.dataset.done === L.id) return;
+        // a little icon from that ladder's own sprite code (painted once)
+        try {
+          const T = L.tiers[festive ? 4 : 3], sp = makeSprite(T, 2, false), c = cv.getContext('2d'), s = (cv.width * 0.46) / (Math.max(T.bbox.w, T.bbox.h) / 2);
+          c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height);
+          c.translate(cv.width / 2, cv.height / 2); c.scale(s, s); c.translate(-(T.bbox.minX + T.bbox.maxX) / 2, -(T.bbox.minY + T.bbox.maxY) / 2);
+          c.drawImage(sp.cv, sp.x, sp.y, sp.w, sp.h); drawFace(c, T, 'normal', false);
+          cv.dataset.done = L.id;
+        } catch (e) { /* no icon, the label is enough */ }
+      });
+    });
+    const note = $('mode-note');
+    note.hidden = !(offered && G.state === 'over' && want !== Mode.festive);
+    if (!note.hidden) note.textContent = want ? 'Your next run is a Christmas one' : 'Your next run is a classic one';
+  },
+  // the mode changed (setMode): everything on the page that names or shows the ladder
+  onMode() {
+    const top = TIER_DEFS[TOP_TIER].name, things = LADDER.things;
+    $('tips').innerHTML = [
+      `Drop ${things} — two of a kind <b>merge</b> into the next one.`,
+      'Fill the <b>gate counter</b> and the floor opens: everything falls to the next stage, and every stage raises your <b>points multiplier</b>.',
+      `Two <b>${top}s</b> turn golden ✨ — gold merges with plain ${things} for <b>×10 points</b>.`,
+      `Golden ${top} + ${top} = <b>JACKPOT</b> — both ${LADDER.tops} cash in for a huge bonus, and your bakery turns golden.`,
+      "Don't let the pile rest above the red line.",
+    ].map(t => `<li>${t}</li>`).join('');
+    if (G.best || (G.disc.jackpots | 0)) this.titleBest(); else $('title-best').textContent = '';
+    this.syncModeSwitch();
+    this.ladderDirty = true;
+    this.onScore(); this.onNext();
   },
   // "Best: …" on the title card, with the lifetime jackpot trophies once there are any
   titleBest() {
@@ -3075,6 +3226,7 @@ function boot() {
   ld.remove();
   Render.init($('game'));
   UI.init();
+  setMode(Season.wanted());
   newRun(); G.state = 'idle';
   UI.layout();
   UI.onStage(); UI.onNext();
