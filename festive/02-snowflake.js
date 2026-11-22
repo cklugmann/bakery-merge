@@ -27,6 +27,7 @@ FESTIVE_TIERS[2] = {
     c.fillStyle = rg(c, -0.25 * r, -0.3 * r, 0, 0, 0, r, [[0, '#f6d79c'], [0.6, '#e8b56e'], [0.88, '#d4954c'], [1, '#b8763a']]);
     c.fillRect(-2 * r, -2 * r, 4 * r, 4 * r);
     speckle(c, R, 40, inDisc(0.95 * r), R => `rgba(140,78,28,${0.15 + R() * 0.2})`, r * 0.012, r * 0.025);
+    c.strokeStyle = 'rgba(255,238,205,0.3)'; c.lineWidth = 0.05 * r; circ(c, 0, 0, 0.88 * r); c.stroke();
     c.strokeStyle = 'rgba(255,236,196,0.55)'; c.lineWidth = 0.04 * r; c.lineCap = 'round';
     c.beginPath(); c.arc(0, 0, 0.87 * r, 3.3, 4.75); c.stroke();
     // icing edge path (slightly organic)
