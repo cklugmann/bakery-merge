@@ -3176,7 +3176,11 @@ const UI = {
     }
     this.gateUI();
     if (this.ladderDirty) this.drawLadder();
-    if (this.titleOn && $('title').classList.contains('show')) this.drawTitle();
+    if (this.titleOn && $('title').classList.contains('show')) {
+      this.drawTitle();
+      // a title screen left open while the season starts or ends follows the calendar (checked once a second)
+      if (G.rtime - (this._seasonAt || 0) > 1000) { this._seasonAt = G.rtime; if (G.state === 'idle' && (festiveOffered() && Season.wanted()) !== Mode.festive) setMode(Season.wanted()); else if ($('mode-title').hidden === festiveOffered()) this.syncModeSwitch(); }
+    }
   },
 };
 
