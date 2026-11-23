@@ -21,10 +21,11 @@ The current version is shown on the title and pause screens
   Houses make the Golden Peppermint; a golden Gingerbread House and a plain one are the JACKPOT
   (*both houses cash in*). Chocolate Santas join the mix at stage 3, Mince Pies at stage 4.
 - **It plays like the classic game.** Same rules, spawn odds, points, gate counters and golden
-  chain. Every treat takes up the same room on the board as the pastry it replaces (the collision
-  areas match within half a percent, and six of the eleven shapes are the very same); the two
-  treats built from several parts — the Gingerbread Man and the House — also turn and tip like
-  their classic counterparts.
+  chain. Every treat takes up the same room on the board as the pastry it replaces: six of the
+  eleven collision shapes are the very same, the others match in area within 3 % (the compact
+  Tree Cookie and Chocolate Santa are a touch larger than the Cupcake and the Croissant, because
+  they pack tighter), and the Gingerbread Man and the House turn and tip like the Pretzel and the
+  Wedding Cake.
 - **The bakery on Christmas Eve:** a dusk sky with falling snow and snowdrifts behind the game,
   frost in the corners of the shop window, a snow-covered fir-green awning with a string of fairy
   lights, more lights down the window frame, holly on the gate, wreaths and snowy beams on the
