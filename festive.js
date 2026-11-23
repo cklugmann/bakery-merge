@@ -194,13 +194,7 @@ FESTIVE_TIERS[1] = {
     c.strokeStyle = 'rgba(170,150,135,0.45)'; c.lineWidth = 0.035 * r; c.save(); c.translate(0.01 * r, 0.018 * r); c.stroke(pathFromPts(new Path2D(), inner)); c.restore();
     c.fillStyle = 'rgba(255,255,255,1)'; for (const p of scal) { circ(c, p.x - sc * 0.3, p.y - sc * 0.35, sc * 0.35); c.fill(); }
     c.restore();
-    // ── one red sugar pearl under the face, like a button (two pearls in the lobes sat above the eyes like the ears of a teddy bear) ──
-    {
-      const x = 0, y = (0.47 * this.tilt - W / 2) * r, s0 = 0.085 * r;
-      circ(c, x + 0.015 * r, y + 0.03 * r, s0); c.fillStyle = 'rgba(80,25,5,0.45)'; c.fill();
-      circ(c, x, y, s0); c.fillStyle = rg(c, x - s0 * 0.35, y - s0 * 0.4, 0, x, y, s0, [[0, '#ff9aa6'], [0.5, '#e0304a'], [1, '#9a1228']]); c.fill();
-      circ(c, x - s0 * 0.3, y - s0 * 0.35, s0 * 0.28); c.fillStyle = 'rgba(255,235,238,0.8)'; c.fill();
-    }
+    // (no sugar pearls: next to the live face two in the lobes read as a teddy bear's ears, one below it as a tongue)
     // ── volume (instead of the engine's shading, which would follow the hull) ──
     c.save();
     const frame = new Path2D(); frame.rect(-4 * r, -4 * r, 8 * r, 8 * r); frame.addPath(fig);
