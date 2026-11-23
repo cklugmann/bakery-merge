@@ -1242,13 +1242,14 @@ const Sfx = (() => {
   ];
   const H = { chord: 0, step: 0, lastDrop: -1e9, pending: null };
   const clock = { next: 0, e: 0 };     // counts eighth notes
-  const tones = (lo, hi, ch = H.chord) => { const p = SONG[ch].pcs, out = []; for (let m = lo; m <= hi; m++) if (p.includes(((m % 12) + 12) % 12)) out.push(m); return out; };
+  let CHORDS = SONG;                   // the chords the music in play moves through (festive mode has its own, see XCH)
+  const tones = (lo, hi, ch = H.chord) => { const p = CHORDS[ch].pcs, out = []; for (let m = lo; m <= hi; m++) if (p.includes(((m % 12) + 12) % 12)) out.push(m); return out; };
   const DROP_PATTERN = [0, 2, 4, 3, 5, 4, 2, 1];   // music-box contour over the chord tones
 
-  function build() {
+  function build(given) {   // given: a context that is already playing (see autostart)
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return false;
-    ac = new AC();
+    ac = given || new AC();
     master = ac.createGain(); master.gain.value = muted ? 0 : VOL;
     const comp = ac.createDynamicsCompressor();
     comp.threshold.value = -20; comp.knee.value = 18; comp.ratio.value = 3; comp.attack.value = 0.004; comp.release.value = 0.25;
@@ -1276,6 +1277,30 @@ const Sfx = (() => {
     try { const s = ac.createBufferSource(); s.buffer = ac.createBuffer(1, 1, 22050); s.connect(ac.destination); s.start(0); } catch (e) { /* ignore */ }
     return true;
   }
+  // The title screen has music, so audio is asked for as soon as the page opens — in both modes alike. A browser
+  // grants that only where the player has let this site play sound before (an installed app, a desktop browser that
+  // knows the game). So the context opened here is only a probe: it is taken into use if it really starts playing;
+  // if it stays suspended it is thrown away at the first tap, click or key, and ensure() builds the real one inside
+  // that gesture, exactly as it always did. Until one of the two happens the game behaves as if there were no audio.
+  let probe = null;
+  const dropProbe = () => { const c = probe; probe = null; if (c) { try { c.onstatechange = null; c.close().catch(() => {}); } catch (e) { /* ignore */ } } };
+  function autostart() {
+    if (ac || probe || muted) return;
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      const c = probe = new AC();
+      const adopt = () => {
+        if (probe !== c || c.state !== 'running') return;
+        probe = null; c.onstatechange = null;
+        if (ac || muted) { try { c.close().catch(() => {}); } catch (e) { /* ignore */ } return; }
+        const r0 = Math.random; let a = 0x51ed;   // room and noise from a private generator here: the game's own Math.random() sequence is not drawn on outside a gesture
+        Math.random = () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+        try { build(c); } catch (e) { stale = true; } finally { Math.random = r0; }
+      };
+      c.onstatechange = adopt; adopt();
+    } catch (e) { probe = null; }
+  }
   function teardown() {
     const old = ac; ac = null; bus = musicBus = master = null; ends.length = 0;
     try { if (old) { old.onstatechange = null; old.close().catch(() => {}); } } catch (e) { /* ignore */ }
@@ -1285,6 +1310,7 @@ const Sfx = (() => {
   // so a stale context is thrown away and rebuilt from scratch.
   function ensure() {
     try {
+      dropProbe();   // the page-load attempt was not allowed to play: start afresh inside this gesture
       if (stale) { teardown(); stale = false; }
       if (!ac || ac.state === 'closed') { if (!build()) return false; }
       if (ac.state !== 'running') { const p = ac.resume(); if (p && p.catch) p.catch(() => {}); }
@@ -1303,7 +1329,7 @@ const Sfx = (() => {
   // the golden bakery (see applyGold): after each jackpot of a run the whole soundscape — tune,
   // drops, merges — moves up a semitone and the waltz gains a layer (0 … 3)
   let gold = 0, transpose = 0;
-  let festive = false;               // festive mode: Christmas layers (see setFestive)
+  let festive = false;               // festive mode: the Christmas music and sleigh bells (see setFestive)
   const hz = m => 440 * Math.pow(2, (m + transpose - 69) / 12);
   function out(dest, pan) {
     if (pan && ac.createStereoPanner) { const p = ac.createStereoPanner(); p.pan.value = clamp(pan, -0.7, 0.7); p.connect(dest); return p; }
@@ -1420,7 +1446,7 @@ const Sfx = (() => {
   // strikes, unevenly spaced, re-excites them; successive strikes favour A or B in turn (different bells
   // of the strap get hit), each strike is brightest at its start and adds a tiny band-passed "chink" of
   // the pellets, never twice the same. 4 oscillators + 1 noise source, one voice.
-  //   bells: [a, b], two chord tones (see BELLS)
+  //   bells: [a, b], two chord tones (see XBELLS)
   //   swell: the strikes grow towards the last one (a shake that leads into the next downbeat)
   //   shakes: several shakes an eighth apart, rising and fading (a passing sleigh), panned pan → panTo
   function jingle(bells, { at = 0, vol = 0.01, hits = 2, gap = 0.045, ring = 0.26, swell = false, shakes = 1, pan = 0, panTo = pan, important = false, dest = null } = {}) {
@@ -1464,10 +1490,10 @@ const Sfx = (() => {
     n.start(t, frand() * 0.5); n.stop(last + 0.03);
     ends.push(end);
   }
-  // the two bells per chord (A, B; both chord tones): a different pair on most chords, so the strap is
-  // not one pitched "ting" repeated — C6/9 E+G · A7 C♯+E · Dm7 D+F · G7 B+D · Cmaj7 E+G · E7 E+G♯ · F6 C+F · Fm6 F+A♭
-  const BELLS = [[100, 103], [97, 100], [98, 101], [95, 98], [100, 103], [100, 104], [96, 101], [101, 104]];
-  const bellPair = (ch = H.chord) => BELLS[ch];
+  // the two bells of the strap per chord of the Christmas music (A, B; both chord tones — see XCH), so the strap is not one
+  // pitched "ting" repeated: C6/9 E+G · F6 C+F · G7 B+D · D7 D+F♯ · E7 E+G♯ · Am7 E+G · Dm7 D+F · G6 B+D
+  const XBELLS = [[100, 103], [96, 101], [95, 98], [98, 102], [100, 104], [100, 103], [98, 101], [95, 98]];
+  const bellPair = (ch = H.chord) => XBELLS[ch] || XBELLS[0];
 
   // ── the waltz: look-ahead scheduler on the audio clock ────────────
   // A 16-bar folk tune for the flute, one entry per bar: [[midi, beats], …] (0 = rest)
@@ -1514,40 +1540,119 @@ const Sfx = (() => {
       // III: a soft, sustained bell chord under every change of harmony
       tones(64, 79, ci).slice(0, 3).forEach((m, i) => bell(m, { at: at + i * 0.03, vol: 0.02, dur: 2.6, bright: 0.3, dest: musicBus }));
     }
-    if (festive) festiveEighth(pos, bar, ci, section, at);
   }
-  // ── the festive waltz: the Christmas colours on top of the same waltz ──
-  //   The sleigh bells come and go like a sleigh passing in the distance: they play in some of the
-  //   4-bar phrases only (BELL_PHRASES, a cycle of three loops ≈ 2¼ min, so no two loops in a row
-  //   are alike and there are stretches of 4–8 bars without bells); a swelling shake on the last
-  //   eighth before a phrase announces them.
-  //   first round (harp only): in a bell phrase, one soft shake on beat 2 of each bar (not in the
-  //   fourth bar: the glockenspiel twinkles there); and every loop a soft celesta descant: per chord
-  //   a sighing two-note figure, the line falling step by step (G G F F E D C) and ending on the
-  //   wistful A♭ of the minor chord.
-  //   second round (the flute tune): in a bell phrase, a gentle shake on the downbeats of bars 2–4;
-  //   every loop a celesta answer while the flute holds the last note of a phrase (ANSWER: a third to
-  //   an octave away from the flute's note, at most a soft minor seventh, never doubling it).
-  //   It is decoration: when a third of the voices is all that is left (busy play, gold 3 at a change
-  //   of harmony), it steps aside so the merges and drops always get through.
-  const DESCANT = [[93, 91], [93, 91], [93, 89], [91, 89], [91, 88], [88, 86], [86, 84], [89, 92]];   // per chord: [bar 1 beat 2, bar 2 beat 1]
-  const BELL_PHRASES = [[1, 0, 1, 1, 0, 1, 0, 1], [0, 1, 1, 0, 1, 1, 0, 0], [1, 1, 0, 0, 1, 0, 1, 1]];   // per loop: phrases 1–4 = round 1, 5–8 = round 2
-  const bellsIn = g => BELL_PHRASES[Math.floor(g / 8) % BELL_PHRASES.length][g % 8] === 1;   // g: phrase number since the music started
-  // celesta answers (bar of round 2 → three eighths): over A7 / G7 / E7 / Fm6, the flute holding E6 / D6 / E6 / G5
-  const ANSWER = { 3: [97, 93, 91], 7: [91, 95, 98], 11: [100, 95, 92], 15: [89, 86, 84] };
-  function festiveEighth(pos, bar, ci, section, at) {
-    if (ends.length >= MAX_VOICES - 10) return;    // (live() of this eighth's harp has just pruned `ends`)
-    const pb = bellPair(ci), o = { at, dest: musicBus }, g = Math.floor(bar / 4), inPhrase = bar % 4;
-    if (inPhrase === 3 && pos === 5 && bellsIn(g + 1)) jingle(pb, { ...o, vol: 0.0065, hits: 4, gap: 0.045, ring: 0.3, swell: true, pan: 0.15 });
-    if (section === 0) {
-      if (bellsIn(g) && inPhrase < 3 && pos === 2) jingle(pb, { ...o, vol: 0.007, hits: 3, gap: 0.045, pan: 0.25 });
-      const d = DESCANT[ci];
-      if (bar % 2 === 0 && pos === 2) bell(d[0], { ...o, vol: 0.013, dur: 1.0, bright: 0.35, pan: -0.15 });
-      if (bar % 2 === 1 && pos === 0) bell(d[1], { ...o, vol: 0.014, dur: 1.4, bright: 0.35, pan: -0.15 });
+  // ── festive mode: the Christmas music ─────────────────────────────
+  //   Christmas mode has music of its own: three old carols arranged for the bakery's instruments, in the
+  //   waltz's time and tempo (3/4, 126), so that drops, merges and the jackpot show ride on it exactly as
+  //   they ride on the waltz — they follow XCH, the chord of the bar that is playing.
+  //     intro (2 bars)                          sleigh bells and harp
+  //     "We Wish You a Merry Christmas" (16)    music box and celesta, the sleigh bells trotting along
+  //     bridge (4)                              harp and a celesta sigh; the sleigh has passed
+  //     "O Tannenbaum" (16)                     the flute; the bells return, softly, for its last line
+  //     bridge (4)
+  //     "Silent Night" (24)                     celesta over slow harp chords, no bells: the quiet third
+  //     outro (2)                               a rising shake of bells leads back to the top
+  //   68 bars ≈ 1 min 37 s. The three tunes are traditional (public domain); the arrangement is the game's.
+  //   The classic waltz (playEighth) is not touched by any of this.
+  const XCH = [
+    { pcs: [0, 4, 7, 9, 2], bass: [48, 55] },   // 0 C6/9
+    { pcs: [5, 9, 0, 2], bass: [53, 48] },      // 1 F6
+    { pcs: [7, 11, 2, 5], bass: [55, 50] },     // 2 G7
+    { pcs: [2, 6, 9, 0], bass: [50, 57] },      // 3 D7
+    { pcs: [4, 8, 11, 2], bass: [52, 59] },     // 4 E7
+    { pcs: [9, 0, 4, 7], bass: [57, 52] },      // 5 Am7
+    { pcs: [2, 5, 9, 0], bass: [50, 57] },      // 6 Dm7
+    { pcs: [7, 11, 2, 4], bass: [55, 50] },     // 7 G6
+  ];
+  // Every section: one chord (index into XCH) and one bar of tune ([[midi, beats], …], 0 = rest) per bar.
+  //   voice: who plays the tune · pickup: an upbeat played in the last beat(s) of the bar before the section
+  //   lead: level of the tune · soft: level of the harp under it · acc: harp pattern · glint: celesta sparkle on a new chord
+  //   bells: sleigh bells per bar (one number for all bars, or one per bar): 2 = on every beat, 1 = on the downbeat only
+  const X_TREE = [[[72, 0.75], [72, 0.25], [72, 1], [74, 1]], [[76, 0.75], [76, 0.25], [76, 1.5], [76, 0.5]], [[74, 0.5], [76, 0.5], [77, 1.5], [71, 0.5]]];
+  const X_NIGHT = [[[67, 1.5], [69, 0.5], [67, 1]], [[64, 3]]], X_NIGHT2 = [[[69, 2], [69, 1]], [[72, 1.5], [71, 0.5], [69, 1]], ...X_NIGHT];
+  const XSONG = [
+    { acc: 'waltz', glint: true, bells: 2, chords: [0, 0], tune: [] },
+    { voice: 'box', pickup: [67, 1], acc: 'waltz', soft: 0.8, bells: 2,   // We Wish You a Merry Christmas
+      chords: [0, 1, 3, 7, 4, 5, 2, 0, 0, 7, 5, 7, 5, 0, 2, 0],
+      tune: [
+        [[72, 1], [72, 0.5], [74, 0.5], [72, 0.5], [71, 0.5]], [[69, 1], [69, 1], [69, 1]], [[74, 1], [74, 0.5], [76, 0.5], [74, 0.5], [72, 0.5]], [[71, 1], [67, 1], [67, 1]],
+        [[76, 1], [76, 0.5], [77, 0.5], [76, 0.5], [74, 0.5]], [[72, 1], [69, 1], [67, 0.5], [67, 0.5]], [[69, 1], [74, 1], [71, 1]], [[72, 2], [67, 1]],
+        [[72, 1], [72, 1], [72, 1]], [[71, 2], [71, 1]], [[72, 1], [71, 1], [69, 1]], [[67, 2], [74, 1]],
+        [[76, 1], [74, 1], [72, 1]], [[79, 1], [67, 1], [67, 0.5], [67, 0.5]], [[69, 1], [74, 1], [71, 1]], [[72, 2]],
+      ] },
+    { voice: 'cel', lead: 0.5, acc: 'waltz', glint: true, chords: [0, 5, 1, 2], tune: [[[0, 1], [79, 2]], [[76, 3]], [[0, 1], [77, 2]], [[74, 2]]] },
+    { voice: 'flute', pickup: [67, 1], acc: 'waltz', bells: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1],   // O Tannenbaum
+      chords: [0, 5, 2, 0, 0, 5, 2, 0, 0, 6, 2, 0, 0, 5, 2, 0],
+      tune: [
+        ...X_TREE, [[74, 1], [72, 1], [67, 1]],
+        ...X_TREE, [[74, 1], [72, 1], [0, 0.5], [79, 0.5]],
+        [[79, 0.5], [76, 0.5], [81, 1.5], [79, 0.5]], [[79, 0.5], [77, 0.5], [77, 1.5], [77, 0.5]], [[77, 0.5], [74, 0.5], [79, 1.5], [77, 0.5]], [[77, 0.5], [76, 0.5], [76, 1], [67, 1]],
+        ...X_TREE, [[74, 1], [72, 2]],
+      ] },
+    { voice: 'cel', lead: 0.5, acc: 'waltz', glint: true, chords: [0, 1, 0, 2], tune: [[[0, 1], [76, 2]], [[81, 3]], [[0, 1], [79, 2]], [[74, 2]]] },
+    { voice: 'cel', acc: 'lullaby',   // Silent Night
+      chords: [0, 0, 0, 0, 2, 2, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 2, 2, 0, 5, 0, 2, 0, 0],
+      tune: [
+        ...X_NIGHT, ...X_NIGHT, [[74, 2], [74, 1]], [[71, 3]], [[72, 2], [72, 1]], [[67, 3]],
+        ...X_NIGHT2, ...X_NIGHT2,
+        [[74, 2], [74, 1]], [[77, 1.5], [74, 0.5], [71, 1]], [[72, 3]], [[76, 3]], [[72, 1], [67, 1], [64, 1]], [[67, 1.5], [65, 0.5], [62, 1]], [[60, 3]], [],
+      ] },
+    { acc: 'waltz', glint: true, chords: [1, 2], tune: [] },
+  ];
+  // the loop, bar by bar: { ch, acc, glint, hv, bells, notes: [{ pos (eighth of the bar), off (s after it), m, len, voice, gain }], rep, swell }
+  const XBARS = [];
+  for (const S of XSONG) {
+    const first = XBARS.length;
+    S.chords.forEach((ch, i) => {
+      const notes = []; let beat = 0;
+      for (const [m, len] of S.tune[i] || []) { if (m) notes.push({ beat, m, len, voice: S.voice, gain: S.lead || 1 }); beat += len; }
+      XBARS.push({ ch, acc: S.acc, glint: !!S.glint, hv: S.soft || 1, bells: typeof S.bells === 'number' ? S.bells : (S.bells && S.bells[i]) || 0, notes });
+    });
+    if (S.pickup && first) XBARS[first - 1].notes.push({ beat: 3 - S.pickup[1], m: S.pickup[0], len: S.pickup[1], voice: S.voice, gain: S.lead || 1 });
+  }
+  XBARS.forEach((B, k) => {
+    const P = XBARS[k - 1], N = XBARS[(k + 1) % XBARS.length];
+    B.rep = P && P.ch === B.ch ? P.rep + 1 : 0;          // how many bars this chord has been sounding: the harp rises, then falls
+    B.swell = !B.bells && N.bells ? N.ch : -1;           // bells start in the next bar: a rising shake announces them
+    for (const n of B.notes) { n.pos = Math.floor(n.beat * 2 + 1e-6); n.off = (n.beat * 2 - n.pos) * EIGHTH; }
+  });
+  const XVOICE = {
+    box(m, len, o, g) {   // music box with a shimmer of celesta, an octave above the written tune
+      box(m + 12, { ...o, vol: 0.037 * g, dur: Math.min(1.1, 0.45 + len * 0.3) });
+      bell(m + 12, { ...o, vol: 0.011 * g, dur: 0.5 + len * 0.35, bright: 0.45 });
+    },
+    flute(m, len, o, g) { flute(m, { ...o, vol: 0.026 * g, dur: len * BEAT * 0.92 }); },
+    cel(m, len, o, g) { bell(m + 12, { ...o, vol: 0.03 * g, dur: len * BEAT + 0.9, bright: 0.4 }); },
+  };
+  const X_UP = [0, 2, 4], X_DOWN = [3, 2, 1];   // the slow harp chords under Silent Night (chord-tone indices, one per beat)
+  function playFestive(e, t) {
+    const at = Math.max(0, t - ac.currentTime), pos = e % 6, bar = Math.floor(e / 6), B = XBARS[bar % XBARS.length], ci = B.ch, ch = XCH[ci];
+    const tt = tones(60, 86, ci), o = { at, dest: musicBus }, fall = B.rep % 2, lull = B.acc === 'lullaby';
+    if (lull) {
+      // a lullaby: one harp note per beat, a soft bass on the downbeat
+      if (pos % 2 === 0) harp(tt[(fall ? X_DOWN : X_UP)[pos / 2]], { ...o, vol: pos === 0 ? 0.035 : 0.029, dur: 1.6, pan: (pos - 2) * 0.1 });
+      if (pos === 0) pizz(ch.bass[fall], { ...o, vol: 0.06, dur: 0.5 });
     } else {
-      if (bellsIn(g) && inPhrase > 0 && pos === 0) jingle(pb, { ...o, vol: 0.0068, hits: 3, gap: 0.045, ring: 0.32, pan: 0.2 });
-      const ans = ANSWER[bar % 16];
-      if (ans && pos >= 2 && pos <= 4) bell(ans[pos - 2], { ...o, vol: 0.013, dur: 0.8, bright: 0.4, pan: 0.1 * (pos - 3) });
+      // the waltz's own accompaniment: flowing harp arpeggio and pizzicato bass
+      harp(tt[(fall ? DOWN : UP)[pos]], { ...o, vol: (pos === 0 ? 0.032 : 0.025) * B.hv, dur: 0.9, pan: (pos - 2.5) * 0.08 });
+      if (pos === 0) pizz(ch.bass[fall], { ...o, vol: 0.075 });
+      if (pos === 2 || pos === 4) pizz(ch.bass[0] + 12, { ...o, vol: 0.022, dur: 0.22 });
+    }
+    if (B.glint && pos === 0 && !B.rep) tones(84, 103, ci).slice(0, 4).forEach((m, i) => bell(m, { at: at + 0.02 + i * 0.045, vol: 0.016, dur: 0.6, bright: 0.5, dest: musicBus }));
+    // the tune
+    for (const n of B.notes) if (n.pos === pos) XVOICE[n.voice](n.m, n.len, { at: at + n.off, dest: musicBus }, n.gain);
+    // ── the golden bakery: one more layer per jackpot of the run, as in the waltz ──
+    if (gold >= 1 && pos === 0) {
+      harp(tt[fall ? 4 : 0] + 12, { ...o, vol: 0.016, dur: 0.8 });
+      const hi = tones(91, 103, ci); box(hi[(bar * 5 + 2) % hi.length], { at: at + 0.02, vol: 0.02, dur: 0.5, dest: musicBus });
+    }
+    if (gold >= 2 && (pos === 3 || (pos === 5 && !lull))) { const hi = tones(84, 98, ci); box(hi[(bar + pos) % hi.length], { ...o, vol: 0.018, dur: 0.4, pan: pos === 3 ? -0.2 : 0.2 }); }
+    if (gold >= 3 && pos === 0 && bar % 2 === 0) tones(64, 79, ci).slice(0, 3).forEach((m, i) => bell(m, { at: at + i * 0.03, vol: 0.02, dur: 1.6, bright: 0.3, dest: musicBus }));
+    // ── sleigh bells: decoration, so they step aside when a third of the voices is all that is left ──
+    if (ends.length < MAX_VOICES - 10) {
+      if (B.bells && pos === 0) jingle(XBELLS[ci], { ...o, vol: 0.02, hits: 3, gap: 0.045, ring: 0.3, pan: 0.2 });
+      else if (B.bells > 1 && pos % 2 === 0) jingle(XBELLS[ci], { ...o, vol: 0.013, hits: 2, gap: 0.045, pan: 0.25 });
+      else if (B.swell >= 0 && pos === 5) jingle(XBELLS[B.swell], { ...o, vol: 0.016, hits: 4, gap: 0.045, ring: 0.3, swell: true, pan: 0.15 });
     }
   }
   function schedule() {
@@ -1556,8 +1661,9 @@ const Sfx = (() => {
     if (clock.next < now - 0.2) clock.next = now + 0.06;          // resync after pauses / rebuilds
     while (clock.next < now + 0.3) {
       const e = clock.e, bar = Math.floor(e / 6);
-      if (e % 12 === 0) H.pending = { chord: Math.floor(bar / 2) % SONG.length, at: clock.next };
-      if (musicOn()) playEighth(e, clock.next);
+      if (festive) { if (e % 6 === 0) H.pending = { chord: XBARS[bar % XBARS.length].ch, at: clock.next }; }   // the carols change chord every bar
+      else if (e % 12 === 0) H.pending = { chord: Math.floor(bar / 2) % SONG.length, at: clock.next };
+      if (musicOn()) (festive ? playFestive : playEighth)(e, clock.next);
       clock.next += EIGHTH; clock.e++;
     }
     if (H.pending && now >= H.pending.at - 0.03) { H.chord = H.pending.chord; H.pending = null; }
@@ -1566,6 +1672,7 @@ const Sfx = (() => {
 
   return {
     unlock: ensure,
+    autostart,
     markStale() { if (ac) stale = true; },          // app went to the background
     resumeIfPossible() { try { if (ac && !stale && ac.state !== 'running' && ac.state !== 'closed') ac.resume().catch(() => {}); } catch (e) { /* ignore */ } },
     get muted() { return muted; },
@@ -1681,7 +1788,14 @@ const Sfx = (() => {
     setGold(level) { gold = clamp(level | 0, 0, 3); transpose = gold; },
     get gold() { return gold; },
     // festive mode (see setMode): the Christmas colours of the soundscape
-    setFestive(on) { festive = !!on; },
+    // Each mode has its own music. A change of mode (never during a run) lets the notes already sounding ring out and
+    // starts the other tune from its first bar after a short breath, so the music always matches the game on screen.
+    setFestive(on) {
+      on = !!on; if (on === festive) return;
+      festive = on; CHORDS = on ? XCH : SONG;
+      H.chord = 0; H.pending = null; clock.e = 0;
+      if (ac) clock.next = ac.currentTime + 0.5;
+    },
     get festive() { return festive; },
     duckMusic(sec) {   // pull the music down under the show and bring it back afterwards
       if (!ac || !musicBus) return;
@@ -1700,7 +1814,7 @@ const Sfx = (() => {
     ui() { box(tones(84, 96)[1], { vol: 0.045, dur: 0.35, important: true }); },
     preview() { const tt = tones(74, 90); bell(tt[1], { vol: 0.13, dur: 0.6, bright: 0.55, important: true }); box(tt[3], { at: 0.07, vol: 0.04, dur: 0.4, important: true }); },
     _schedule: schedule,
-    _debug: () => ({ state: ac && ac.state, stale, voices: ends.length, chord: H.chord, step: H.step, eighth: clock.e }),
+    _debug: () => ({ state: ac && ac.state, stale, voices: ends.length, chord: H.chord, step: H.step, eighth: clock.e, festive, probe: probe && probe.state, bars: XBARS.length }),
   };
 })();
 
@@ -3423,6 +3537,7 @@ const UI = {
     // iOS only accepts some events (touchend / click) as permission to (re)start audio:
     // re-arm the audio context on every one of them, so sound can never get stuck off.
     for (const ev of ['touchend', 'pointerup', 'click', 'keydown']) document.addEventListener(ev, () => { if (!Sfx.muted) Sfx.unlock(); }, { capture: true, passive: true });
+    Sfx.autostart();   // title-screen music at once where the browser allows it; otherwise from the first tap, click or key (the line above)
     let rt = 0;
     const onResize = () => { clearTimeout(rt); rt = setTimeout(() => this.layout(), 80); };
     addEventListener('resize', onResize);
