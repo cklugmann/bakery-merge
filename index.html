@@ -3526,7 +3526,7 @@ const UI = {
     if (G.best || (G.disc.jackpots | 0)) this.titleBest(); else $('title-best').textContent = '';
     this.syncModeSwitch();
     this.ladderDirty = true;
-    this.onScore(); this.onNext();
+    this.onNext();   // (the HUD's "Best" is filled in when a run starts, as it always was)
   },
   // "Best: …" on the title card, with the lifetime jackpot trophies once there are any
   titleBest() {
