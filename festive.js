@@ -73,23 +73,25 @@ FESTIVE_TIERS[0] = {
   },
 };
 
-// 1 ─ GINGERBREAD HEART (a Christmas-market gingerbread heart: two round lobes, a pointed tip, a bold white piped scalloped border)
+// 1 ─ GINGERBREAD HEART (a thick Christmas-market gingerbread heart seen a little from above: two round lobes, a pointed tip, a white piped border)
 FESTIVE_TIERS[1] = {
   key: 'heart', name: 'Gingerbread Heart', r: 19, outline: '#5a2810',
-  k: 0.9734,   // drawn 0.97 × its nominal r: the collision outline (the convex hull of the heart) has the classic Macaron's area
-  // The heart (units of the drawing radius): each side is one convex half, the hull of a lobe, a flank and the pointed
-  // tip [x, y, radius]; a small fillet circle rounds the bottom of the deep cleft between the lobes. The collision is ONE
-  // convex part, the hull of the heart: the sliver over the cleft stays transparent (figurePath, noShade, outlineFn).
-  lobe: [0.5, -0.36, 0.48], flank: [0.34, 0.12, 0.44], tip: [0, 0.88, 0.11], fillet: 0.06,
-  // the outline, pulled in by d (units of r); memoised
-  pts(r, d = 0) {
-    const key = r + '|' + d; this._m = this._m || {};
+  k: 0.958,   // drawn 0.96 × its nominal r: the collision outline (the convex hull of the cookie) has the classic Macaron's area
+  // The top face (units of the drawing radius): each side is one convex half, the hull of a lobe, a flank and the pointed
+  // tip [x, y, radius]; a small fillet circle rounds the bottom of the deep cleft between the lobes. It is squashed to
+  // `tilt` of its height because we look at the cookie a little from above, and below it the cookie's side wall shows,
+  // `wall` deep: the outline is the top face swept down over the wall. The collision is ONE convex part, the hull of that
+  // outline: the sliver over the cleft stays transparent (figurePath, noShade, outlineFn).
+  lobe: [0.5, -0.36, 0.48], flank: [0.34, 0.12, 0.44], tip: [0, 0.88, 0.11], fillet: 0.06, tilt: 0.9, wall: 0.17,
+  // the top face pulled in by d (units of r); memoised
+  top(r, d = 0) {
+    const key = 't' + r + '|' + d; this._m = this._m || {};
     if (this._m[key]) return this._m[key];
     let P;
     if (d) {
       // every point moved in along its normal; where that would fold over itself (d beyond the local radius, at the tip)
       // the folded points are dropped and the little loop that remains is cut off where the line crosses itself
-      const B = this.pts(r), n = B.length, s = (polyArea(B) > 0 ? 1 : -1) * d * r;
+      const B = this.top(r), n = B.length, s = (polyArea(B) > 0 ? 1 : -1) * d * r;
       const Q = B.map((p, i) => { const a = B[(i + n - 1) % n], b = B[(i + 1) % n], L = Math.hypot(b.x - a.x, b.y - a.y) || 1; return { x: p.x - ((b.y - a.y) / L) * s, y: p.y + ((b.x - a.x) / L) * s }; });
       P = Q.filter((q, i) => { const a = (i + n - 1) % n, b = (i + 1) % n; return (Q[b].x - Q[a].x) * (B[b].x - B[a].x) + (Q[b].y - Q[a].y) * (B[b].y - B[a].y) > 0; });
       const hit = (a, b, p, q) => {
@@ -125,64 +127,93 @@ FESTIVE_TIERS[1] = {
         let t;
         if (an >= aL && an <= aR) { const b = dy * yc; t = b - Math.sqrt(Math.max(0, b * b - yc * yc + f * f)); }
         else t = Math.max(ray(halves[0], dx, dy), ray(halves[1], dx, dy));
-        P.push({ x: dx * t, y: dy * t });
+        P.push({ x: dx * t, y: dy * t * this.tilt - (this.wall / 2) * r });
       }
     }
     return (this._m[key] = P);
   },
-  shape(r) { return [this.pts(r)]; },   // one convex part: the engine takes the hull of the heart
+  // the whole cookie: rays from the centre, along each the farthest edge of the top face swept down over the wall
+  pts(r) {
+    const key = 'o' + r; this._m = this._m || {};
+    if (this._m[key]) return this._m[key];
+    const T0 = this.top(r), copies = []; for (let i = 0; i <= 8; i++) { const t = (this.wall * i * r) / 8; copies.push(T0.map(p => ({ x: p.x, y: p.y + t }))); }
+    const P = [];
+    for (let i = 0; i < 360; i++) {
+      const a = -Math.PI / 2 + (i / 360) * TAU, dx = Math.cos(a), dy = Math.sin(a); let best = 0;
+      for (const Q of copies) for (let k = 0; k < Q.length; k++) {
+        const A = Q[k], B = Q[(k + 1) % Q.length], ex = B.x - A.x, ey = B.y - A.y, den = dx * ey - dy * ex;
+        if (Math.abs(den) < 1e-12) continue;
+        const t = (A.x * ey - A.y * ex) / den, u = (A.x * dy - A.y * dx) / den;
+        if (t > best && u >= -1e-9 && u <= 1 + 1e-9) best = t;
+      }
+      P.push({ x: dx * best, y: dy * best });
+    }
+    return (this._m[key] = P);
+  },
+  shape(r) { return [this.pts(r)]; },   // one convex part: the engine takes the hull of the cookie
   figurePath(r) { return pathFromPts(new Path2D(), this.pts(r)); },
-  noShade: true,   // the engine would shade the hull; paint() shades along the heart itself
-  face: { x: 0, y: 0.06, s: 0.44 },
-  crumbs: ['#d08c4c', '#8a4a1c', '#ffffff', '#e8334a'],
+  noShade: true,   // the engine would shade the hull; paint() shades along the cookie itself
+  face: { x: 0, y: -0.03, s: 0.44 },
+  crumbs: ['#c67d3d', '#8a4a1c', '#ffffff', '#e8334a'],
   paint(c, r, R, T, pr = 1) {
-    const fig = this.figurePath(r);
+    const fig = this.figurePath(r), top = pathFromPts(new Path2D(), this.top(r)), W = this.wall;
+    const inFig = R => ({ x: (R() * 2 - 1) * r, y: lerp(-0.85, 0.95, R()) * r });
     c.save(); c.clip(fig);
-    // ── gingerbread: a light, warm honey-ginger brown, lit from the top left ──
-    c.fillStyle = lg(c, -0.7 * r, -0.9 * r, 0.6 * r, 1.0 * r, [[0, '#ecb577'], [0.45, '#d4914f'], [1, '#b06d33']]);
+    // ── the side wall: the top face swept down, light just under the edge, darkest where it meets the board ──
+    for (let i = 20; i >= 0; i--) {
+      const f = Math.pow(i / 20, 1.4);
+      c.save(); c.translate(0, (W * i * r) / 20);
+      c.fillStyle = `rgb(${Math.round(lerp(176, 104, f))},${Math.round(lerp(98, 50, f))},${Math.round(lerp(44, 18, f))})`; c.fill(top);
+      c.restore();
+    }
+    c.fillStyle = lg(c, -r, 0, r, 0, [[0, 'rgba(255,215,160,0.25)'], [0.45, 'rgba(255,215,160,0)'], [0.6, 'rgba(50,20,0,0)'], [1, 'rgba(50,20,0,0.3)']]);
     c.fillRect(-2 * r, -2 * r, 4 * r, 4 * r);
-    c.lineJoin = 'round'; c.lineWidth = 0.22 * r; c.strokeStyle = 'rgba(110,48,12,0.2)'; c.stroke(fig);   // the baked edge
-    const glow = (x, y, rx, ry, rot, col, a) => { c.save(); c.translate(x * r, y * r); c.rotate(rot); c.scale(1, ry / rx); c.fillStyle = rg(c, 0, 0, 0, 0, 0, rx * r, [[0, `rgba(${col},${a})`], [1, `rgba(${col},0)`]]); c.fillRect(-rx * r, -rx * r, 2 * rx * r, 2 * rx * r); c.restore(); };
-    glow(-0.1, 0.0, 0.5, 0.42, 0, '255,222,160', 0.45);   // the puffed-up middle
-    const inside = R => ({ x: (R() * 2 - 1) * 0.9 * r, y: lerp(-0.8, 0.8, R()) * r });
-    speckle(c, R, 40, inside, R => `rgba(110,48,12,${0.14 + R() * 0.18})`, r * 0.012, r * 0.026);
-    speckle(c, R, 16, inside, R => `rgba(255,232,180,${0.2 + R() * 0.2})`, r * 0.01, r * 0.02);
-    // ── the piped border: one thick band of white royal icing, scalloped along its inner edge ──
-    const outer = this.pts(r, 0.11), inner = this.pts(r, 0.31), sc = 0.08 * r, scal = [];
-    const B = this.pts(r), deep = p => B.every(q => Math.hypot(q.x - p.x, q.y - p.y) > 0.28 * r);   // (not where the inset folded at the tip)
-    for (const p of resample(inner, Math.round(perimeter(inner) / (0.15 * r)))) if (deep(p) && !scal.some(q => Math.hypot(q.x - p.x, q.y - p.y) < 0.11 * r)) scal.push(p);
+    speckle(c, R, 50, inFig, R => `rgba(70,28,6,${0.3 + R() * 0.3})`, r * 0.012, r * 0.026);
+    // ── the top face: the Gingerbread Man's warm gingerbread brown, lit from the top left ──
+    c.save(); c.clip(top);
+    c.fillStyle = lg(c, -0.5 * r, -0.85 * r, 0.4 * r, 0.8 * r, [[0, '#dc9a55'], [0.5, '#c67d3d'], [1, '#a9612a']]);
+    c.fillRect(-2 * r, -2 * r, 4 * r, 4 * r);
+    c.lineJoin = 'round';
+    for (const [w, a] of [[0.3, 0.08], [0.16, 0.12]]) { c.lineWidth = w * r; c.strokeStyle = `rgba(120,55,15,${a})`; c.stroke(top); }   // the baked edge
+    const glow = (x, y, rx, ry, rot, a) => { c.save(); c.translate(x * r, y * r); c.rotate(rot); c.scale(1, ry / rx); c.fillStyle = rg(c, 0, 0, 0, 0, 0, rx * r, [[0, `rgba(255,214,150,${a})`], [1, 'rgba(255,214,150,0)']]); c.fillRect(-rx * r, -rx * r, 2 * rx * r, 2 * rx * r); c.restore(); };
+    glow(-0.42, -0.45, 0.32, 0.22, -0.5, 0.45); glow(0.45, -0.45, 0.28, 0.2, 0.5, 0.3); glow(-0.05, 0.02, 0.4, 0.3, 0, 0.3);
+    speckle(c, R, 40, inFig, R => `rgba(110,48,12,${0.12 + R() * 0.18})`, r * 0.012, r * 0.026);
+    speckle(c, R, 16, inFig, R => `rgba(255,226,170,${0.15 + R() * 0.2})`, r * 0.01, r * 0.02);
+    c.strokeStyle = 'rgba(255,220,165,0.5)'; c.lineWidth = 0.05 * r; c.stroke(top);   // its edge catches the light where it turns down into the wall
+    c.restore();
+    // ── the piped border: a solid line of white royal icing, small scallops along its inner side ──
+    const outer = this.top(r, 0.14), inner = this.top(r, 0.26), sc = 0.05 * r, scal = [];
+    const B = this.top(r), deep = p => B.every(q => Math.hypot(q.x - p.x, q.y - p.y) > 0.24 * r);   // (not where the inset folded at the tip)
+    const ring = this.top(r, 0.27);
+    for (const p of resample(ring, Math.round(perimeter(ring) / (0.12 * r)))) if (deep(p) && !scal.some(q => Math.hypot(q.x - p.x, q.y - p.y) < 0.09 * r)) scal.push(p);
     const pipe = new Path2D(); pathFromPts(pipe, outer); pathFromPts(pipe, inner.slice().reverse());
     for (const p of scal) { pipe.moveTo(p.x + sc, p.y); pipe.arc(p.x, p.y, sc, 0, TAU); }
-    c.save(); c.translate(0.02 * r, 0.045 * r); c.fillStyle = 'rgba(85,32,6,0.5)'; c.fill(pipe); c.restore();
-    c.fillStyle = rg(c, -0.3 * r, -0.4 * r, 0, 0, 0, 1.2 * r, [[0, '#ffffff'], [0.6, '#fdfaf4'], [1, '#ebe1d4']]); c.fill(pipe);
+    c.save(); c.translate(0.018 * r, 0.04 * r); c.fillStyle = 'rgba(80,30,5,0.5)'; c.fill(pipe); c.restore();
+    c.fillStyle = rg(c, -0.3 * r, -0.4 * r, 0, 0, 0, 1.2 * r, [[0, '#ffffff'], [0.6, '#fdf9f2'], [1, '#e9dfd2']]); c.fill(pipe);
     c.save(); c.clip(pipe);
-    // a round piped line: lit along its outer side, a soft grey shade along its inner side and under every scallop
-    c.lineJoin = 'round';
-    c.strokeStyle = 'rgba(175,155,140,0.45)'; c.lineWidth = 0.05 * r; c.save(); c.translate(0.012 * r, 0.02 * r); c.stroke(pathFromPts(new Path2D(), this.pts(r, 0.29))); c.restore();
-    for (const p of scal) { circ(c, p.x + 0.015 * r, p.y + 0.025 * r, sc * 0.8); c.fillStyle = 'rgba(175,155,140,0.3)'; c.fill(); }
+    c.strokeStyle = 'rgba(170,150,135,0.45)'; c.lineWidth = 0.035 * r; c.save(); c.translate(0.01 * r, 0.018 * r); c.stroke(pathFromPts(new Path2D(), inner)); c.restore();
     c.fillStyle = 'rgba(255,255,255,1)'; for (const p of scal) { circ(c, p.x - sc * 0.3, p.y - sc * 0.35, sc * 0.35); c.fill(); }
-    c.strokeStyle = 'rgba(255,255,255,0.95)'; c.lineWidth = 0.05 * r; c.save(); c.translate(-0.01 * r, -0.015 * r); c.stroke(pathFromPts(new Path2D(), this.pts(r, 0.16))); c.restore();
     c.restore();
     // ── two red sugar pearls in the lobes ──
     for (const s of [-1, 1]) {
-      const x = s * 0.44 * r, y = -0.3 * r, s0 = 0.095 * r;
-      circ(c, x + 0.015 * r, y + 0.035 * r, s0); c.fillStyle = 'rgba(85,25,5,0.45)'; c.fill();
-      circ(c, x, y, s0); c.fillStyle = rg(c, x - s0 * 0.35, y - s0 * 0.4, 0, x, y, s0, [[0, '#ffb0b8'], [0.5, '#e8334a'], [1, '#8e0f22']]); c.fill();
-      circ(c, x - s0 * 0.35, y - s0 * 0.38, s0 * 0.3); c.fillStyle = 'rgba(255,255,255,0.9)'; c.fill();
+      const x = s * 0.46 * r, y = (-0.38 * this.tilt - W / 2) * r, s0 = 0.085 * r;
+      circ(c, x + 0.015 * r, y + 0.03 * r, s0); c.fillStyle = 'rgba(80,25,5,0.45)'; c.fill();
+      circ(c, x, y, s0); c.fillStyle = rg(c, x - s0 * 0.35, y - s0 * 0.4, 0, x, y, s0, [[0, '#ff9aa6'], [0.5, '#e0304a'], [1, '#9a1228']]); c.fill();
+      circ(c, x - s0 * 0.3, y - s0 * 0.35, s0 * 0.28); c.fillStyle = 'rgba(255,235,238,0.8)'; c.fill();
     }
     // ── volume (instead of the engine's shading, which would follow the hull) ──
     c.save();
     const frame = new Path2D(); frame.rect(-4 * r, -4 * r, 8 * r, 8 * r); frame.addPath(fig);
-    c.shadowColor = 'rgba(70,28,0,0.32)'; c.shadowBlur = r * 0.3 * pr; c.shadowOffsetX = -r * 0.08 * pr; c.shadowOffsetY = -r * 0.12 * pr;
+    c.shadowColor = 'rgba(60,22,0,0.34)'; c.shadowBlur = r * 0.3 * pr; c.shadowOffsetX = -r * 0.08 * pr; c.shadowOffsetY = -r * 0.12 * pr;
     c.fillStyle = '#000'; c.fill(frame, 'evenodd');
     c.restore();
     c.save(); c.globalCompositeOperation = 'soft-light';
     c.fillStyle = rg(c, -0.4 * r, -0.5 * r, 0, -0.2 * r, -0.3 * r, r * 1.1, [[0, 'rgba(255,255,255,0.7)'], [1, 'rgba(255,255,255,0)']]);
     c.fillRect(-r * 3, -r * 3, r * 6, r * 6);
     c.restore();
-    c.restore();   // the heart clip
+    c.restore();   // the cookie clip
   },
-  // contour along the heart, inside it only (the hull around it stays transparent)
+  // contour along the cookie, inside it only (the hull around it stays transparent)
   outlineFn(c, path, r, ow) { const f = this.figurePath(r); c.save(); c.clip(f); c.lineWidth = ow * 2; c.strokeStyle = this.outline; c.stroke(f); c.restore(); },
 };
 
@@ -333,144 +364,148 @@ FESTIVE_TIERS[2] = {
   outlineFn(c, path, r, ow) { const f = this.figurePath(r); c.save(); c.clip(f); c.lineWidth = ow * 2; c.strokeStyle = this.outline; c.stroke(f); c.restore(); },
 };
 
-// 3 ─ TREE COOKIE (a sugar cookie cut out as a Christmas tree: three plump branch tiers and a stout trunk, flooded with green icing)
+// 3 ─ TREE COOKIE (a thick sugar cookie cut out as a Christmas tree, seen a little from above: three plump branch tiers and a stout trunk, flooded with green icing)
 FESTIVE_TIERS[3] = {
   key: 'tree', name: 'Tree Cookie', r: 29, outline: '#6e3a12',
-  k: 0.9835,   // drawn 0.98 × its nominal r: the collision outline (the convex hull of the tree) has 2.8 % more area than the classic Cupcake, because this compact cookie packs tighter (the same area would take up less room on the board)
+  k: 0.9789,   // drawn 0.98 × its nominal r: the collision outline (the convex hull of the cookie) has 2.8 % more area than the classic Cupcake, because this compact cookie packs tighter (the same area would take up less room on the board)
   // The cutter (units of the drawing radius): three branch tiers, each a rounded triangle (the hull of a disc at its apex
-  // and one at each branch tip), over a short, wide trunk (the hull of four small discs). The outline is the contour of
-  // their union with the notches softly rounded. The collision is ONE convex part, the hull of the tree: the shallow
-  // notches stay transparent (figurePath, noShade, outlineFn).
+  // and one at each branch tip), over a short, wide trunk (the hull of four small discs). The top face is the contour of
+  // their union with the notches softly rounded, squashed to `tilt` of its height because we look at the cookie a little
+  // from above; below it the cookie's side wall shows, `wall` deep (each part swept down is still convex, so the outline
+  // is the contour of the swept parts). The collision is ONE convex part, the hull of that outline: the shallow notches
+  // stay transparent (figurePath, noShade, outlineFn).
   tiers: [[-0.97, 0.17, 0.42, -0.38, 0.16], [-0.52, 0.1, 0.68, 0.21, 0.17], [0.0, 0.1, 0.9, 0.74, 0.18]],   // [apex y, apex radius, tip x, tip y, tip radius]
   trunk: [0.28, 0.6, 1.12, 0.08],   // [half width, top, bottom, corner radius]
-  ice: 0.19,   // the green icing stops this far inside the outline (units of r): a clear band of baked biscuit shows all round
-  // the outline, pulled in by d (units of r); memoised
-  pts(r, d = 0) {
-    const key = r + '|' + d; this._m = this._m || {};
+  tilt: 0.9, wall: 0.15,
+  ice: 0.16,   // the green icing stops this far inside the top face (units of r): a band of baked biscuit shows all round
+  Y(y) { return y * this.tilt - this.wall / 2; },   // a height on the cutter → the same height on the (squashed, lifted) top face
+  // the contour of the cutter's parts (swept down over the wall or not), notches softened
+  contour(r, swept) {
+    const C = (x, y, s) => ptsCircle(s * r, 40, x * r, y * r), [w, y0, y1, cr] = this.trunk;
+    let parts = this.tiers.map(([ay, ar, tx, ty, tr]) => [...C(0, ay, ar), ...C(-tx, ty, tr), ...C(tx, ty, tr)]);
+    parts.push([...C(-w + cr, y0 + cr, cr), ...C(w - cr, y0 + cr, cr), ...C(-w + cr, y1 - cr, cr), ...C(w - cr, y1 - cr, cr)]);
+    parts = parts.map(P => { const Q = P.map(p => ({ x: p.x, y: p.y * this.tilt - (this.wall / 2) * r })); return convexHull(swept ? [...Q, ...Q.map(p => ({ x: p.x, y: p.y + this.wall * r }))] : Q); });
+    // the contour of the union: the runs of each part's outline that lie outside all the others, chained into one loop
+    const inside = (h, x, y, eps) => {
+      for (let i = 0; i < h.length; i++) { const a = h[i], b = h[(i + 1) % h.length], L = Math.hypot(b.x - a.x, b.y - a.y) || 1; if (((b.x - a.x) * (y - a.y) - (b.y - a.y) * (x - a.x)) / L < eps) return false; }
+      return true;
+    };
+    const runs = [];
+    parts.forEach((h, i) => {
+      const Q = resample(h, Math.max(32, Math.round(perimeter(h) / (0.012 * r)))), n = Q.length;
+      const out = Q.map(p => !parts.some((g, j) => j !== i && inside(g, p.x, p.y, 0.002 * r)));
+      if (out.every(Boolean)) { runs.push(Q); return; }
+      for (let k = 0; k < n; k++) if (out[k] && !out[(k + n - 1) % n]) { const run = []; for (let m = k; out[m % n] && run.length < n; m++) run.push(Q[m % n]); runs.push(run); }
+    });
+    const loop = [], used = new Set();
+    for (let cur = 0; cur >= 0 && !used.has(cur);) {
+      used.add(cur); loop.push(...runs[cur]);
+      const e = runs[cur][runs[cur].length - 1]; let best = -1, bd = 1e9;
+      runs.forEach((ru, k) => { if (k === cur) return; const dd = Math.hypot(ru[0].x - e.x, ru[0].y - e.y); if (dd < bd) { bd = dd; best = k; } });
+      cur = best;
+    }
+    // soften the notches: even spacing, then a short moving average
+    const Q = resample(loop, 480), n = Q.length;
+    return Q.map((_, i) => { let x = 0, y = 0; for (let k = -3; k <= 3; k++) { const q = Q[(i + k + n) % n]; x += q.x; y += q.y; } return { x: x / 7, y: y / 7 }; });
+  },
+  // the top face, pulled in by d (units of r); memoised
+  top(r, d = 0) {
+    const key = 't' + r + '|' + d; this._m = this._m || {};
     if (this._m[key]) return this._m[key];
     let P;
     if (d) {
       // every point moved in along its normal; where that would fold over itself (d beyond the local radius) it is dropped,
       // then the corners are softened again (the branch tips are rounder than the icing is wide)
-      const B = this.pts(r), n = B.length, s = (polyArea(B) > 0 ? 1 : -1) * d * r;
+      const B = this.top(r), n = B.length, s = (polyArea(B) > 0 ? 1 : -1) * d * r;
       const Q = B.map((p, i) => { const a = B[(i + n - 1) % n], b = B[(i + 1) % n], L = Math.hypot(b.x - a.x, b.y - a.y) || 1; return { x: p.x - ((b.y - a.y) / L) * s, y: p.y + ((b.x - a.x) / L) * s }; });
       const E = resample(Q.filter((q, i) => { const a = (i + n - 1) % n, b = (i + 1) % n; return (Q[b].x - Q[a].x) * (B[b].x - B[a].x) + (Q[b].y - Q[a].y) * (B[b].y - B[a].y) > 0; }), 400), m = E.length;
       P = E.map((_, i) => { let x = 0, y = 0; for (let k = -4; k <= 4; k++) { const q = E[(i + k + m) % m]; x += q.x; y += q.y; } return { x: x / 9, y: y / 9 }; });
-    } else {
-      const C = (x, y, s) => ptsCircle(s * r, 40, x * r, y * r), [w, y0, y1, cr] = this.trunk;
-      const parts = this.tiers.map(([ay, ar, tx, ty, tr]) => convexHull([...C(0, ay, ar), ...C(-tx, ty, tr), ...C(tx, ty, tr)]));
-      parts.push(convexHull([...C(-w + cr, y0 + cr, cr), ...C(w - cr, y0 + cr, cr), ...C(-w + cr, y1 - cr, cr), ...C(w - cr, y1 - cr, cr)]));
-      // the contour of the union: the runs of each part's outline that lie outside all the others, chained into one loop
-      const inside = (h, x, y, eps) => {
-        for (let i = 0; i < h.length; i++) { const a = h[i], b = h[(i + 1) % h.length], L = Math.hypot(b.x - a.x, b.y - a.y) || 1; if (((b.x - a.x) * (y - a.y) - (b.y - a.y) * (x - a.x)) / L < eps) return false; }
-        return true;
-      };
-      const runs = [];
-      parts.forEach((h, i) => {
-        const Q = resample(h, Math.max(32, Math.round(perimeter(h) / (0.012 * r)))), n = Q.length;
-        const out = Q.map(p => !parts.some((g, j) => j !== i && inside(g, p.x, p.y, 0.002 * r)));
-        if (out.every(Boolean)) { runs.push(Q); return; }
-        for (let k = 0; k < n; k++) if (out[k] && !out[(k + n - 1) % n]) { const run = []; for (let m = k; out[m % n] && run.length < n; m++) run.push(Q[m % n]); runs.push(run); }
-      });
-      const loop = [], used = new Set();
-      for (let cur = 0; cur >= 0 && !used.has(cur);) {
-        used.add(cur); loop.push(...runs[cur]);
-        const e = runs[cur][runs[cur].length - 1]; let best = -1, bd = 1e9;
-        runs.forEach((ru, k) => { if (k === cur) return; const dd = Math.hypot(ru[0].x - e.x, ru[0].y - e.y); if (dd < bd) { bd = dd; best = k; } });
-        cur = best;
-      }
-      // soften the notches: even spacing, then a short moving average
-      const Q = resample(loop, 480), n = Q.length;
-      P = Q.map((_, i) => { let x = 0, y = 0; for (let k = -3; k <= 3; k++) { const q = Q[(i + k + n) % n]; x += q.x; y += q.y; } return { x: x / 7, y: y / 7 }; });
-    }
+    } else P = this.contour(r, false);
     return (this._m[key] = P);
   },
-  shape(r) { return [this.pts(r)]; },   // one convex part: the engine takes the hull of the tree
+  // the whole cookie: the top face swept down over the wall; memoised
+  pts(r) { const key = 'o' + r; this._m = this._m || {}; return this._m[key] || (this._m[key] = this.contour(r, true)); },
+  shape(r) { return [this.pts(r)]; },   // one convex part: the engine takes the hull of the cookie
   figurePath(r) { return pathFromPts(new Path2D(), this.pts(r)); },
-  noShade: true,   // the engine would shade the hull; paint() shades along the tree itself
-  face: { x: 0, y: 0.5, s: 0.46, blush: 'rgba(250,120,140,0.92)' },   // an opaque pink: the usual translucent blush turns olive on dark green
-  crumbs: ['#2f9a55', '#8fd9a0', '#ffd84a', '#e0a860', '#e8334a'],
+  noShade: true,   // the engine would shade the hull; paint() shades along the cookie itself
+  face: { x: 0, y: 0.39, s: 0.5, blush: 'rgba(250,120,140,0.92)' },   // an opaque pink: the usual translucent blush turns olive on dark green
+  crumbs: ['#2f9a55', '#8fd9a0', '#ffffff', '#e0a860', '#e8334a'],
   paint(c, r, R, T, pr = 1) {
-    const fig = this.figurePath(r), ice = pathFromPts(new Path2D(), this.pts(r, this.ice)), [tw, , ty1] = this.trunk;
+    const fig = this.figurePath(r), top = pathFromPts(new Path2D(), this.top(r)), ice = pathFromPts(new Path2D(), this.top(r, this.ice));
+    const W = this.wall, Y = y => this.Y(y) * r, [tw, , ty1] = this.trunk;
+    const inFig = R => ({ x: (R() * 2 - 1) * 1.1 * r, y: lerp(-1.1, 1.1, R()) * r });
     c.save(); c.clip(fig);
-    // ── sugar-cookie dough: a light golden brown, clearly lighter than the dark contour line ──
-    c.fillStyle = lg(c, -0.6 * r, -1.0 * r, 0.6 * r, 1.1 * r, [[0, '#f9d79e'], [0.5, '#efbd78'], [1, '#de9f58']]);
-    c.fillRect(-2 * r, -2 * r, 4 * r, 4 * r);
-    // a lighter crest along the middle of the band, where the baked edge rounds over
-    c.lineJoin = 'round'; c.save(); c.translate(0.012 * r, 0.02 * r); c.lineWidth = 0.3 * r; c.strokeStyle = 'rgba(255,240,205,0.35)'; c.stroke(fig); c.restore();
-    speckle(c, R, 90, R => ({ x: (R() * 2 - 1) * 1.1 * r, y: lerp(-1.15, 1.1, R()) * r }), R => `rgba(150,78,22,${0.2 + R() * 0.25})`, r * 0.01, r * 0.022);
-    // ── chocolate icing on the trunk ──
-    const tY = this.tiers[2][3] + this.tiers[2][4] - this.ice - 0.02, trunkIce = new Path2D(); trunkIce.roundRect(-tw * r, tY * r, 2 * tw * r, (ty1 - tY + 0.2) * r, [0.1 * r, 0.1 * r, 0, 0]);
-    const choc = pathFromPts(new Path2D(), this.pts(r, 0.12));
-    c.save(); c.clip(trunkIce);
-    c.save(); c.translate(0.02 * r, 0.04 * r); c.fillStyle = 'rgba(110,50,10,0.4)'; c.fill(choc); c.restore();
-    c.clip(choc);
-    c.fillStyle = lg(c, -tw * r, 0, tw * r, 0, [[0, '#93552a'], [0.4, '#723a17'], [1, '#4a230a']]); c.fillRect(-tw * r, tY * r, 2 * tw * r, r);
-    c.strokeStyle = 'rgba(235,175,120,0.5)'; c.lineWidth = 0.03 * r; c.lineCap = 'round';
-    c.beginPath(); c.moveTo(-0.07 * r, (tY + 0.06) * r); c.lineTo(-0.07 * r, (ty1 - 0.16) * r); c.stroke();
-    c.restore();
-    // ── green icing, flooded almost to the edge (everything but the trunk) ──
-    const green = new Path2D(); green.rect(-3 * r, -3 * r, 6 * r, 6 * r); green.addPath(trunkIce);
-    c.save(); c.clip(green, 'evenodd');
-    c.save(); c.translate(0.02 * r, 0.04 * r); c.fillStyle = 'rgba(120,58,12,0.42)'; c.fill(ice); c.restore();
-    c.save(); c.clip(ice);
-    c.fillStyle = lg(c, -0.8 * r, -1.0 * r, 0.6 * r, 0.9 * r, [[0, '#56c272'], [0.35, '#2a9447'], [0.75, '#1a7337'], [1, '#105a2a']]);
-    c.fillRect(-2 * r, -2 * r, 4 * r, 4 * r);
-    // each branch tier casts a soft shadow on the one below; its lower edge catches the light
-    for (let k = 0; k < 2; k++) {
-      const [, , tx, ty, tr] = this.tiers[k], y = ty + tr - this.ice, x = tx + tr * 0.4;
-      const curve = () => { c.beginPath(); c.moveTo(-x * r, (y - 0.02) * r); c.quadraticCurveTo(0, (y + 0.16) * r, x * r, (y - 0.02) * r); };
-      c.save(); c.translate(0, 0.045 * r); curve(); c.strokeStyle = 'rgba(5,45,18,0.5)'; c.lineWidth = 0.07 * r; c.stroke(); c.restore();
-      curve(); c.strokeStyle = 'rgba(160,240,170,0.5)'; c.lineWidth = 0.03 * r; c.stroke();
-    }
-    // its rounded lip: lit along the upper left inner edge, shaded along the lower right
-    c.save(); c.translate(-0.03 * r, -0.05 * r); c.strokeStyle = 'rgba(5,40,15,0.45)'; c.lineWidth = 0.1 * r; c.stroke(ice); c.restore();
-    c.save(); c.translate(0.025 * r, 0.04 * r); c.strokeStyle = 'rgba(200,255,205,0.55)'; c.lineWidth = 0.05 * r; c.stroke(ice); c.restore();
-    c.restore();
-    // the green edge over the trunk casts a shadow on the chocolate
-    c.save(); c.clip(ice); c.translate(0, 0.035 * r); c.strokeStyle = 'rgba(20,8,0,0.45)'; c.lineWidth = 0.05 * r; c.stroke(trunkIce); c.restore();
-    c.strokeStyle = 'rgba(8,50,20,0.7)'; c.lineWidth = 0.03 * r; c.stroke(ice);
-    c.restore();
-    // ── one bold white icing garland across the middle tier ──
-    {
-      const pts = [], [x0, y0, x1, y1, sag] = [-0.44, -0.02, 0.52, 0.12, 0.13];
-      for (let i = 0; i <= 20; i++) { const t = i / 20; pts.push({ x: lerp(x0, x1, t) * r, y: (lerp(y0, y1, t) + sag * 4 * t * (1 - t)) * r }); }
-      c.save(); c.clip(ice); c.lineCap = 'round'; c.lineJoin = 'round';
-      c.save(); c.translate(0.015 * r, 0.04 * r); c.strokeStyle = 'rgba(5,40,15,0.5)'; c.lineWidth = 0.11 * r; strokePts(c, pts); c.restore();
-      c.strokeStyle = '#dcd5c6'; c.lineWidth = 0.1 * r; strokePts(c, pts);
-      c.strokeStyle = '#fffdf7'; c.lineWidth = 0.075 * r; c.save(); c.translate(-0.008 * r, -0.01 * r); strokePts(c, pts); c.restore();
-      c.strokeStyle = '#ffffff'; c.lineWidth = 0.025 * r; c.save(); c.translate(-0.014 * r, -0.024 * r); strokePts(c, pts); c.restore();
+    // ── the side wall: warm golden-brown baked dough, the top face swept down, darkest where it meets the board ──
+    for (let i = 20; i >= 0; i--) {
+      const f = Math.pow(i / 20, 1.4);
+      c.save(); c.translate(0, (W * i * r) / 20);
+      c.fillStyle = `rgb(${Math.round(lerp(214, 132, f))},${Math.round(lerp(146, 76, f))},${Math.round(lerp(78, 30, f))})`; c.fill(top);
       c.restore();
     }
-    // ── bold sugar-pearl baubles, none near the face ──
-    const bauble = (x, y, s, col, dark, light) => {
-      x *= r; y *= r; s *= r;
-      circ(c, x + 0.015 * r, y + 0.035 * r, s); c.fillStyle = 'rgba(5,35,12,0.45)'; c.fill();
-      circ(c, x, y, s); c.fillStyle = rg(c, x - s * 0.35, y - s * 0.4, 0, x, y, s, [[0, light], [0.5, col], [1, dark]]); c.fill();
-      c.strokeStyle = dark; c.lineWidth = 0.025 * r; c.stroke();
-      ell(c, x - s * 0.35, y - s * 0.38, s * 0.32, s * 0.22, -0.6); c.fillStyle = 'rgba(255,255,255,0.92)'; c.fill();
-    };
-    const RED = ['#ee3048', '#9a1426', '#ffa8b2'], GOLD = ['#ffcc2e', '#b07408', '#fff4b8'];
-    bauble(0.1, -0.5, 0.09, ...RED);
-    bauble(-0.34, 0.24, 0.1, ...GOLD);
-    bauble(0.34, -0.08, 0.09, ...RED);
-    bauble(-0.56, 0.6, 0.1, ...RED);
-    bauble(0.56, 0.6, 0.1, ...GOLD);
-    // ── a small yellow star on the top ──
+    c.fillStyle = lg(c, -r, 0, r, 0, [[0, 'rgba(255,225,180,0.25)'], [0.45, 'rgba(255,225,180,0)'], [0.6, 'rgba(60,25,0,0)'], [1, 'rgba(60,25,0,0.3)']]);
+    c.fillRect(-2 * r, -2 * r, 4 * r, 4 * r);
+    speckle(c, R, 80, inFig, R => `rgba(110,50,12,${0.3 + R() * 0.3})`, r * 0.01, r * 0.022);
+    // ── the top face: light golden sugar-cookie dough, clearly lighter than the dark contour line ──
+    c.save(); c.clip(top);
+    c.fillStyle = lg(c, -0.6 * r, -1.0 * r, 0.6 * r, 1.0 * r, [[0, '#f9d79e'], [0.5, '#efbd78'], [1, '#de9f58']]);
+    c.fillRect(-2 * r, -2 * r, 4 * r, 4 * r);
+    speckle(c, R, 80, inFig, R => `rgba(150,78,22,${0.2 + R() * 0.25})`, r * 0.01, r * 0.022);
+    c.lineJoin = 'round'; c.strokeStyle = 'rgba(255,236,195,0.6)'; c.lineWidth = 0.05 * r; c.stroke(top);   // its edge catches the light where it turns down into the wall
+    c.restore();
+    // ── chocolate icing on the trunk ──
+    const tY = (Y(this.tiers[2][3] + this.tiers[2][4]) / r - this.ice - 0.02), trunkIce = new Path2D(); trunkIce.roundRect(-tw * r, tY * r, 2 * tw * r, r, [0.1 * r, 0.1 * r, 0, 0]);
+    const choc = pathFromPts(new Path2D(), this.top(r, 0.11));
+    c.save(); c.clip(trunkIce);
+    c.save(); c.translate(0.02 * r, 0.035 * r); c.fillStyle = 'rgba(110,50,10,0.4)'; c.fill(choc); c.restore();
+    c.clip(choc);
+    c.fillStyle = lg(c, -tw * r, 0, tw * r, 0, [[0, '#93552a'], [0.4, '#723a17'], [1, '#4a230a']]); c.fillRect(-tw * r, tY * r, 2 * tw * r, r);
+    c.restore();
+    // ── green icing, flooded almost to the edge (everything but the trunk): smooth, satin, standing a little proud ──
+    const green = new Path2D(); green.rect(-3 * r, -3 * r, 6 * r, 6 * r); green.addPath(trunkIce);
+    c.save(); c.clip(green, 'evenodd');
+    c.save(); c.translate(0.02 * r, 0.035 * r); c.fillStyle = 'rgba(120,58,12,0.42)'; c.fill(ice); c.restore();
+    c.save(); c.clip(ice);
+    c.fillStyle = lg(c, -0.8 * r, -1.0 * r, 0.6 * r, 0.9 * r, [[0, '#4fb86b'], [0.35, '#2a9447'], [0.75, '#1c7639'], [1, '#13602d']]);
+    c.fillRect(-2 * r, -2 * r, 4 * r, 4 * r);
+    c.save(); c.translate(-0.03 * r, -0.045 * r); c.strokeStyle = 'rgba(5,40,15,0.4)'; c.lineWidth = 0.09 * r; c.stroke(ice); c.restore();
+    c.save(); c.translate(0.02 * r, 0.035 * r); c.strokeStyle = 'rgba(200,255,205,0.35)'; c.lineWidth = 0.045 * r; c.stroke(ice); c.restore();
+    c.restore();
+    c.save(); c.clip(ice); c.translate(0, 0.03 * r); c.strokeStyle = 'rgba(20,8,0,0.4)'; c.lineWidth = 0.045 * r; c.stroke(trunkIce); c.restore();
+    c.strokeStyle = 'rgba(8,50,20,0.6)'; c.lineWidth = 0.025 * r; c.stroke(ice);
+    c.restore();
+    // ── one zigzag of matte white piped icing across the middle tier ──
     {
-      const x = 0, y = -0.84 * r, R0 = 0.21 * r, R1 = 0.1 * r, pts = [];
-      for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + (k * Math.PI) / 5, d = k % 2 ? R1 : R0; pts.push({ x: x + Math.cos(a) * d, y: y + Math.sin(a) * d }); }
+      const pts = [];
+      for (let i = 0; i <= 8; i++) { const x = lerp(-0.4, 0.44, i / 8); pts.push({ x: x * r, y: Y(lerp(-0.02, 0.1, i / 8) + (i % 2 ? 0.07 : -0.05)) }); }
+      c.save(); c.clip(ice); c.lineCap = 'round'; c.lineJoin = 'round';
+      c.save(); c.translate(0.012 * r, 0.03 * r); c.strokeStyle = 'rgba(5,40,15,0.45)'; c.lineWidth = 0.09 * r; strokePts(c, pts); c.restore();
+      c.strokeStyle = '#e6dfd2'; c.lineWidth = 0.085 * r; strokePts(c, pts);
+      c.strokeStyle = '#fbf8f1'; c.lineWidth = 0.06 * r; c.save(); c.translate(-0.006 * r, -0.01 * r); strokePts(c, pts); c.restore();
+      c.restore();
+    }
+    // ── a few flat sugar pearls (matte, no glassy shine), none near the face ──
+    const pearl = (x, y, s, col, dark) => {
+      x *= r; y = Y(y); s *= r;
+      circ(c, x + 0.012 * r, y + 0.028 * r, s); c.fillStyle = 'rgba(5,35,12,0.4)'; c.fill();
+      circ(c, x, y, s); c.fillStyle = rg(c, x - s * 0.3, y - s * 0.35, 0, x, y, s * 1.05, [[0, col], [0.7, col], [1, dark]]); c.fill();
+    };
+    pearl(0.08, -0.52, 0.085, '#e8475c', '#a81c33');
+    pearl(-0.3, -0.16, 0.085, '#fbe7a0', '#d0a13c');
+    pearl(0.34, 0.26, 0.085, '#e8475c', '#a81c33');
+    // ── a small yellow icing star on the top ──
+    {
+      const x = 0, y = Y(-0.84), R0 = 0.19 * r, R1 = 0.09 * r, pts = [];
+      for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + (k * Math.PI) / 5, d = k % 2 ? R1 : R0; pts.push({ x: x + Math.cos(a) * d, y: y + Math.sin(a) * d * this.tilt }); }
       const path = new Path2D(), n = pts.length;
       for (let i = 0; i < n; i++) {
-        const p0 = pts[(i + n - 1) % n], p1 = pts[i], p2 = pts[(i + 1) % n], f = i % 2 ? 0.12 : 0.2;
+        const p0 = pts[(i + n - 1) % n], p1 = pts[i], p2 = pts[(i + 1) % n], f = i % 2 ? 0.12 : 0.22;
         const a = { x: lerp(p1.x, p0.x, f), y: lerp(p1.y, p0.y, f) }, b = { x: lerp(p1.x, p2.x, f), y: lerp(p1.y, p2.y, f) };
         i ? path.lineTo(a.x, a.y) : path.moveTo(a.x, a.y); path.quadraticCurveTo(p1.x, p1.y, b.x, b.y);
       }
       path.closePath();
-      c.save(); c.translate(0.018 * r, 0.04 * r); c.fillStyle = 'rgba(30,40,5,0.5)'; c.fill(path); c.restore();
-      c.fillStyle = rg(c, x - 0.05 * r, y - 0.06 * r, 0, x, y, R0, [[0, '#fff07a'], [0.5, '#ffcf1c'], [1, '#ec9306']]); c.fill(path);
-      c.strokeStyle = '#7a4202'; c.lineWidth = 0.04 * r; c.lineJoin = 'round'; c.stroke(path);
-      ell(c, x - 0.05 * r, y - 0.05 * r, 0.045 * r, 0.025 * r, -0.6); c.fillStyle = 'rgba(255,255,235,0.9)'; c.fill();
+      c.save(); c.translate(0.015 * r, 0.03 * r); c.fillStyle = 'rgba(30,40,5,0.45)'; c.fill(path); c.restore();
+      c.fillStyle = rg(c, x - 0.04 * r, y - 0.05 * r, 0, x, y, R0, [[0, '#ffe680'], [0.6, '#ffcc33'], [1, '#e8a417']]); c.fill(path);
+      c.strokeStyle = '#a86a08'; c.lineWidth = 0.03 * r; c.lineJoin = 'round'; c.stroke(path);
     }
     // ── volume (instead of the engine's shading, which would follow the hull) ──
     c.save();
@@ -482,9 +517,9 @@ FESTIVE_TIERS[3] = {
     c.fillStyle = rg(c, -0.4 * r, -0.5 * r, 0, -0.2 * r, -0.3 * r, r * 1.1, [[0, 'rgba(255,255,255,0.6)'], [1, 'rgba(255,255,255,0)']]);
     c.fillRect(-r * 3, -r * 3, r * 6, r * 6);
     c.restore();
-    c.restore();   // the tree clip
+    c.restore();   // the cookie clip
   },
-  // contour along the tree, inside it only (the hull around it stays transparent)
+  // contour along the cookie, inside it only (the hull around it stays transparent)
   outlineFn(c, path, r, ow) { const f = this.figurePath(r); c.save(); c.clip(f); c.lineWidth = ow * 2; c.strokeStyle = this.outline; c.stroke(f); c.restore(); },
 };
 
