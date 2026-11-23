@@ -122,6 +122,9 @@ h2{font-weight:700;font-size:2rem;color:#7a3a0e;line-height:1.1}
 #mode-over{margin-top:12px}
 .mode-note{font-size:.72rem;color:#b88a5c;margin-top:3px;min-height:1em}
 .mode-note[hidden]{display:none}
+/* short screens: with the switch on the title card, the showcase and the gaps shrink so that Play, Sound & music and Best still fit */
+@media (max-height:760px){.mode-switch{margin:4px 0 0}.mode-switch:not([hidden])~#title-cv{height:96px}}
+@media (max-height:620px){.mode-switch{margin:3px 0 0}.mode-switch button{min-height:30px;font-size:.78rem;padding:3px 11px 3px 5px}.mode-switch canvas{width:22px;height:22px}.mode-switch:not([hidden])~#title-cv{height:58px;margin:2px 0 2px}.mode-switch:not([hidden])~.tips{margin-bottom:8px;line-height:1.3}.mode-switch:not([hidden])~.tips li{margin:1px 0 1px 16px}.mode-switch:not([hidden])~.best{margin-top:4px}.mode-switch:not([hidden])~.ver{margin-top:4px}}
 /* volume sliders — custom, so touch, mouse and keyboard behave the same everywhere */
 #sound{z-index:60}
 .linkbtn{font-family:var(--font);font-weight:600;font-size:.88rem;color:#b0642a;background:none;border:0;padding:10px 12px 2px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
@@ -147,45 +150,52 @@ h2{font-weight:700;font-size:2rem;color:#7a3a0e;line-height:1.1}
 @media (max-height:520px){#title-cv{display:none}.tips{font-size:.72rem;margin-bottom:10px}h1{font-size:1.6rem}}
 #loading{position:fixed;inset:0;display:grid;place-items:center;font-weight:600;color:#a86a36}
 /* ── festive mode, body[data-season="xmas"]: Christmas Eve at the bakery ─────────────────────────────
-   Outside it is a snowy winter evening: a dusk sky with snow falling behind everything, warm light
-   from the shop window spilling into it, drifts at the bottom; snow lies on the HUD signs, the ladder,
-   the cards and the buttons; the bakery's orange accents turn Christmas red, the gate bar a candy cane.
-   The golden bakery (data-gold) warms the glow to candlelight and keeps its gold trim under the snow. */
-body[data-season="xmas"]{background:radial-gradient(62% 52% at 50% 50%,rgba(255,212,160,.62) 0%,rgba(255,212,160,0) 74%),#b9c1e0 linear-gradient(#6f7fb6 0%,#9aa6d4 45%,#c3cbe8 100%)}
-body[data-season="xmas"]::before{content:"";position:fixed;left:0;right:0;top:-300px;height:calc(100% + 300px);z-index:-1;pointer-events:none;will-change:transform;
-  background-image:radial-gradient(circle at 23px 41px,rgba(255,255,255,.95) 0 1.7px,transparent 2.4px),radial-gradient(circle at 97px 133px,rgba(255,255,255,.9) 0 2.4px,transparent 3.1px),radial-gradient(circle at 151px 211px,rgba(255,255,255,.75) 0 1.3px,transparent 2px),radial-gradient(circle at 61px 251px,rgba(255,255,255,.85) 0 2px,transparent 2.7px),radial-gradient(circle at 131px 23px,rgba(255,255,255,.7) 0 1.2px,transparent 1.9px),radial-gradient(circle at 40px 170px,rgba(255,255,255,.8) 0 1.5px,transparent 2.2px);
-  background-size:173px 300px,173px 300px,173px 300px,113px 300px,229px 300px,197px 300px;animation:bm-snow 34s linear infinite}
-body[data-season="xmas"]::after{content:"";position:fixed;left:-10%;right:-10%;bottom:0;height:54px;z-index:-1;pointer-events:none;
-  background:radial-gradient(28% 60% at 12% 100%,#fbfcff 94%,rgba(150,165,215,.55) 97%,rgba(150,165,215,0) 100%),radial-gradient(34% 48% at 46% 100%,#f3f6ff 94%,rgba(150,165,215,.5) 97%,rgba(150,165,215,0) 100%),radial-gradient(30% 70% at 82% 100%,#fbfcff 94%,rgba(150,165,215,.55) 97%,rgba(150,165,215,0) 100%),linear-gradient(rgba(255,255,255,0) 72%,#f5f7ff 72%)}
-@keyframes bm-snow{to{transform:translateY(300px)}}
-body[data-season="xmas"][data-gold="1"]{background:radial-gradient(64% 54% at 50% 50%,rgba(255,206,130,.72) 0%,rgba(255,206,130,0) 76%),#bec0dc linear-gradient(#7480b2 0%,#a0a6d0 45%,#cbcbe4 100%)}
-body[data-season="xmas"][data-gold="2"]{background:radial-gradient(68% 58% at 50% 50%,rgba(255,200,110,.8) 0%,rgba(255,200,110,0) 78%),#c6bfd6 linear-gradient(#7e7eaa 0%,#aaa4cb 45%,#d6cde0 100%)}
-body[data-season="xmas"][data-gold="3"]{background:radial-gradient(72% 62% at 50% 50%,rgba(255,194,90,.88) 0%,rgba(255,194,90,0) 80%),#cfc0cf linear-gradient(#8a7ea6 0%,#b7a6c4 45%,#e3d2d8 100%)}
-/* snow lying on the signs: a white cap along the top edge, with a cool shadow line above it */
-body[data-season="xmas"] .chip,body[data-season="xmas"] #ladder{box-shadow:0 -3px 0 #fff,0 -4.5px 0 rgba(120,140,195,.4),0 3px 0 rgba(200,140,70,.35)}
-body[data-season="xmas"] .ibtn{box-shadow:0 -3px 0 #fff,0 -4.5px 0 rgba(120,140,195,.4),0 3px 0 rgba(200,140,70,.35)}
-body[data-season="xmas"] .ibtn:active{box-shadow:0 -3px 0 #fff,0 -4.5px 0 rgba(120,140,195,.4),0 1px 0 rgba(200,140,70,.35)}
-body[data-season="xmas"][data-gold="1"] #score-chip,body[data-season="xmas"][data-gold="2"] .chip,body[data-season="xmas"][data-gold="3"] .chip,body[data-season="xmas"][data-gold="2"] #ladder,body[data-season="xmas"][data-gold="3"] #ladder,body[data-season="xmas"][data-gold="3"] .ibtn{box-shadow:0 -3px 0 #fff,0 -4.5px 0 rgba(120,140,195,.4),0 3px 0 rgba(214,160,40,.5)}
-body[data-season="xmas"] .card{border-top-color:#fff;background:var(--xmas-cap,none) center top/100% 16px no-repeat,var(--card);box-shadow:0 -4px 0 #fff,0 -5.5px 0 rgba(120,140,195,.4),0 14px 40px rgba(40,40,90,.32)}
+   Outside it is a snowy winter evening: a clear dusk sky with snow falling behind everything and
+   drifts at the bottom; snow lies on the HUD signs, the ladder and the cards; the bakery's orange
+   accents turn fir green (red stays the colour of the danger line), the gate bar is a candy cane.
+   The golden bakery (data-gold) turns the whole evening to candlelight: the sky itself goes gold,
+   a little more with every level, as the classic room does. */
+body[data-season="xmas"]{background:#8f9dd0 linear-gradient(#55649f 0%,#7f8fc6 42%,#b4bfe3 100%)}
+/* the snowfall: eight sparse layers of soft flakes with different tile sizes (all heights divide the
+   600 px the layer travels per loop), so the eye finds no repeating tile */
+body[data-season="xmas"]::before{content:"";position:fixed;left:0;right:0;top:-600px;height:calc(100% + 600px);z-index:-1;pointer-events:none;will-change:transform;
+  background-image:radial-gradient(circle at 23px 41px,rgba(255,255,255,.95) 0 1.4px,rgba(255,255,255,.3) 2.4px,transparent 3.4px),radial-gradient(circle at 297px 133px,rgba(255,255,255,.9) 0 2px,rgba(255,255,255,.3) 3.1px,transparent 4.2px),radial-gradient(circle at 151px 411px,rgba(255,255,255,.8) 0 1.1px,rgba(255,255,255,.25) 2px,transparent 2.9px),radial-gradient(circle at 361px 71px,rgba(255,255,255,.9) 0 1.7px,rgba(255,255,255,.3) 2.7px,transparent 3.7px),radial-gradient(circle at 131px 223px,rgba(255,255,255,.75) 0 1px,rgba(255,255,255,.25) 1.8px,transparent 2.6px),radial-gradient(circle at 40px 370px,rgba(255,255,255,.85) 0 1.3px,rgba(255,255,255,.3) 2.2px,transparent 3.1px),radial-gradient(circle at 255px 150px,rgba(255,255,255,.95) 0 2.3px,rgba(255,255,255,.3) 3.5px,transparent 4.7px),radial-gradient(circle at 90px 505px,rgba(255,255,255,.8) 0 1.5px,rgba(255,255,255,.3) 2.5px,transparent 3.5px);
+  background-size:311px 300px,419px 200px,257px 600px,523px 150px,367px 300px,199px 600px,463px 200px,283px 600px;animation:bm-snow 68s linear infinite}
+/* snow drifts along the bottom of the page: three soft, shaded hills */
+body[data-season="xmas"]::after{content:"";position:fixed;left:-10%;right:-10%;bottom:0;height:66px;z-index:-1;pointer-events:none;
+  background:radial-gradient(30% 78% at 14% 100%,#ffffff 0%,#f6f9ff 55%,#e3eaf9 93%,rgba(150,165,215,.45) 97%,rgba(150,165,215,0) 100%),radial-gradient(36% 58% at 47% 100%,#fbfcff 0%,#eef2fd 60%,#dbe3f6 93%,rgba(150,165,215,.4) 97%,rgba(150,165,215,0) 100%),radial-gradient(32% 88% at 83% 100%,#ffffff 0%,#f6f9ff 55%,#e3eaf9 93%,rgba(150,165,215,.45) 97%,rgba(150,165,215,0) 100%),linear-gradient(rgba(255,255,255,0) 76%,#e9eefb 76%,#dde5f6 100%)}
+@keyframes bm-snow{to{transform:translateY(600px)}}
+body[data-season="xmas"][data-gold="1"]{background:radial-gradient(74% 62% at 50% 46%,rgba(255,216,136,.85) 0%,rgba(255,216,136,0) 80%),#c9ad9a linear-gradient(#8c84a8 0%,#c9ad9a 45%,#edd09a 100%)}
+body[data-season="xmas"][data-gold="2"]{background:radial-gradient(78% 66% at 50% 46%,rgba(255,210,112,.9) 0%,rgba(255,210,112,0) 82%),#dbb47e linear-gradient(#a88e86 0%,#dbb47e 45%,#f2d08a 100%)}
+body[data-season="xmas"][data-gold="3"]{background:radial-gradient(82% 70% at 50% 46%,rgba(255,222,128,.95) 0%,rgba(255,222,128,0) 84%),#ecc06a linear-gradient(#c9a05a 0%,#ecc06a 45%,#f8dc92 100%)}
+body[data-season="xmas"][data-gold]::after{opacity:.94}
+/* snow lying on the signs: a white cap along the top edge */
+body[data-season="xmas"] .chip,body[data-season="xmas"] #ladder,body[data-season="xmas"] .ibtn{box-shadow:0 -3px 0 #fff,0 3px 0 rgba(200,140,70,.35)}
+body[data-season="xmas"] .ibtn:active{box-shadow:0 -3px 0 #fff,0 1px 0 rgba(200,140,70,.35)}
+body[data-season="xmas"][data-gold="1"] #score-chip,body[data-season="xmas"][data-gold="2"] .chip,body[data-season="xmas"][data-gold="3"] .chip,body[data-season="xmas"][data-gold="2"] #ladder,body[data-season="xmas"][data-gold="3"] #ladder,body[data-season="xmas"][data-gold="3"] .ibtn{box-shadow:0 -3px 0 #fff,0 3px 0 rgba(214,160,40,.5)}
+body[data-season="xmas"] .card{border-top-color:#fff;background:var(--xmas-cap,none) center top/100% 16px no-repeat,var(--card);box-shadow:0 -4px 0 #fff,0 14px 40px rgba(40,40,90,.32)}
 body[data-season="xmas"] h1,body[data-season="xmas"] #logo{position:relative}
 body[data-season="xmas"] h1::after,body[data-season="xmas"] #logo::after{content:"";position:absolute;left:50%;top:-.16em;width:1.1em;height:.65em;margin-left:1.18em;background:var(--xmas-holly,none) center/contain no-repeat;transform:rotate(16deg);pointer-events:none}
 /* wide layout: the logo hangs as a little snowy sign above the HUD (the dusk sky is too dark for its small print) */
-body[data-season="xmas"] #logo{background:var(--card);border:2px solid var(--line);border-top-color:#fff;border-radius:14px;padding:9px 4px 7px;box-shadow:0 -3px 0 #fff,0 -4.5px 0 rgba(120,140,195,.4),0 3px 0 rgba(200,140,70,.35)}
+body[data-season="xmas"] #logo{background:var(--card);border:2px solid var(--line);border-top-color:#fff;border-radius:14px;padding:9px 4px 7px;box-shadow:0 -3px 0 #fff,0 3px 0 rgba(200,140,70,.35)}
 body[data-season="xmas"] #logo::after{top:.2em;margin-left:1.22em;width:1.05em}
-body[data-season="xmas"] #game{box-shadow:0 0 0 3px #d9a56c,0 12px 30px rgba(50,40,90,.32),0 0 60px rgba(255,200,120,.35)}
-body[data-season="xmas"][data-gold="3"] #game{box-shadow:0 0 0 3px #e4b54a,0 12px 30px rgba(90,60,40,.3),0 0 70px rgba(255,196,90,.55)}
-/* the bakery's accents in Christmas red; the gate counter bar becomes a candy cane */
-body[data-season="xmas"] .btn{background:linear-gradient(#f2696b,#d13a45);box-shadow:0 -3px 0 #fff,0 -4.5px 0 rgba(120,140,195,.45),0 5px 0 #92202c,0 9px 18px rgba(140,30,40,.3)}
-body[data-season="xmas"] .btn:active{box-shadow:0 -3px 0 #fff,0 -4.5px 0 rgba(120,140,195,.45),0 2px 0 #92202c}
+body[data-season="xmas"] #game{box-shadow:0 0 0 3px #d9a56c,0 12px 30px rgba(40,40,90,.34),0 0 46px rgba(255,232,190,.4)}
+body[data-season="xmas"][data-gold] #game{box-shadow:0 0 0 3px #d9a56c,0 12px 30px rgba(90,60,40,.3),0 0 60px rgba(255,214,120,.6)}
+body[data-season="xmas"][data-gold="3"] #game{box-shadow:0 0 0 3px #e4b54a,0 12px 30px rgba(90,60,40,.3),0 0 70px rgba(255,206,100,.7)}
+/* the bakery's accents in fir green; the gate counter bar becomes a candy cane */
+body[data-season="xmas"] .btn{background:linear-gradient(#55bd78,#2c8f52);box-shadow:0 5px 0 #1c6a3a,0 9px 18px rgba(20,80,40,.3)}
+body[data-season="xmas"] .btn:active{box-shadow:0 2px 0 #1c6a3a}
 body[data-season="xmas"] .btn.ghost{background:#fff;box-shadow:0 4px 0 #e2c193}
-body[data-season="xmas"] #mult{background:linear-gradient(#f2696b,#d13a45)}
-body[data-season="xmas"] #combo{background:linear-gradient(#f2696b,#d13a45);box-shadow:0 3px 0 #92202c}
-body[data-season="xmas"] #score.bump{color:#d13a45}
+body[data-season="xmas"] #mult{background:linear-gradient(#55bd78,#2c8f52)}
+body[data-season="xmas"] #combo{background:linear-gradient(#55bd78,#2c8f52);box-shadow:0 3px 0 #1c6a3a}
+body[data-season="xmas"] #score.bump{color:#2c8f52}
 body[data-season="xmas"] #gate-fill{background:repeating-linear-gradient(-55deg,#e2414d 0 4px,#fff6f2 4px 8px);box-shadow:inset 0 0 0 1px rgba(170,30,45,.25)}
 body[data-season="xmas"] h1 span{color:#d8434f}
-body[data-season="xmas"] .mode-switch button[aria-pressed="true"]{color:#b3303b}
-body[data-season="xmas"] .sl-fill{background:linear-gradient(90deg,#f7a0a0,#d8434f)}
-body[data-season="xmas"] .sl-thumb{border-color:#d8434f}
+body[data-season="xmas"] .mode-switch button[aria-pressed="true"]{color:#1f7a42}
+body[data-season="xmas"] .mode-switch button:focus-visible{outline-color:rgba(44,143,82,.5)}
+body[data-season="xmas"] .sl-fill{background:linear-gradient(90deg,#a9dcb7,#2c8f52)}
+body[data-season="xmas"] .sl-thumb{border-color:#2c8f52}
+body[data-season="xmas"] .slider:focus-visible .sl-thumb{box-shadow:0 0 0 5px rgba(44,143,82,.35),0 2px 6px rgba(20,60,30,.3)}
 body[data-season="xmas"] .slider.zero .sl-thumb{border-color:#cfa77a}
 /* the cards sit in the winter evening, not in the warm room */
 body[data-season="xmas"] .screen{background:rgba(42,48,96,.42)}
@@ -2841,8 +2851,6 @@ const Xmas = {
       }
       circ(c, cx, cy + rr + 1, 2.3); c.fill(); c.stroke();
     });
-    // pale ice-blue flakes for the cream title card (white would vanish there)
-    this.tflakes = { dot: flake('#e3edf9', 'rgba(110,130,185,0.3)', false), crystal: flake('#e8f0fa', 'rgba(110,130,185,0.42)', true) };
     // the same holly and a lumpy snow cap for the HTML around the canvas (title card, cards, logo), as
     // CSS images painted right here (fixed 3 px per unit, so they look the same on every board size)
     if (!this.css) try {
@@ -2895,13 +2903,10 @@ const Render = {
     const R = mulberry32(42);
     for (let i = 0; i < 5; i++) { c.fillStyle = 'rgba(140,70,20,0.07)'; circ(c, R() * S, R() * S, 1.4 + R() * 1.2); c.fill(); }
     if (Mode.festive) {
-      // Christmas sprinkles (cranberry, fir, gold) and tiny sugar snowflakes on the warm window glow
+      // Christmas sprinkles (cranberry, fir, gold) on the warm window glow
       const cols = ['rgba(214,52,66,0.15)', 'rgba(52,150,86,0.15)', 'rgba(236,178,40,0.22)'];
       c.lineCap = 'round'; c.lineWidth = 2.2;
       for (let i = 0; i < 3; i++) { const x = R() * S, y = R() * S, a = R() * Math.PI; c.strokeStyle = cols[i]; c.beginPath(); c.moveTo(x - Math.cos(a) * 3, y - Math.sin(a) * 3); c.lineTo(x + Math.cos(a) * 3, y + Math.sin(a) * 3); c.stroke(); }
-      c.save(); c.translate(R() * S, R() * S); c.rotate(R());
-      Xmas.flakePath(c, 3, false); c.strokeStyle = 'rgba(255,255,255,0.6)'; c.lineWidth = 1.1; c.stroke();
-      c.restore();
       Xmas.build(k);
     } else {
       const cols = ['rgba(240,110,150,0.16)', 'rgba(110,190,230,0.16)', 'rgba(250,200,70,0.2)', 'rgba(130,210,140,0.16)'];
@@ -2949,7 +2954,8 @@ const Render = {
       if (this.pattern) { c.fillStyle = this.pattern; c.fillRect(0, top, W, FH + 1); }
       if (L) {
         // the golden bakery: warm light falling in from above, a little more with every jackpot
-        c.fillStyle = lg(c, 0, top, 0, top + FH, [[0, `rgba(255,205,70,${0.05 + 0.05 * L})`], [1, `rgba(255,185,50,${0.015 + 0.02 * L})`]]);
+        const gk = Mode.festive ? 1.6 : 1;   // festive chambers are cooler: more candlelight to turn them gold
+        c.fillStyle = lg(c, 0, top, 0, top + FH, [[0, `rgba(255,205,70,${(0.05 + 0.05 * L) * gk})`], [1, `rgba(255,185,50,${(0.015 + 0.02 * L) * gk})`]]);
         c.fillRect(-RAIL, top, W + RAIL * 2, FH + 1);
       }
       if (k >= 0) {
@@ -3022,17 +3028,17 @@ const Render = {
     }
     c.fillStyle = 'rgba(120,40,40,0.18)'; c.fillRect(0, y, W, 3);
   },
-  // festive awning: cranberry and cream (gold and cream in the golden bakery), snow lying on it,
+  // festive awning: fir green and cream (gold and cream in the golden bakery), snow lying on it,
   // icicles, and a string of fairy lights hanging in swags under the scallops
   awningXmas(c) {
     const y = -TOP, h = 20, n = 10, sw = W / n, L = G.goldLevel || 0;
     for (let i = 0; i < n; i++) {
-      c.fillStyle = i % 2 ? '#fff6ea' : L ? '#f2b53a' : '#d9434f';
+      c.fillStyle = i % 2 ? '#fff6ea' : L ? '#f2b53a' : '#2f8f55';
       c.beginPath(); c.moveTo(i * sw, y); c.lineTo((i + 1) * sw, y); c.lineTo((i + 1) * sw, y + h);
       c.arc((i + 0.5) * sw, y + h, sw / 2, 0, Math.PI); c.closePath(); c.fill();
     }
     // a soft fold shadow along the scallop edge
-    c.strokeStyle = L ? 'rgba(150,90,10,0.25)' : 'rgba(120,20,35,0.22)'; c.lineWidth = 2;
+    c.strokeStyle = L ? 'rgba(150,90,10,0.25)' : 'rgba(12,70,36,0.26)'; c.lineWidth = 2;
     for (let i = 0; i < n; i++) { c.beginPath(); c.arc((i + 0.5) * sw, y + h, sw / 2 - 1, 0.15, Math.PI - 0.15); c.stroke(); }
     if (Xmas.awn) c.drawImage(Xmas.awn, 0, y, W, 64);
     // the light string: a swag from scallop to scallop, two bulbs on each
@@ -3651,16 +3657,6 @@ const UI = {
     const cv = $('title-cv'); if (!cv.width) return;
     const X = Mode.festive, c = cv.getContext('2d'), dpr = Render.dpr, w = cv.width / dpr, h = cv.height / dpr, t = X && REDUCED_MOTION ? 1000 : G.rtime;
     c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
-    if (X && Xmas.tflakes) {
-      // festive: a soft snowfall behind the treats (ice-blue, so it shows on the cream card; still under reduced motion)
-      const S = Xmas.tflakes, sh = h + 16;
-      for (let i = 0; i < 22; i++) {
-        const f = Xmas.SNOW[i], sx = ((f.x * w + Math.sin(t * f.w + f.p) * f.a * 0.7) % w + w) % w, sy = (f.y * sh + t * f.v * 0.55) % sh - 8, s = f.s * 0.95;
-        c.globalAlpha = f.al;
-        c.drawImage(f.crystal ? S.crystal : S.dot, sx - s * 1.33, sy - s * 1.33, s * 2.67, s * 2.67);
-      }
-      c.globalAlpha = 1;
-    }
     const rows = [[0, 1, 2, 3, 4, 5], [6, 7, 8, 9, 10, -1]];
     rows.forEach((row, ri) => row.forEach((tier, i) => {
       const slot = w / row.length, cx = (i + 0.5) * slot, cy = h * (ri ? 0.72 : 0.27) + Math.sin(t * 0.003 + i * 0.9 + ri) * 3;
