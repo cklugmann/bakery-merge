@@ -6,6 +6,13 @@
 //  mode is on. Same rules, same sizes: every tier has the collision area of its classic
 //  counterpart (within 3 %; the Peppermint and the Stollen the identical shape), so the game plays the same.
 //
+//  The other tiers have outlines of their own. Tiers 1 to 3, 5 to 7 and 9 are built the same way: the collision is ONE
+//  convex hull around the painted figure; paint() clips to the figure itself and leaves the slivers
+//  between figure and hull transparent; figurePath(r) hands that figure to the effects painted over a
+//  piece (golden sweep, danger tint); noShade + own shading; outlineFn strokes the contour along the figure.
+//  House rules for such a figure: it fills at least 85 % of its hull and no sliver is deeper than 6 units,
+//  so that a neighbour resting on the hull never visibly hovers. `k` scales a tier to its target area.
+//
 //  Loaded by index.html before the main script. Each entry has the same form as the classic
 //  tiers in index.html (key, name, r, outline, shape, face, crumbs, paint) and uses the drawing
 //  helpers defined there (lg, rg, circ, ell, speckle, ptsCircle …), which exist by the time the
