@@ -624,26 +624,28 @@ FESTIVE_TIERS[5] = {
   },
 };
 
-// 6 ─ GINGERBREAD MAN (a chubby iced gingerbread man)
+// 6 ─ GINGERBREAD MAN (a squat, chubby "chibi" iced gingerbread man)
 FESTIVE_TIERS[6] = {
   key: 'gingerbread', name: 'Gingerbread Man', plural: 'Gingerbread men', r: 50, outline: '#5f2f10',
-  // k: the figure is drawn 1.3 × its nominal r — a figure fills less of its box than the classic Pretzel, the collision area is the same.
-  // inertiaK: Matter under-counts the rotational inertia of bodies made of several parts; this gives the man the Pretzel's.
-  k: 1.2984, inertiaK: 1.45,
-  // four convex parts (units of r): head; arms + tummy (one part: two hand discs and a tummy disc); two legs (hip disc → foot disc)
-  head: [0, -0.55, 0.41], hand: [0.58, -0.11, 0.2], tummy: [0, 0, 0.28], hip: [0.165, 0.3, 0.226], foot: [0.34, 0.69, 0.22],
-  shape(r) {
-    const [hx, hy, hr] = this.head, [ax, ay, ar] = this.hand, [tx, ty, tr] = this.tummy, [px, py, pr] = this.hip, [fx, fy, fr] = this.foot;
+  // k: drawing scale; the collision area (the hull of the whole figure) equals the classic Pretzel's.
+  k: 1.1756,
+  // The visible figure is four convex parts (units of the drawing radius): head; arms + shoulders + belly (one part);
+  // two short fat legs (hip disc → foot disc). It is squat (≈1.3 : 1) and fills ≈90 % of its own convex hull, so the
+  // collision is ONE convex part — the hull — and the few slivers between figure and hull stay small and transparent.
+  head: [0, -0.31, 0.47], hand: [0.77, -0.09, 0.235], shoulder: [0, -0.15, 0.4], belly: [0, 0.11, 0.52], hip: [0.335, 0.33, 0.29], foot: [0.385, 0.485, 0.21],
+  figure(r) {
+    const [hx, hy, hr] = this.head, [ax, ay, ar] = this.hand, [, sy, sr] = this.shoulder, [, by, br] = this.belly, [px, py, pr] = this.hip, [fx, fy, fr] = this.foot;
     const C = (x, y, d, n = 32) => ptsCircle(d * r, n, x * r, y * r);
-    return [C(hx, hy, hr, 48), [...C(-ax, ay, ar), ...C(ax, ay, ar), ...C(tx, ty, tr, 40)], [...C(-px, py, pr), ...C(-fx, fy, fr)], [...C(px, py, pr), ...C(fx, fy, fr)]];
+    return [C(hx, hy, hr, 48), [...C(-ax, ay, ar), ...C(ax, ay, ar), ...C(0, sy, sr, 40), ...C(0, by, br, 48)], [...C(-px, py, pr), ...C(-fx, fy, fr)], [...C(px, py, pr), ...C(fx, fy, fr)]];
   },
-  face: { x: 0, y: -0.54, s: 0.41 },
+  shape(r) { return [[].concat(...this.figure(r))]; },   // one convex part: the engine takes the hull of all the figure's points
+  face: { x: 0, y: -0.29, s: 0.46 },
   crumbs: ['#c98646', '#8c4a1e', '#ffffff', '#e8334a', '#3fae5a'],
-  noShade: true,   // the engine's inner shadow would darken the overlaps of the parts; paint() shades along the true outline instead
-  // the outer contour of the union of the parts, as one closed loop (so overlaps never show seams)
+  noShade: true,   // the engine would shade the hull; paint() shades along the figure's true outline instead
+  // the outer contour of the union of the figure's parts, as one closed loop (so overlaps never show seams)
   union(r) {
     if (this._u && this._u.r === r) return this._u;
-    const hulls = this.shape(r).map(convexHull);
+    const hulls = this.figure(r).map(convexHull);
     const inside = (h, x, y, eps) => {
       for (let i = 0; i < h.length; i++) { const a = h[i], b = h[(i + 1) % h.length], L = Math.hypot(b.x - a.x, b.y - a.y) || 1; if (((b.x - a.x) * (y - a.y) - (b.y - a.y) * (x - a.x)) / L < eps) return false; }
       return true;
@@ -665,22 +667,36 @@ FESTIVE_TIERS[6] = {
     return (this._u = { r, hulls, loop, path: pathFromPts(new Path2D(), loop), inside: (x, y, eps = 0) => hulls.some(h => inside(h, x, y, eps)) });
   },
   paint(c, r, R, T, pr = 1) {
-    const U = this.union(r), P = (x, y) => ({ x: x * r, y: y * r });
+    const U = this.union(r);
+    // the collision hull is bigger than the figure: paint only the figure, the slivers around it stay transparent
+    c.save(); c.clip(U.path);
     // ── biscuit ──
-    c.fillStyle = lg(c, 0, -r, 0, r, [[0, '#dc9a55'], [0.5, '#c67d3d'], [1, '#a9612a']]); c.fillRect(-2 * r, -2 * r, 4 * r, 4 * r);
+    c.fillStyle = lg(c, 0, -0.85 * r, 0, 0.75 * r, [[0, '#dc9a55'], [0.5, '#c67d3d'], [1, '#a9612a']]); c.fillRect(-2 * r, -2 * r, 4 * r, 4 * r);
     // baked, darker rim: soft bands along the true outline
     c.lineJoin = 'round';
-    for (const [w, a] of [[0.42, 0.07], [0.3, 0.08], [0.2, 0.1], [0.12, 0.12]]) { c.lineWidth = w * r; c.strokeStyle = `rgba(120,55,15,${a})`; c.stroke(U.path); }
-    // puffy highlights on every limb
+    for (const [w, a] of [[0.4, 0.07], [0.28, 0.08], [0.19, 0.1], [0.11, 0.12]]) { c.lineWidth = w * r; c.strokeStyle = `rgba(120,55,15,${a})`; c.stroke(U.path); }
+    // puffy highlights: head, arms, belly, legs
     const glow = (x, y, rx, ry, rot, a) => { c.save(); c.translate(x * r, y * r); c.rotate(rot); c.scale(1, ry / rx); c.fillStyle = rg(c, 0, 0, 0, 0, 0, rx * r, [[0, `rgba(255,214,150,${a})`], [1, 'rgba(255,214,150,0)']]); c.fillRect(-rx * r, -rx * r, 2 * rx * r, 2 * rx * r); c.restore(); };
-    glow(-0.1, -0.67, 0.31, 0.23, -0.4, 0.55);
-    glow(-0.4, -0.19, 0.3, 0.12, -0.05, 0.45); glow(0.4, -0.19, 0.3, 0.12, 0.05, 0.4);
-    glow(-0.25, 0.5, 0.22, 0.1, 1.15, 0.35); glow(0.23, 0.5, 0.22, 0.1, -1.15, 0.3);
-    glow(-0.06, 0.06, 0.22, 0.18, 0, 0.3);
+    glow(-0.12, -0.5, 0.36, 0.26, -0.4, 0.55);
+    glow(-0.6, -0.17, 0.28, 0.13, -0.08, 0.45); glow(0.6, -0.17, 0.28, 0.13, 0.08, 0.4);
+    glow(-0.36, 0.42, 0.16, 0.12, 0.3, 0.32); glow(0.36, 0.42, 0.16, 0.12, -0.3, 0.28);
+    glow(-0.05, 0.3, 0.24, 0.16, 0, 0.28);
     // baked texture
-    const inU = R => { for (let k = 0; k < 20; k++) { const x = (R() * 2 - 1) * 0.85 * r, y = lerp(-0.96, 0.95, R()) * r; if (U.inside(x, y, 0.05 * r)) return { x, y }; } return null; };
+    const inU = R => { for (let k = 0; k < 20; k++) { const x = (R() * 2 - 1) * 1.0 * r, y = lerp(-0.8, 0.72, R()) * r; if (U.inside(x, y, 0.05 * r)) return { x, y }; } return null; };
     speckle(c, R, 70, inU, R => `rgba(110,48,12,${0.12 + R() * 0.18})`, r * 0.008, r * 0.02);
     speckle(c, R, 30, inU, R => `rgba(255,226,170,${0.15 + R() * 0.2})`, r * 0.008, r * 0.016);
+    // ── creases that draw the head, arms and legs inside the squat silhouette (dark line + light line) ──
+    const crease = (pts, lx, ly, a = 0.6) => {
+      const line = spline(pts.map(([x, y]) => ({ x: x * r, y: y * r })), 10);
+      c.lineCap = 'round'; c.lineJoin = 'round';
+      c.save(); c.translate(lx * r, ly * r); c.strokeStyle = 'rgba(255,222,168,0.42)'; c.lineWidth = 0.03 * r; strokePts(c, line); c.restore();
+      c.strokeStyle = `rgba(95,47,16,${a})`; c.lineWidth = 0.034 * r; strokePts(c, line);
+    };
+    { const [hx, hy] = this.head, chin = []; for (let i = 0; i <= 8; i++) { const a = lerp(0.68, Math.PI - 0.68, i / 8); chin.push([hx + Math.cos(a) * 0.41, hy + Math.sin(a) * 0.41]); } crease(chin, 0, -0.016, 0.5); }
+    for (const s of [-1, 1]) {
+      crease([[s * 0.6, 0.2], [s * 0.52, 0.18], [s * 0.44, 0.14]], 0, -0.016, 0.5);                // under the arm
+      crease([[s * 0.17, 0.62], [s * 0.13, 0.51], [s * 0.15, 0.4], [s * 0.21, 0.32]], s * 0.016, 0);    // inner side of the leg
+    }
     // ── icing squiggles at wrists and ankles ──
     const squiggle = (cx, cy, ang, half, amp, waves) => {
       const pts = [], n = waves * 2;
@@ -693,8 +709,8 @@ FESTIVE_TIERS[6] = {
       c.strokeStyle = 'rgba(255,255,255,1)'; c.lineWidth = 0.022 * r; c.save(); c.translate(-0.01 * r, -0.014 * r); strokePts(c, line); c.restore();
     };
     for (const s of [-1, 1]) {
-      squiggle(s * 0.44, -0.09, Math.PI / 2 + s * 0.12, 0.17, 0.045, 3);
-      squiggle(s * 0.29, 0.575, s * -0.42, 0.15, 0.042, 3);
+      squiggle(s * 0.61, -0.08, Math.PI / 2 + s * 0.1, 0.19, 0.045, 3);
+      squiggle(s * 0.38, 0.485, s * -0.12, 0.155, 0.042, 3);
     }
     // ── gumdrop buttons ──
     const gumdrop = (x, y, s, col, dark, light) => {
@@ -705,11 +721,11 @@ FESTIVE_TIERS[6] = {
       speckle(c, R, 7, R => { const a = R() * TAU, d = Math.sqrt(R()) * s * 0.75; return { x: x + Math.cos(a) * d, y: y + Math.sin(a) * d }; }, 'rgba(255,255,255,0.55)', 0.008 * r, 0.013 * r);
       ell(c, x - s * 0.36, y - s * 0.38, s * 0.3, s * 0.2, -0.6); c.fillStyle = 'rgba(255,255,255,0.9)'; c.fill();
     };
-    gumdrop(0, 0.07, 0.082, '#36b15a', '#165f2c', '#b4f5c0');
-    gumdrop(0, 0.29, 0.082, '#e8334a', '#8e0f22', '#ffb0b8');
-    // ── bow tie ──
+    gumdrop(0, 0.285, 0.074, '#36b15a', '#165f2c', '#b4f5c0');
+    gumdrop(0, 0.46, 0.074, '#e8334a', '#8e0f22', '#ffb0b8');
+    // ── bow tie under the chin ──
     {
-      const x = 0, y = -0.15 * r, w = 0.19 * r, h = 0.11 * r;
+      const x = 0, y = 0.1 * r, w = 0.17 * r, h = 0.095 * r;
       c.fillStyle = 'rgba(80,30,5,0.35)';
       for (const s of [-1, 1]) { c.beginPath(); c.moveTo(x + 0.012 * r, y + 0.025 * r); c.quadraticCurveTo(x + s * w * 0.5, y - h * 1.1 + 0.025 * r, x + s * w + 0.012 * r, y - h * 0.8 + 0.025 * r); c.quadraticCurveTo(x + s * w * 1.12, y + 0.025 * r, x + s * w + 0.012 * r, y + h * 0.8 + 0.025 * r); c.quadraticCurveTo(x + s * w * 0.5, y + h * 1.1 + 0.025 * r, x + 0.012 * r, y + 0.025 * r); c.fill(); }
       for (const s of [-1, 1]) {
@@ -736,8 +752,10 @@ FESTIVE_TIERS[6] = {
     // light rim just inside the contour, on the lit (top-left) side
     // (kept faint: a strong light rim reads as a cream icing outline at icon size)
     c.save(); c.translate(0.014 * r, 0.02 * r); c.strokeStyle = 'rgba(255,226,175,0.32)'; c.lineWidth = (this.ow || 0.075 * r) * 2 + 0.02 * r; c.stroke(U.path); c.restore();
+    c.restore();   // the figure clip
   },
-  outlineFn(c, path, r, ow) { c.lineWidth = ow * 2; c.strokeStyle = this.outline; c.stroke(this.union(r).path); },
+  // contour along the figure, inside it only (the hull around it stays transparent)
+  outlineFn(c, path, r, ow) { const U = this.union(r); c.save(); c.clip(U.path); c.lineWidth = ow * 2; c.strokeStyle = this.outline; c.stroke(U.path); c.restore(); },
 };
 
 // 7 ─ CHRISTMAS PUDDING (round Christmas pudding with white icing and holly — same collision shape as the classic Cherry Pie)
