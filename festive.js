@@ -511,116 +511,189 @@ FESTIVE_TIERS[4] = {
   tear: { cx: -0.507, cy: 0.551, d: 0.1 },
 };
 
-// 5 ─ MINCE PIE (mince pie seen from above, star lid — same collision shape as the classic Cinnamon Roll)
+// 5 ─ MINCE PIE (a homely little pie seen from the side, a little from above: fluted golden case, crimped sugar-dusted lid, pastry star)
 FESTIVE_TIERS[5] = {
-  key: 'mincepie', name: 'Mince Pie', plural: 'Mince pies', r: 41, outline: '#8a4f22',
-  shape: r => [ptsCircle(r)],
-  face: { x: 0, y: 0.03, s: 0.32 },
-  crumbs: ['#e8b06c', '#f6d29b', '#ffffff', '#a8341c', '#e8782a'],
-  RIN: 0.73,   // inner edge of the pastry rim (units of r)
-  // rounded star outline (design units): 5 points, one pointing up
-  star(r, R0, R1, tip = 0.2, notch = 0.16) {
-    const pts = [];
-    for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + (k * Math.PI) / 5, d = (k % 2 ? R1 : R0) * r; pts.push({ x: Math.cos(a) * d, y: Math.sin(a) * d }); }
-    const path = new Path2D(), n = pts.length;
-    for (let i = 0; i < n; i++) {
-      const p0 = pts[(i + n - 1) % n], p1 = pts[i], p2 = pts[(i + 1) % n], f = i % 2 ? notch : tip;
-      const a = { x: lerp(p1.x, p0.x, f), y: lerp(p1.y, p0.y, f) }, b = { x: lerp(p1.x, p2.x, f), y: lerp(p1.y, p2.y, f) };
-      i ? path.lineTo(a.x, a.y) : path.moveTo(a.x, a.y); path.quadraticCurveTo(p1.x, p1.y, b.x, b.y);
+  key: 'mincepie', name: 'Mince Pie', plural: 'Mince pies', r: 41, outline: '#7a4316',
+  k: 1.2636,   // drawing scale: the collision area (the hull of the pie) equals the classic Cinnamon Roll's
+  // the pie in units of its drawing radius
+  rim: { cy: -0.2, rx: 0.88, ry: 0.3, n: 18 },               // the crimped rim: lumps of pinched pastry along this ellipse
+  lid: { cy: -0.2, rx: 0.78, ry: 0.3 },                      // the lid inside the rim
+  wall: { y: -0.14, x: 0.93 },                               // the fluted case: its top corners, tucked under the rim …
+  base: { cy: 0.4, rx: 0.74, ry: 0.22, n: 16, dip: 0.03 },  // … and its foot (n flutes all round, scalloped `dip` deep)
+  face: { x: 0, y: 0.4, s: 0.3 },
+  crumbs: ['#f6d29b', '#e2a050', '#ffffff', '#5a1a14', '#c97a34'],
+  // The collision outline is the convex hull of the pie; the painted pie is a little smaller (the rim overhangs the
+  // case, the crimps and the foot are scalloped), so paint() clips to the pie itself and shades along its outline.
+  noShade: true,
+  // a flute of the case: 1 on its crest, 0 in the groove between two flutes
+  lobe(ph) { const u = ph * this.base.n / TAU + 0.5, t = u - Math.floor(u) - 0.5; return Math.sqrt(Math.max(0, 1 - 4 * t * t)); },
+  // the crimp lumps all round the rim at equal spacing, one at the front: [x, y, rx, ry, angle] (units of r)
+  lumps() {
+    if (this._lumps) return this._lumps;
+    const { cy, rx, ry, n } = this.rim, M = 720, P = [], L = [0];
+    for (let i = 0; i <= M; i++) {
+      const t = Math.PI / 2 + (i / M) * TAU; P.push([Math.cos(t) * rx, cy + Math.sin(t) * ry, t]);
+      if (i) L.push(L[i - 1] + Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]));
     }
-    path.closePath();
-    return path;
+    const out = [];
+    for (let k = 0, j = 0; k < n; k++) {
+      const goal = (k / n) * L[M]; while (L[j + 1] < goal) j++;
+      const [x, y, t] = P[j], side = Math.cos(t) ** 2;
+      out.push([x, y, 0.125, lerp(0.135, 0.1, side), t]);   // taller at the front and back, flatter at the sides
+    }
+    return (this._lumps = out);
   },
-  paint(c, r, R) {
-    const RIN = this.RIN;
-    // ── the pastry rim: one continuous, rounded band of shortcrust ──
-    c.fillStyle = rg(c, 0, 0, RIN * r, 0, 0, r, [[0, '#f6d394'], [0.35, '#eebf78'], [0.75, '#dba25a'], [1, '#c4843e']]);
+  // the outline of the pie (every vertical line crosses it in one piece): top and bottom edge, x by x
+  contour(r) {
+    if (this._c && this._c.r === r) return this._c.pts;
+    const E = (cx, cy, rx, ry) => x => { const u = (x - cx) / rx; if (Math.abs(u) > 1) return null; const d = ry * Math.sqrt(1 - u * u); return [cy - d, cy + d]; };
+    const w = this.wall, b = this.base;
+    const wallPart = x => { const ax = Math.abs(x); if (ax > w.x) return null; return [w.y, ax <= b.rx ? b.cy : lerp(w.y, b.cy, (w.x - ax) / (w.x - b.rx))]; };
+    const footPart = x => { const u = x / b.rx; if (Math.abs(u) > 1) return null; const ph = Math.asin(u); return [b.cy, b.cy + b.ry * Math.cos(ph) - b.dip * (1 - this.lobe(ph))]; };
+    const parts = [...this.lumps().map(([x, y, rx, ry]) => E(x, y, rx, ry)), E(0, this.lid.cy, this.lid.rx, this.lid.ry), wallPart, footPart];
+    const X1 = Math.max(...this.lumps().map(l => Math.abs(l[0]) + l[2])), n = 300, top = [], bot = [];
+    for (let i = 0; i <= n; i++) {
+      const x = -X1 * Math.cos((i / n) * Math.PI); let a = Infinity, z = -Infinity;
+      for (const p of parts) { const s = p(x); if (s) { if (s[0] < a) a = s[0]; if (s[1] > z) z = s[1]; } }
+      if (a <= z) { top.push({ x: x * r, y: a * r }); bot.push({ x: x * r, y: z * r }); }
+    }
+    const pts = top.concat(bot.reverse());
+    this._c = { r, pts, path: pathFromPts(new Path2D(), pts) };
+    return pts;
+  },
+  shape(r) { return [this.contour(r)]; },   // one convex part: the engine takes the hull of the pie's outline
+  figurePath(r) { this.contour(r); return this._c.path; },
+  outlineFn(c, path, r, ow) { const F = this.figurePath(r); c.save(); c.clip(F); c.lineWidth = ow * 2; c.strokeStyle = this.outline; c.stroke(F); c.restore(); },
+  paint(c, r, R, T, pr = 1) {
+    const F = this.figurePath(r), w = this.wall, b = this.base, L = this.lid, M = this.rim;
+    c.save(); c.clip(F);
+    c.lineCap = 'round'; c.lineJoin = 'round';
+
+    // ── the fluted pastry case: golden, a shade deeper than the lid, turning away from the light ──
+    c.fillStyle = lg(c, 0, -0.2 * r, 0, 0.66 * r, [[0, '#f4bf68'], [0.5, '#e29d46'], [1, '#bf7228']]);
     c.fillRect(-2 * r, -2 * r, 4 * r, 4 * r);
-    // lit from the top left, shaded bottom right
-    c.fillStyle = lg(c, -0.8 * r, -0.8 * r, 0.8 * r, 0.8 * r, [[0, 'rgba(255,246,215,0.45)'], [0.5, 'rgba(255,246,215,0)'], [0.62, 'rgba(120,55,12,0)'], [1, 'rgba(120,55,12,0.3)']]);
+    c.fillStyle = lg(c, -r, 0, r, 0, [[0, 'rgba(255,240,200,0.2)'], [0.4, 'rgba(255,240,200,0)'], [0.65, 'rgba(110,50,10,0)'], [1, 'rgba(110,50,10,0.38)']]);
     c.fillRect(-2 * r, -2 * r, 4 * r, 4 * r);
-    // a soft ridge along the middle of the band
-    c.lineCap = 'round';
-    c.strokeStyle = 'rgba(255,240,205,0.4)'; c.lineWidth = 0.05 * r; c.beginPath(); c.arc(0, 0, 0.84 * r, 2.4, 5.4); c.stroke();
-    // pinched crimp: soft slanted dents pressed into the outer half of the band
-    const N = 22;
-    for (let i = 0; i < N; i++) {
-      const a = (i / N) * TAU, lit = Math.cos(a + 2.36);
-      c.save(); c.rotate(a);
-      const dent = new Path2D(); dent.moveTo(0.8 * r, -0.02 * r); dent.quadraticCurveTo(0.9 * r, 0.03 * r, 0.985 * r, 0.1 * r);
-      c.strokeStyle = `rgba(125,58,14,${0.42 - 0.1 * lit})`; c.lineWidth = 0.05 * r; c.stroke(dent);
-      c.save(); c.translate(-0.012 * r, -0.03 * r); c.strokeStyle = `rgba(255,238,200,${0.35 + 0.15 * lit})`; c.lineWidth = 0.028 * r; c.stroke(dent); c.restore();
-      c.restore();
+    // flutes: rounded ribs from under the rim down to the foot, each lit on its left
+    const n = b.n;
+    const top = a => ({ x: w.x * Math.sin(a) * r, y: (w.y + 0.32 * Math.cos(a)) * r });
+    const foot = a => ({ x: b.rx * Math.sin(a) * r, y: (b.cy + b.ry * Math.cos(a) - b.dip * (1 - this.lobe(a))) * r });
+    for (let k = -Math.ceil(n / 4); k <= Math.ceil(n / 4); k++) {
+      const a0 = Math.max((k - 0.5) * TAU / n, -Math.PI / 2), a1 = Math.min((k + 0.5) * TAU / n, Math.PI / 2);
+      if (a1 <= a0) continue;
+      const t0 = top(a0), t1 = top(a1), f0 = foot(a0), f1 = foot(a1), p = new Path2D();
+      p.moveTo(t0.x, t0.y - 0.15 * r); p.lineTo(t1.x, t1.y - 0.15 * r);
+      for (let i = 0; i <= 10; i++) { const q = foot(lerp(a1, a0, i / 10)); p.lineTo(q.x, q.y + 0.02 * r); }
+      p.closePath();
+      const m0 = (t0.x + f0.x) / 2, m1 = (t1.x + f1.x) / 2;
+      c.fillStyle = lg(c, m0, 0, m1, 0, [[0, 'rgba(130,55,8,0.45)'], [0.2, 'rgba(255,220,150,0.12)'], [0.4, 'rgba(255,228,170,0.5)'], [0.62, 'rgba(255,225,160,0.08)'], [1, 'rgba(130,55,8,0.42)']]);
+      c.fill(p);
     }
-    speckle(c, R, 40, R => { const a = R() * TAU, d = lerp(RIN + 0.04, 0.95, R()) * r; return { x: Math.cos(a) * d, y: Math.sin(a) * d }; }, R => `rgba(150,80,25,${0.12 + R() * 0.15})`, r * 0.006, r * 0.013);
-    // ── fruit mince: a clear mid red, darker than the pastry, lighter than a chocolate filling ──
-    circ(c, 0, 0, RIN * r); c.fillStyle = rg(c, -0.1 * r, -0.12 * r, 0, 0, 0, RIN * r, [[0, '#a8452c'], [0.6, '#913424'], [1, '#7a2a1e']]); c.fill();
-    c.save(); circ(c, 0, 0, RIN * r); c.clip();
-    // chunky mince texture: currants, bits of apple and peel in a dark syrup
-    for (let i = 0; i < 110; i++) {
-      const a = R() * TAU, d = lerp(0.25, 0.75, Math.sqrt(R())) * r, x = Math.cos(a) * d, y = Math.sin(a) * d, s = lerp(0.022, 0.04, R()) * r, k = R();
-      blobPath(c, x, y, s, R, 6, 0.45); c.fillStyle = k < 0.42 ? 'rgba(70,16,24,0.6)' : k < 0.7 ? 'rgba(196,96,52,0.5)' : k < 0.88 ? 'rgba(150,50,30,0.6)' : 'rgba(214,150,70,0.55)'; c.fill();
-    }
-    // a few big, readable pieces in the gaps of the star: raisins, glacé cherries, candied peel, sultanas
-    // raisins: lumpy and wrinkled (smooth dark ovals would read as olives)
-    const raisin = (x, y, s, rot) => {
-      c.save(); c.translate(x * r, y * r); c.rotate(rot); s *= r;
-      blobPath(c, 0.01 * r, 0.02 * r, s, R, 7, 0.4); c.fillStyle = 'rgba(50,8,0,0.4)'; c.fill();
-      blobPath(c, 0, 0, s, R, 7, 0.4); c.fillStyle = '#3e1420'; c.fill();
-      blobPath(c, -s * 0.15, -s * 0.2, s * 0.6, R, 6, 0.35); c.fillStyle = 'rgba(120,56,62,0.8)'; c.fill();
-      circ(c, -s * 0.3, -s * 0.35, s * 0.16); c.fillStyle = 'rgba(255,225,215,0.6)'; c.fill();
-      c.restore();
+    // contact shadow along the foot, and a baked speckle
+    c.fillStyle = lg(c, 0, (b.cy + 0.02) * r, 0, (b.cy + b.ry) * r, [[0, 'rgba(95,40,4,0)'], [1, 'rgba(95,40,4,0.42)']]);
+    c.fillRect(-2 * r, (b.cy + 0.02) * r, 4 * r, r);
+    speckle(c, R, 45, R => ({ x: lerp(-0.85, 0.85, R()) * r, y: lerp(0.12, 0.66, R()) * r }), R => `rgba(140,62,14,${0.14 + R() * 0.2})`, 0.008 * r, 0.018 * r);
+    // the overhanging rim casts a soft shadow onto the case
+    const rimFront = dy => { c.beginPath(); for (let i = 0; i <= 40; i++) { const t = lerp(-0.15, Math.PI + 0.15, i / 40); const x = Math.cos(t) * (M.rx + 0.03) * r, y = (M.cy + Math.sin(t) * M.ry + dy) * r; i ? c.lineTo(x, y) : c.moveTo(x, y); } };
+    rimFront(0.15); c.strokeStyle = 'rgba(105,45,6,0.28)'; c.lineWidth = 0.12 * r; c.stroke();
+    rimFront(0.13); c.strokeStyle = 'rgba(105,45,6,0.32)'; c.lineWidth = 0.06 * r; c.stroke();
+
+    // ── one crimp: a plump lump of pinched pastry ──
+    const lump = ([x, y, ax, ay]) => {
+      x *= r; y *= r; ax *= r; ay *= r;
+      ell(c, x + 0.01 * r, y + 0.03 * r, ax, ay); c.fillStyle = 'rgba(115,50,8,0.32)'; c.fill();
+      ell(c, x, y, ax, ay);
+      c.fillStyle = rg(c, x - ax * 0.3, y - ay * 0.4, 0, x, y, Math.max(ax, ay) * 1.1, [[0, '#fbdb9a'], [0.45, '#efbb68'], [0.8, '#dc9a48'], [1, '#c27c34']]);
+      c.fill();
+      c.strokeStyle = 'rgba(150,76,20,0.6)'; c.lineWidth = 0.03 * r; c.stroke();
     };
-    const cherry = (x, y, s) => {
-      x *= r; y *= r; s *= r;
-      circ(c, x + 0.012 * r, y + 0.022 * r, s); c.fillStyle = 'rgba(50,8,0,0.4)'; c.fill();
-      circ(c, x, y, s); c.fillStyle = rg(c, x - s * 0.35, y - s * 0.35, 0, x, y, s, [[0, '#ff9a9a'], [0.45, '#ec2a42'], [1, '#a00e22']]); c.fill();
-      c.strokeStyle = '#7a0818'; c.lineWidth = 0.016 * r; c.stroke();
-      ell(c, x - s * 0.35, y - s * 0.38, s * 0.32, s * 0.2, -0.6); c.fillStyle = 'rgba(255,255,255,0.9)'; c.fill();
-    };
-    const peel = (x, y, s, rot, col = ['#ffb84e', '#f2801e', '#b44e0a']) => {
-      c.save(); c.translate(x * r, y * r); c.rotate(rot); s *= r;
-      c.fillStyle = 'rgba(50,8,0,0.35)'; c.beginPath(); c.roundRect(-s + 0.01 * r, -s * 0.7 + 0.02 * r, 2 * s, 1.4 * s, s * 0.35); c.fill();
-      c.fillStyle = lg(c, 0, -s * 0.7, 0, s * 0.7, [[0, col[0]], [0.5, col[1]], [1, col[2]]]); c.beginPath(); c.roundRect(-s, -s * 0.7, 2 * s, 1.4 * s, s * 0.35); c.fill();
-      c.strokeStyle = col[2]; c.lineWidth = 0.014 * r; c.stroke();
-      c.fillStyle = 'rgba(255,250,220,0.7)'; c.fillRect(-s * 0.7, -s * 0.5, s * 0.8, s * 0.22);
-      c.restore();
-    };
-    const SULTANA = ['#f4c662', '#cc8a2c', '#7e4c10'];
-    // gaps open towards -54°, 18°, 90°, 162°, 234°: raisins up top and at the bottom, bright fruit beside the face
-    raisin(0.36, -0.47, 0.07, 0.6); peel(0.5, -0.3, 0.05, -0.4, SULTANA);
-    cherry(0.53, 0.12, 0.075); peel(0.44, 0.33, 0.05, -0.5);
-    raisin(-0.06, 0.53, 0.07, 0.2); cherry(0.14, 0.55, 0.05);
-    peel(-0.52, 0.14, 0.055, 0.3); cherry(-0.44, 0.34, 0.05);
-    cherry(-0.43, -0.4, 0.065); raisin(-0.22, -0.55, 0.06, -0.4);
-    // syrup gloss
-    for (const [a0, a1, d] of [[-2.85, -2.5, 0.6], [-1.85, -1.55, 0.62], [2.55, 2.85, 0.58]]) {
-      c.strokeStyle = 'rgba(255,225,200,0.25)'; c.lineWidth = 0.035 * r; c.beginPath(); c.arc(0, 0, d * r, a0, a1); c.stroke();
-    }
-    // the rim casts a thin shadow onto the filling
-    c.strokeStyle = 'rgba(40,8,0,0.35)'; c.lineWidth = 0.05 * r; circ(c, 0.008 * r, 0.018 * r, RIN * r); c.stroke();
+    const lumps = this.lumps();
+    const back = lumps.filter(l => Math.sin(l[4]) < -1e-6).sort((p, q) => Math.sin(p[4]) - Math.sin(q[4]));
+    const front = lumps.filter(l => Math.sin(l[4]) >= -1e-6).sort((p, q) => Math.sin(p[4]) - Math.sin(q[4]));
+    back.forEach(lump);
+
+    // ── the lid: a little puffed up, golden, brightest in the middle ──
+    c.save(); c.translate(0, L.cy * r); c.scale(1, L.ry / L.rx);
+    circ(c, 0, 0, L.rx * r); c.fillStyle = rg(c, -0.22 * r, -0.3 * r, 0, 0, 0, L.rx * r, [[0, '#f9d696'], [0.45, '#eeb466'], [0.8, '#da9440'], [1, '#c07a30']]); c.fill();
     c.restore();
-    // pastry lip: a light inner edge against the filling
-    c.strokeStyle = 'rgba(110,45,12,0.75)'; c.lineWidth = 0.025 * r; circ(c, 0, 0, RIN * r); c.stroke();
-    c.strokeStyle = '#fbe3b0'; c.lineWidth = 0.04 * r; circ(c, 0, 0, (RIN + 0.03) * r); c.stroke();
-    c.strokeStyle = 'rgba(255,255,240,0.7)'; c.lineWidth = 0.02 * r; c.beginPath(); c.arc(0, 0, (RIN + 0.025) * r, 2.6, 5.0); c.stroke();
-    // ── star-shaped pastry lid ──
-    const S = this.star(r, 0.66, 0.3);
-    c.save(); c.translate(0.025 * r, 0.045 * r); c.fillStyle = 'rgba(50,8,0,0.5)'; c.fill(S); c.restore();
-    c.fillStyle = rg(c, -0.16 * r, -0.2 * r, 0, 0, 0, 0.66 * r, [[0, '#fde6b6'], [0.45, '#f3c47c'], [0.8, '#e2a258'], [1, '#cf8a40']]); c.fill(S);
-    c.save(); c.clip(S);
-    c.strokeStyle = 'rgba(170,88,26,0.3)'; c.lineWidth = 0.16 * r; c.stroke(S);
-    c.strokeStyle = 'rgba(170,88,26,0.4)'; c.lineWidth = 0.07 * r; c.stroke(S);
-    c.save(); c.translate(0.02 * r, 0.03 * r); c.strokeStyle = 'rgba(255,240,205,0.55)'; c.lineWidth = 0.035 * r; c.stroke(S); c.restore();
-    speckle(c, R, 20, inDisc(0.5 * r), R => `rgba(160,85,30,${0.12 + R() * 0.18})`, r * 0.01, r * 0.018);
-    // icing sugar: a soft dusting on the lid only
-    for (const [x, y, s, a] of [[-0.1, -0.1, 0.42, 0.5], [0.22, 0.16, 0.3, 0.38], [0.02, -0.42, 0.22, 0.44], [-0.42, -0.12, 0.22, 0.4], [0.42, -0.12, 0.18, 0.3], [-0.22, 0.38, 0.2, 0.3], [0.24, 0.42, 0.16, 0.26]]) {
-      c.fillStyle = rg(c, x * r, y * r, 0, x * r, y * r, s * r, [[0, `rgba(255,255,255,${a})`], [0.55, `rgba(255,255,255,${a * 0.55})`], [1, 'rgba(255,255,255,0)']]); circ(c, x * r, y * r, s * r); c.fill();
+    speckle(c, R, 30, R => { const a = R() * TAU, d = Math.sqrt(R()) * 0.9; return { x: Math.cos(a) * d * L.rx * r, y: (L.cy + Math.sin(a) * d * L.ry) * r }; }, R => `rgba(165,85,25,${0.12 + R() * 0.18})`, 0.008 * r, 0.016 * r);
+
+    // ── a pastry star lying on the lid (pastry on pastry: a thick cut-out, its edge baked a little darker) ──
+    const sx = 0.02 * r, sy = (L.cy - 0.03) * r, S = this.star(sx, sy, 0.34 * r, 0.16 * r, 0.52);
+    c.save(); c.translate(0.02 * r, 0.06 * r); c.fillStyle = 'rgba(110,45,5,0.42)'; c.fill(S); c.restore();
+    c.save(); c.translate(0, 0.04 * r); c.fillStyle = '#b06a28'; c.fill(S); c.restore();
+    c.fillStyle = rg(c, sx - 0.1 * r, sy - 0.08 * r, 0, sx, sy, 0.36 * r, [[0, '#fff3d6'], [0.55, '#fde0a4'], [1, '#f2c47a']]); c.fill(S);
+    c.strokeStyle = 'rgba(125,58,12,0.85)'; c.lineWidth = 0.035 * r; c.stroke(S);
+
+    // ── icing sugar: a generous soft dusting on the lid and the star ──
+    for (const [x, y, s, a] of [[-0.12, -0.24, 0.34, 0.34], [0.24, -0.18, 0.28, 0.3], [-0.45, -0.16, 0.22, 0.3], [0.5, -0.24, 0.2, 0.26], [0.02, -0.34, 0.24, 0.3]]) {
+      c.save(); c.translate(x * r, y * r); c.scale(1, 0.5);
+      c.fillStyle = rg(c, 0, 0, 0, 0, 0, s * r, [[0, `rgba(255,255,255,${a})`], [0.55, `rgba(255,255,255,${a * 0.5})`], [1, 'rgba(255,255,255,0)']]); circ(c, 0, 0, s * r); c.fill();
+      c.restore();
     }
-    speckle(c, R, 90, inDisc(0.6 * r), R => `rgba(255,255,255,${0.4 + R() * 0.4})`, r * 0.005, r * 0.011);
+    speckle(c, R, 140, R => { const a = R() * TAU, d = Math.sqrt(R()) * 0.95; return { x: Math.cos(a) * d * L.rx * r, y: (L.cy + Math.sin(a) * d * L.ry) * r }; }, R => `rgba(255,255,255,${0.5 + R() * 0.45})`, 0.006 * r, 0.013 * r);
+
+    // ── a little holly sprig tucked behind the star ──
+    this.holly(c, r, 0.5, -0.36, 0.2);
+
+    // ── the crimped rim in front of the lid ──
+    front.forEach(lump);
+    // sugar caught on the tops of the crimps
+    for (const [x, y, ax, ay] of lumps) {
+      speckle(c, R, 7, R => ({ x: (x + (R() - 0.5) * ax * 1.3) * r, y: (y - ay * lerp(0.3, 0.85, R())) * r }), R => `rgba(255,255,255,${0.45 + R() * 0.4})`, 0.005 * r, 0.01 * r);
+    }
+
+    // ── volume: the engine's soft shading, but along the pie's own outline ──
+    c.save();
+    const frame = new Path2D(); frame.rect(-4 * r, -4 * r, 8 * r, 8 * r); frame.addPath(F);
+    c.shadowColor = 'rgba(90,40,0,0.36)'; c.shadowBlur = r * 0.3 * pr; c.shadowOffsetX = -r * 0.08 * pr; c.shadowOffsetY = -r * 0.12 * pr;
+    c.fillStyle = '#000'; c.fill(frame, 'evenodd');
     c.restore();
-    c.strokeStyle = 'rgba(100,42,8,0.9)'; c.lineWidth = 0.035 * r; c.lineJoin = 'round'; c.stroke(S);
-    ell(c, -0.04 * r, -0.4 * r, 0.07 * r, 0.026 * r, -1.25); c.fillStyle = 'rgba(255,255,240,0.6)'; c.fill();
+    c.save(); c.globalCompositeOperation = 'soft-light';
+    c.fillStyle = rg(c, -0.4 * r, -0.5 * r, 0, -0.2 * r, -0.3 * r, r * 1.1, [[0, 'rgba(255,255,255,0.7)'], [1, 'rgba(255,255,255,0)']]);
+    c.fillRect(-3 * r, -3 * r, 6 * r, 6 * r);
+    c.restore();
+    c.restore();   // the pie clip
+  },
+  // a five-pointed star lying flat (squashed to `fy` of its height), rounded points, one pointing away from us
+  star(cx, cy, R0, R1, fy) {
+    const pts = [];
+    for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + (k * Math.PI) / 5, d = k % 2 ? R1 : R0; pts.push({ x: cx + Math.cos(a) * d, y: cy + Math.sin(a) * d * fy }); }
+    const p = new Path2D(), n = pts.length;
+    for (let i = 0; i < n; i++) {
+      const p0 = pts[(i + n - 1) % n], p1 = pts[i], p2 = pts[(i + 1) % n], f = i % 2 ? 0.14 : 0.22;
+      const a = { x: lerp(p1.x, p0.x, f), y: lerp(p1.y, p0.y, f) }, b = { x: lerp(p1.x, p2.x, f), y: lerp(p1.y, p2.y, f) };
+      i ? p.lineTo(a.x, a.y) : p.moveTo(a.x, a.y); p.quadraticCurveTo(p1.x, p1.y, b.x, b.y);
+    }
+    p.closePath();
+    return p;
+  },
+  // a holly sprig lying on the lid: two spiky leaves and three berries; (x, y) and size s in units of r
+  holly(c, r, x, y, s) {
+    c.save(); c.translate(x * r, y * r);
+    const leaf = (ang, len, wid) => {
+      c.save(); c.scale(1, 0.62); c.rotate(ang);
+      const k = 3, wf = t => wid * Math.pow(Math.sin(Math.PI * t), 0.7);
+      c.beginPath(); c.moveTo(0, 0);
+      for (let i = 1; i <= k + 1; i++) { const t0 = (i - 1) / (k + 1), t1 = i / (k + 1), tm = (t0 + t1) / 2; c.quadraticCurveTo(len * tm, -wf(tm) * 0.55, len * t1, i <= k ? -wf(t1) : 0); }
+      for (let i = k; i >= 0; i--) { const t0 = (i + 1) / (k + 1), t1 = i / (k + 1), tm = (t0 + t1) / 2; c.quadraticCurveTo(len * tm, wf(tm) * 0.55, len * t1, i > 0 ? wf(t1) : 0); }
+      c.closePath();
+      c.save(); c.translate(0.01 * r, 0.04 * r); c.fillStyle = 'rgba(90,40,5,0.35)'; c.fill(); c.restore();
+      c.fillStyle = lg(c, 0, -wid, 0, wid, [[0, '#56c872'], [0.5, '#25903f'], [1, '#125526']]); c.fill();
+      c.strokeStyle = '#0b3517'; c.lineWidth = 0.03 * r; c.stroke();
+      c.strokeStyle = 'rgba(205,255,205,0.75)'; c.lineWidth = 0.025 * r; c.beginPath(); c.moveTo(len * 0.1, 0); c.quadraticCurveTo(len * 0.5, -wid * 0.1, len * 0.85, 0); c.stroke();
+      c.restore();
+    };
+    leaf(Math.PI + 0.25, 1.2 * s * r, 0.42 * s * r);
+    leaf(-0.25, 1.2 * s * r, 0.42 * s * r);
+    for (const [dx, dy] of [[-0.24, 0.02], [0.24, 0.03], [0, -0.16]]) {
+      const bx = dx * s * r, by = dy * s * r, q = 0.27 * s * r;
+      circ(c, bx + 0.01 * r, by + 0.02 * r, q); c.fillStyle = 'rgba(60,10,5,0.4)'; c.fill();
+      circ(c, bx, by, q); c.fillStyle = rg(c, bx - q * 0.35, by - q * 0.4, 0, bx, by, q, [[0, '#ff8080'], [0.5, '#e01f38'], [1, '#8a0619']]); c.fill();
+      c.strokeStyle = '#540310'; c.lineWidth = 0.025 * r; c.stroke();
+      circ(c, bx - q * 0.35, by - q * 0.38, q * 0.3); c.fillStyle = 'rgba(255,255,255,0.92)'; c.fill();
+    }
+    c.restore();
   },
 };
 
@@ -761,135 +834,211 @@ FESTIVE_TIERS[6] = {
   outlineFn(c, path, r, ow) { const U = this.union(r); c.save(); c.clip(U.path); c.lineWidth = ow * 2; c.strokeStyle = this.outline; c.stroke(U.path); c.restore(); },
 };
 
-// 7 ─ CHRISTMAS PUDDING (round Christmas pudding with white icing and holly — same collision shape as the classic Cherry Pie)
+// 7 ─ BUNDT CAKE (a fluted Gugelhupf seen from the side, a little from above: golden-brown ridges, white icing drips, the hole on top)
 FESTIVE_TIERS[7] = {
-  key: 'pudding', name: 'Christmas Pudding', r: 56, outline: '#3a1c0e',
-  shape: r => [ptsCircle(r)],
-  face: { x: 0, y: 0.43, s: 0.4, eye: 'light' },
-  crumbs: ['#5c311c', '#ffffff', '#2f9a55', '#e8334a'],
-  // icing drips: [x, length, half-width] in units of r
-  drips: [[-0.74, 0.16, 0.1], [-0.44, 0.3, 0.115], [-0.13, 0.15, 0.1], [0.19, 0.27, 0.11], [0.5, 0.2, 0.115], [0.8, 0.12, 0.09]],
-  icingEdge(r) {
-    return x => {
-      const u = x / r;
-      let y = -0.2 + 0.2 * Math.sqrt(Math.max(0, 1 - Math.pow(u / 0.99, 2)));
-      let d = 0;
-      for (const [dx, L, w] of this.drips) {
-        const t = (u - dx) / w;
-        if (Math.abs(t) < 1) d = Math.max(d, L * Math.sqrt(1 - t * t));
-        d = Math.max(d, 0.05 * Math.exp(-Math.pow((Math.abs(t) - 1) / 0.45, 2)) * (Math.abs(t) > 1 ? 1 : 0));
-      }
-      return (y + d) * r;
-    };
+  key: 'bundt', name: 'Bundt Cake', r: 56, outline: '#5a2c0e',
+  k: 1.044,   // drawing scale: the collision area (the hull of the cake) equals the classic Cherry Pie's
+  // The cake is a fluted solid of revolution, painted from its own little 3D model: the profile (radius, height) runs
+  // from the foot of the cake over its shoulder to the rim of the hole (units of r); n rounded ridges all round, amp
+  // deep; seen from elev (radians) above the horizon; Y0 moves the picture down so that its middle is near 0.
+  prof: [[1, 0], [1, 0.11], [0.96, 0.35], [0.88, 0.57], [0.76, 0.74], [0.6, 0.85], [0.44, 0.89], [0.32, 0.875], [0.22, 0.83]],
+  n: 12, amp: 0.11, elev: 0.45, Y0: 0.32,
+  // icing: where it ends on the profile (0 foot … 1 hole) and its drips down the ridges: [ridge (0 = front), length]
+  ice: 0.6, drips: [[-3, 0.16], [-2, 0.32], [-1, 0.2], [0, 0.08], [1, 0.28], [2, 0.15], [3, 0.24]],
+  face: { x: 0, y: 0.42, s: 0.34 },
+  crumbs: ['#d99a4a', '#ffffff', '#8a4a1c', '#e8334a', '#2f9a55'],
+  // The collision outline is the convex hull of the cake; the ridges scallop the painted cake a little inside it, so
+  // paint() clips to the cake itself and shades along its outline.
+  noShade: true,
+  // a ridge: 1 on its crest, 0 in the groove between two ridges (rounded crests, sharp grooves)
+  lobe(ph) { const u = ph * this.n / TAU + 0.5, t = u - Math.floor(u) - 0.5; return Math.sqrt(Math.max(0, 1 - 4 * t * t)); },
+  // the profile, densely: radius, height, outward normal, ridge depth — per row from the foot (s = 0) to the hole (s = 1)
+  rows() {
+    if (this._rows) return this._rows;
+    const sm = (a, b, t) => { t = clamp((t - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+    const P = spline(this.prof.map(([x, y]) => ({ x, y })), 8), m = P.length, out = [];
+    for (let i = 0; i < m; i++) {
+      const a = P[Math.max(0, i - 1)], b = P[Math.min(m - 1, i + 1)], tr = b.x - a.x, tz = b.y - a.y, tl = Math.hypot(tr, tz) || 1, s = i / (m - 1);
+      out.push({ s, rho: P[i].x, z: P[i].y, nr: tz / tl, nz: -tr / tl, A: this.amp * (1 - sm(0.7, 1, s)) });
+    }
+    return (this._rows = out);
   },
-  paint(c, r, R) {
-    // ── the dark, fruity pudding ──
-    c.fillStyle = rg(c, -0.32 * r, -0.2 * r, 0, -0.05 * r, 0.05 * r, 1.02 * r, [[0, '#9a5e37'], [0.4, '#71401f'], [0.75, '#512a14'], [1, '#33180a']]);
-    c.fillRect(-2 * r, -2 * r, 4 * r, 4 * r);
-    // mottled crumb
-    speckle(c, R, 160, inDisc(0.97 * r), R => (R() < 0.5 ? `rgba(170,110,65,${0.18 + R() * 0.25})` : `rgba(35,14,5,${0.25 + R() * 0.3})`), 0.012 * r, 0.032 * r);
-    // a calmer, slightly lighter patch behind the face, so its white-rimmed eyes and blush read on the dark crumb
-    const fx = this.face.x * r, fy = this.face.y * r;
-    ell(c, fx, fy + 0.03 * r, 0.5 * r, 0.3 * r); c.fillStyle = rg(c, fx, fy + 0.03 * r, 0, fx, fy + 0.03 * r, 0.5 * r, [[0, 'rgba(150,92,52,0.85)'], [0.55, 'rgba(140,85,48,0.5)'], [1, 'rgba(120,70,40,0)']]); c.fill();
-    // fruit: raisins, candied peel, glacé cherries — keep the face area calm and red fruit well away from it
-    const fruit = [];
-    for (let k = 0; k < 400 && fruit.length < 34; k++) {
-      const p = inDisc(0.9 * r)(R);
-      if (Math.abs(p.x - fx) < 0.46 * r && Math.abs(p.y - fy) < 0.24 * r) continue;
-      if (fruit.some(q => Math.hypot(q.x - p.x, q.y - p.y) < 0.15 * r)) continue;
-      fruit.push(p);
-    }
-    const nearFace = p => Math.abs(p.x - fx) < 0.4 * r && p.y - fy > -0.55 * r && p.y - fy < 0.45 * r;
-    fruit.forEach((p, i) => {
-      let kind = i % 6; const s = lerp(0.05, 0.075, R()) * r;
-      if (kind === 4 && nearFace(p)) kind = 0;   // a red cherry near the mouth reads as a tongue or a nose
-      if (kind <= 2) {            // raisin
-        blobPath(c, p.x + 0.012 * r, p.y + 0.016 * r, s, R, 6, 0.4); c.fillStyle = 'rgba(20,6,0,0.45)'; c.fill();
-        blobPath(c, p.x, p.y, s, R, 6, 0.4); c.fillStyle = '#24100a'; c.fill();
-        blobPath(c, p.x - s * 0.2, p.y - s * 0.25, s * 0.5, R, 5, 0.3); c.fillStyle = 'rgba(120,60,50,0.7)'; c.fill();
-        circ(c, p.x - s * 0.35, p.y - s * 0.4, s * 0.18); c.fillStyle = 'rgba(255,220,200,0.55)'; c.fill();
-      } else if (kind === 3 || kind === 5) {   // candied orange peel
-        c.save(); c.translate(p.x, p.y); c.rotate(R() * TAU);
-        const q = s * 0.7;
-        c.beginPath(); c.roundRect(-q + 0.012 * r, -q * 0.7 + 0.016 * r, 2 * q, 1.4 * q, q * 0.35); c.fillStyle = 'rgba(20,6,0,0.45)'; c.fill();
-        c.beginPath(); c.roundRect(-q, -q * 0.7, 2 * q, 1.4 * q, q * 0.35); c.fillStyle = '#c8681c'; c.fill();
-        c.beginPath(); c.roundRect(-q * 0.8, -q * 0.55, 1.6 * q, 0.5 * q, q * 0.25); c.fillStyle = 'rgba(255,190,100,0.75)'; c.fill();
-        c.restore();
-      } else {                    // glacé cherry
-        circ(c, p.x + 0.012 * r, p.y + 0.016 * r, s); c.fillStyle = 'rgba(20,6,0,0.45)'; c.fill();
-        circ(c, p.x, p.y, s); c.fillStyle = rg(c, p.x - s * 0.3, p.y - s * 0.3, 0, p.x, p.y, s, [[0, '#ff6070'], [0.6, '#c3182c'], [1, '#7a0716']]); c.fill();
-        circ(c, p.x - s * 0.35, p.y - s * 0.38, s * 0.24); c.fillStyle = 'rgba(255,255,255,0.75)'; c.fill();
+  // a point of the surface at profile position s (0 … 1) and angle ph (0 = facing us): 3D (x right, y toward us, z up),
+  // its place in the picture (X, Y, units of r) and its distance toward us
+  at(s, ph) {
+    const rows = this.rows(), f = clamp(s, 0, 1) * (rows.length - 1), i = Math.min(rows.length - 2, Math.floor(f)), t = f - i, a = rows[i], b = rows[i + 1];
+    const cr = this.lobe(ph), A = lerp(a.A, b.A, t) * cr;
+    const rho = lerp(a.rho, b.rho, t) + A * lerp(a.nr, b.nr, t), z = lerp(a.z, b.z, t) + A * lerp(a.nz, b.nz, t);
+    const x = rho * Math.sin(ph), y = rho * Math.cos(ph), ce = Math.cos(this.elev), se = Math.sin(this.elev);
+    return { x, y, z, X: x, Y: -z * ce + y * se + this.Y0, d: y * ce + z * se, c: cr, s };
+  },
+  // the outline of the cake, from a dense sampling of its surface: highest and lowest point, column by column
+  contour(r) {
+    if (this._c && this._c.r === r) return this._c.pts;
+    if (!this._unit) {
+      const NB = 300, W = 1.3, NS = 60, NP = 1440, lo = new Array(NB + 1).fill(Infinity), hi = new Array(NB + 1).fill(-Infinity);
+      let x0 = Infinity, x1 = -Infinity;
+      for (let i = 0; i <= NS; i++) for (let j = 0; j < NP; j++) {
+        const p = this.at(i / NS, (j / NP) * TAU), k = Math.round(((p.X + W) / (2 * W)) * NB);
+        if (p.Y < lo[k]) lo[k] = p.Y; if (p.Y > hi[k]) hi[k] = p.Y; if (p.X < x0) x0 = p.X; if (p.X > x1) x1 = p.X;
       }
-    });
-    // currants and glints
-    for (let k = 0; k < 40; k++) {
-      const p = inDisc(0.92 * r)(R), s = lerp(0.022, 0.034, R()) * r;
-      if (Math.abs(p.x - fx) < 0.46 * r && Math.abs(p.y - fy) < 0.22 * r) continue;
-      circ(c, p.x, p.y, s); c.fillStyle = '#1c0a04'; c.fill();
-      circ(c, p.x - s * 0.35, p.y - s * 0.35, s * 0.35); c.fillStyle = 'rgba(200,130,100,0.6)'; c.fill();
+      const top = [], bot = [];
+      for (let k = 0; k <= NB; k++) if (lo[k] <= hi[k]) { const x = clamp(lerp(-W, W, k / NB), x0, x1); top.push({ x, y: lo[k] }); bot.push({ x, y: hi[k] }); }
+      this._unit = top.concat(bot.reverse());
     }
-    // soft rim light bottom-left, so the ball stays round on dark backgrounds
-    c.beginPath(); c.arc(0, 0, 0.97 * r, 0, TAU); c.arc(0.1 * r, -0.08 * r, 0.95 * r, 0, TAU, true);
-    c.fillStyle = rg(c, -0.6 * r, 0.55 * r, 0, -0.6 * r, 0.55 * r, 0.7 * r, [[0, 'rgba(255,190,140,0.3)'], [1, 'rgba(255,190,140,0)']]); c.fill('evenodd');
+    const pts = this._unit.map(p => ({ x: p.x * r, y: p.y * r }));
+    this._c = { r, pts, path: pathFromPts(new Path2D(), pts) };
+    return pts;
+  },
+  shape(r) { return [this.contour(r)]; },   // one convex part: the engine takes the hull of the cake's outline
+  figurePath(r) { this.contour(r); return this._c.path; },
+  outlineFn(c, path, r, ow) { const F = this.figurePath(r); c.save(); c.clip(F); c.lineWidth = ow * 2; c.strokeStyle = this.outline; c.stroke(F); c.restore(); },
+  // The cake takes a few dozen milliseconds to paint, and the game paints it twice at the same size (plain, then golden
+  // when one turns up), so the last painting is kept and reused when the same canvas transform asks for it again.
+  paint(c, r, R, T, pr = 1) {
+    const m = c.getTransform(), cv = c.canvas, key = [m.a, m.b, m.c, m.d, m.e, m.f, cv.width, cv.height, r].join();
+    if (!this._pc || this._pc.key !== key) {
+      const off = document.createElement('canvas'); off.width = cv.width; off.height = cv.height;
+      const o = off.getContext('2d'); o.setTransform(m.a, m.b, m.c, m.d, m.e, m.f); this.paintCake(o, r, R, pr);
+      this._pc = { key, off };
+    }
+    c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(this._pc.off, 0, 0); c.restore();
+  },
+  paintCake(c, r, R, pr) {
+    const F = this.figurePath(r), ce = Math.cos(this.elev), se = Math.sin(this.elev);
+    const nrm = v => { const l = Math.hypot(...v) || 1; return v.map(q => q / l); };
+    const V = [0, ce, se], Lt = nrm([-0.5, 0.42, 0.78]), H = nrm([Lt[0] + V[0], Lt[1] + V[1], Lt[2] + V[2]]);
+    const ramp = stops => { const S = stops.map(([o, h]) => [o, hexRgb(h)]); return t => { let k = 0; while (k < S.length - 2 && t > S[k + 1][0]) k++; const [o0, c0] = S[k], [o1, c1] = S[k + 1], f = clamp((t - o0) / (o1 - o0), 0, 1); return `rgb(${c0.map((v, j) => Math.round(lerp(v, c1[j], f))).join(',')})`; }; };
+    const CAKE = ramp([[0, '#4a2008'], [0.26, '#86451a'], [0.48, '#b8702e'], [0.68, '#d8984c'], [0.85, '#eebd76'], [1, '#fde3ae']]);
+    const ICE = ramp([[0, '#9d96b2'], [0.35, '#cdc9db'], [0.62, '#eceaf3'], [0.82, '#fbfaff'], [1, '#ffffff']]);
+    c.lineCap = 'round'; c.lineJoin = 'round';
 
-    // ── the white icing cap with drips ──
-    const edge = this.icingEdge(r);
-    const icing = new Path2D();
-    icing.moveTo(-1.2 * r, -1.2 * r);
-    for (let i = 0; i <= 240; i++) { const x = lerp(-1.05, 1.05, i / 240) * r; icing.lineTo(x, edge(x)); }
-    icing.lineTo(1.2 * r, -1.2 * r); icing.closePath();
-    // cast shadow on the pudding
-    c.save(); c.translate(0.025 * r, 0.05 * r); c.fillStyle = 'rgba(20,6,0,0.5)'; c.fill(icing); c.restore();
-    // dark edge
-    c.lineJoin = 'round'; c.strokeStyle = '#5e4a4c'; c.lineWidth = 0.04 * r; c.stroke(icing);
-    c.fillStyle = rg(c, -0.3 * r, -0.65 * r, 0, -0.1 * r, -0.35 * r, 1.05 * r, [[0, '#ffffff'], [0.55, '#fcfaf7'], [0.85, '#efecf2'], [1, '#dcd9e4']]);
-    c.fill(icing);
-    // thickness: cool shading just inside the lower edge, a bright rim just above it
-    c.save(); c.clip(icing);
-    c.fillStyle = rg(c, -0.32 * r, -0.5 * r, 0.2 * r, -0.2 * r, -0.35 * r, 1.12 * r, [[0, 'rgba(150,145,190,0)'], [0.7, 'rgba(150,145,190,0.08)'], [1, 'rgba(150,145,190,0.32)']]);
-    c.fillRect(-2 * r, -2 * r, 4 * r, 4 * r);
-    c.save(); c.translate(0, -0.02 * r); c.strokeStyle = 'rgba(150,145,185,0.3)'; c.lineWidth = 0.06 * r; c.stroke(icing); c.restore();
-    c.save(); c.translate(-0.01 * r, -0.06 * r); c.strokeStyle = 'rgba(255,255,255,0.8)'; c.lineWidth = 0.03 * r; c.stroke(icing); c.restore();
+    // ── the surface in thin slices all round (one per angle step), back to front; each slice is lit by its own slant
+    //    and shaded smoothly along its length. The slices make up the cake's outline themselves, so they are painted
+    //    without a clip (a few hundred fills: that keeps them cheap) ──
+    const NS = 48, NP = this.n * 16, grid = [];
+    for (let i = 0; i <= NS; i++) { const row = []; for (let j = 0; j <= NP; j++) row.push(this.at(i / NS, (j / NP) * TAU - Math.PI)); grid.push(row); }
+    const runs = [];
+    for (let j = 0; j < NP; j++) {
+      let run = null, dir = 0;
+      const close = () => { if (run) { run.depth /= run.rows.length; runs.push(run); } run = null; dir = 0; };
+      for (let i = 0; i < NS; i++) {
+        const a = grid[i][j], b = grid[i][j + 1], d = grid[i + 1][j], e = grid[i + 1][j + 1];
+        const ds = [(d.x + e.x - a.x - b.x) / 2, (d.y + e.y - a.y - b.y) / 2, (d.z + e.z - a.z - b.z) / 2];
+        const dp = [(b.x + e.x - a.x - d.x) / 2, (b.y + e.y - a.y - d.y) / 2, (b.z + e.z - a.z - d.z) / 2];
+        const nv = nrm([ds[1] * dp[2] - ds[2] * dp[1], ds[2] * dp[0] - ds[0] * dp[2], ds[0] * dp[1] - ds[1] * dp[0]]);
+        if (nv[0] * V[0] + nv[1] * V[1] + nv[2] * V[2] < -0.05) { close(); continue; }
+        const sd = Math.sign(d.Y + e.Y - a.Y - b.Y) || dir;   // a slice runs one way up the picture: split it where it turns
+        if (run && dir && sd !== dir) close();
+        if (!run) run = { rows: [], depth: 0 };
+        dir = sd;
+        run.rows.push({ a, b, d, e, s: (a.s + d.s) / 2, cr: (a.c + b.c + d.c + e.c) / 4,
+          dif: Math.max(0, nv[0] * Lt[0] + nv[1] * Lt[1] + nv[2] * Lt[2]), sp: Math.pow(Math.max(0, nv[0] * H[0] + nv[1] * H[1] + nv[2] * H[2]), 28) });
+        run.depth += (a.d + b.d + d.d + e.d) / 4;
+      }
+      close();
+    }
+    runs.sort((p, q) => p.depth - q.depth);
+    // one slice, widened by half a device pixel on each side so that neighbours overlap and no seam shows
+    const gw = 0.5 / pr;
+    const wide = (p, q, s) => { const dx = q.X - p.X, dy = q.Y - p.Y, l = Math.hypot(dx, dy) || 1; return [p.X * r + s * dx / l * gw, p.Y * r + s * dy / l * gw]; };
+    const slice = (run, col) => {
+      const Q = run.rows, A = Q[0], B = Q[Q.length - 1];
+      const x0 = (A.a.X + A.b.X) / 2 * r, y0 = (A.a.Y + A.b.Y) / 2 * r, x1 = (B.d.X + B.e.X) / 2 * r, y1 = (B.d.Y + B.e.Y) / 2 * r, L2 = (x1 - x0) ** 2 + (y1 - y0) ** 2 || 1;
+      const g = c.createLinearGradient(x0, y0, x1, y1);
+      for (let k = 0; k < Q.length; k += (k + 4 < Q.length ? 4 : Math.max(1, Q.length - 1 - k))) { const q = Q[k], mx = (q.a.X + q.b.X + q.d.X + q.e.X) / 4 * r, my = (q.a.Y + q.b.Y + q.d.Y + q.e.Y) / 4 * r; g.addColorStop(clamp(((mx - x0) * (x1 - x0) + (my - y0) * (y1 - y0)) / L2, 0, 1), col(q)); }
+      c.beginPath(); c.moveTo(...wide(A.a, A.b, -1));
+      for (const q of Q) c.lineTo(...wide(q.d, q.e, -1));
+      for (let i = Q.length - 1; i >= 0; i--) c.lineTo(...wide(Q[i].e, Q[i].d, -1));
+      c.lineTo(...wide(A.b, A.a, -1)); c.closePath();
+      c.fillStyle = g; c.fill();
+    };
+    for (const run of runs) slice(run, q => CAKE(clamp((0.14 + 0.86 * q.dif + 0.3 * q.sp) * lerp(0.72, 1, Math.sqrt(q.cr)), 0, 1)));
+    c.save(); c.clip(F);
+    // a baked crumb texture on the cake
+    speckle(c, R, 90, R => ({ x: lerp(-1.05, 1.05, R()) * r, y: lerp(-0.4, 0.8, R()) * r }), R => (R() < 0.6 ? `rgba(110,50,10,${0.12 + R() * 0.18})` : `rgba(255,225,170,${0.12 + R() * 0.18})`), 0.008 * r, 0.018 * r);
+    // contact shadow at the foot
+    c.fillStyle = lg(c, 0, (this.Y0 + 0.2) * r, 0, (this.Y0 + 0.5) * r, [[0, 'rgba(70,28,2,0)'], [1, 'rgba(70,28,2,0.45)']]);
+    c.fillRect(-2 * r, (this.Y0 + 0.2) * r, 4 * r, r);
+
+    // ── icing: poured over the top, running down the ridges ──
+    const smin = (a, b, k = 30) => -Math.log(Math.exp(-k * a) + Math.exp(-k * b)) / k;
+    const sIce = ph => {
+      let s = this.ice + 0.015 * Math.sin(3 * ph + 1);
+      for (const [k, len] of this.drips) { const t = (ph - (k * TAU) / this.n) / ((0.4 * TAU) / this.n); if (Math.abs(t) < 1) s = smin(s, this.ice - len * Math.pow(1 - t * t, 0.3)); }
+      return s;
+    };
+    const edge = [];
+    for (let i = 0; i <= 480; i++) { const ph = lerp(-Math.PI / 2, Math.PI / 2, i / 480), p = this.at(sIce(ph), ph); edge.push({ x: p.X * r, y: p.Y * r }); }
+    const e0 = edge[0], e1 = edge[edge.length - 1];
+    const iceP = new Path2D(); iceP.moveTo(e0.x - 0.5 * r, e0.y); edge.forEach(p => iceP.lineTo(p.x, p.y)); iceP.lineTo(e1.x + 0.5 * r, e1.y); iceP.lineTo(2 * r, -3 * r); iceP.lineTo(-2 * r, -3 * r); iceP.closePath();
+    // its shadow on the cake
+    c.save(); c.translate(0.012 * r, 0.035 * r); c.strokeStyle = 'rgba(55,22,2,0.32)'; c.lineWidth = 0.06 * r; strokePts(c, edge); c.restore();
+    c.restore();   // the cake clip: the icing slices need only their own
+    c.save(); c.clip(iceP);
+    for (const run of runs) if (run.rows[run.rows.length - 1].s > 0.12) slice(run, q => ICE(clamp(0.42 + 0.6 * q.dif + 0.55 * q.sp, 0, 1)));
     c.restore();
-    // glossy highlights
-    ell(c, -0.36 * r, -0.66 * r, 0.24 * r, 0.08 * r, -0.5); c.fillStyle = 'rgba(255,255,255,0.95)'; c.fill();
-    for (const [dx, L] of this.drips) {
-      const x = (dx - 0.03) * r, y = edge(dx * r) - 0.09 * r;
-      if (L > 0.13) { ell(c, x, y, 0.025 * r, 0.05 * r, 0.1); c.fillStyle = 'rgba(255,255,255,0.9)'; c.fill(); }
+    c.save(); c.clip(F);
+    c.save(); c.clip(iceP);
+    // the thick edge: a cool shade just inside it, a bright rim above that
+    c.strokeStyle = 'rgba(130,125,165,0.4)'; c.lineWidth = 0.07 * r; strokePts(c, edge);
+    c.save(); c.translate(-0.008 * r, -0.04 * r); c.strokeStyle = 'rgba(255,255,255,0.8)'; c.lineWidth = 0.03 * r; strokePts(c, edge); c.restore();
+    c.restore();
+    // glossy highlights on the drips
+    for (const [k, len] of this.drips) {
+      const ph = (k * TAU) / this.n - 0.06; if (Math.abs(ph) > 1.3 || len < 0.12) continue;
+      const p = this.at(this.ice - len * 0.75, ph); ell(c, (p.X - 0.02) * r, p.Y * r, 0.022 * r, 0.05 * r); c.fillStyle = 'rgba(255,255,255,0.95)'; c.fill();
     }
 
-    // ── holly sprig on top ──
-    const leaf = (bx, by, ang, len, wid) => {
-      c.save(); c.translate(bx, by); c.rotate(ang);
-      // spiky holly outline: spine tips joined by concave scallops
-      const prof = t => wid * Math.pow(Math.sin(Math.PI * t), 0.7), ts = [0.22, 0.47, 0.72];
-      const upper = [{ x: 0, y: 0 }, ...ts.map(t => ({ x: t * len, y: -prof(t) * 1.08 })), { x: len, y: 0 }];
-      const lower = [{ x: len, y: 0 }, ...ts.slice().reverse().map(t => ({ x: t * len, y: prof(t) * 1.08 })), { x: 0, y: 0 }];
-      const seg = (a, b, side) => { const mx = (a.x + b.x) / 2; c.quadraticCurveTo(mx, side * prof(mx / len) * 0.5, b.x, b.y); };
+    // ── the hole in the middle ──
+    const hole = []; for (let i = 0; i < 72; i++) { const p = this.at(1, (i / 72) * TAU); hole.push({ x: p.X * r, y: p.Y * r }); }
+    const H0 = pathFromPts(new Path2D(), hole);
+    c.fillStyle = '#2a1205'; c.fill(H0);
+    c.save(); c.clip(H0);   // its far inner wall, lit, going down into the dark
+    const dz = 0.16 * ce * r, sh = new Path2D(); sh.rect(-2 * r, -3 * r, 4 * r, 6 * r); pathFromPts(sh, hole.map(p => ({ x: p.x, y: p.y + dz })));
+    c.fillStyle = lg(c, 0, Math.min(...hole.map(p => p.y)), 0, Math.max(...hole.map(p => p.y)), [[0, '#b0732e'], [0.5, '#6b3510'], [1, '#2a1205']]); c.fill(sh, 'evenodd');
+    c.restore();
+    c.strokeStyle = 'rgba(255,255,255,0.9)'; c.lineWidth = 0.035 * r; c.beginPath();
+    for (let i = 0; i <= 24; i++) { const p = this.at(1, lerp(-1.35, 1.35, i / 24)); c.lineTo(p.X * r, (p.Y + 0.012) * r); }
+    c.stroke();
+
+    // ── a holly sprig on top ──
+    { const p = this.at(0.78, 0.75); this.holly(c, r, p.X, p.Y - 0.02, 0.24); }
+
+    // ── volume: soft shading along the cake's own outline ──
+    c.save();
+    const frame = new Path2D(); frame.rect(-4 * r, -4 * r, 8 * r, 8 * r); frame.addPath(F);
+    c.shadowColor = 'rgba(70,28,0,0.34)'; c.shadowBlur = r * 0.28 * pr; c.shadowOffsetX = -r * 0.07 * pr; c.shadowOffsetY = -r * 0.11 * pr;
+    c.fillStyle = '#000'; c.fill(frame, 'evenodd');
+    c.restore();
+    c.restore();   // the cake clip
+  },
+  // a holly sprig: two spiky leaves and three berries; (x, y) and size s in units of r
+  holly(c, r, x, y, s) {
+    c.save(); c.translate(x * r, y * r);
+    const leaf = (ang, len, wid) => {
+      c.save(); c.scale(1, 0.7); c.rotate(ang);
+      const k = 3, wf = t => wid * Math.pow(Math.sin(Math.PI * t), 0.7);
       c.beginPath(); c.moveTo(0, 0);
-      for (let i = 0; i < upper.length - 1; i++) seg(upper[i], upper[i + 1], -1);
-      for (let i = 0; i < lower.length - 1; i++) seg(lower[i], lower[i + 1], 1);
+      for (let i = 1; i <= k + 1; i++) { const t0 = (i - 1) / (k + 1), t1 = i / (k + 1), tm = (t0 + t1) / 2; c.quadraticCurveTo(len * tm, -wf(tm) * 0.55, len * t1, i <= k ? -wf(t1) : 0); }
+      for (let i = k; i >= 0; i--) { const t0 = (i + 1) / (k + 1), t1 = i / (k + 1), tm = (t0 + t1) / 2; c.quadraticCurveTo(len * tm, wf(tm) * 0.55, len * t1, i > 0 ? wf(t1) : 0); }
       c.closePath();
-      c.save(); c.translate(0.01 * r, 0.035 * r); c.fillStyle = 'rgba(40,30,40,0.35)'; c.fill(); c.restore();
-      c.fillStyle = lg(c, 0, -wid, 0, wid, [[0, '#4fc06a'], [0.45, '#2a8f45'], [1, '#13592c']]); c.fill();
-      c.strokeStyle = '#0c3a1c'; c.lineWidth = 0.03 * r; c.stroke();
-      c.lineCap = 'round';
-      c.strokeStyle = 'rgba(190,255,190,0.75)'; c.lineWidth = 0.022 * r;
-      c.beginPath(); c.moveTo(len * 0.05, 0); c.quadraticCurveTo(len * 0.5, -wid * 0.08, len * 0.88, 0); c.stroke();
-      ell(c, len * 0.45, -wid * 0.45, len * 0.2, wid * 0.16, -0.05); c.fillStyle = 'rgba(220,255,220,0.45)'; c.fill();
+      c.save(); c.translate(0.01 * r, 0.04 * r); c.fillStyle = 'rgba(60,50,70,0.3)'; c.fill(); c.restore();
+      c.fillStyle = lg(c, 0, -wid, 0, wid, [[0, '#56c872'], [0.5, '#25903f'], [1, '#125526']]); c.fill();
+      c.strokeStyle = '#0b3517'; c.lineWidth = 0.03 * r; c.stroke();
+      c.strokeStyle = 'rgba(205,255,205,0.75)'; c.lineWidth = 0.022 * r; c.beginPath(); c.moveTo(len * 0.1, 0); c.quadraticCurveTo(len * 0.5, -wid * 0.1, len * 0.85, 0); c.stroke();
       c.restore();
     };
-    const hx = 0, hy = -0.56 * r;
-    leaf(hx - 0.03 * r, hy + 0.01 * r, Math.PI + 0.42, 0.44 * r, 0.15 * r);
-    leaf(hx + 0.03 * r, hy + 0.01 * r, -0.42, 0.44 * r, 0.15 * r);
-    for (const [x, y] of [[-0.075, -0.035], [0.075, -0.035], [0, 0.06]]) {
-      const bx = hx + x * r, by = hy + y * r, s = 0.085 * r;
-      circ(c, bx + 0.012 * r, by + 0.02 * r, s); c.fillStyle = 'rgba(40,10,10,0.4)'; c.fill();
-      circ(c, bx, by, s); c.fillStyle = rg(c, bx - s * 0.35, by - s * 0.35, 0, bx, by, s, [[0, '#ff7a7a'], [0.5, '#e01f33'], [1, '#8c0618']]); c.fill();
-      c.strokeStyle = 'rgba(90,0,12,0.8)'; c.lineWidth = 0.022 * r; c.stroke();
-      circ(c, bx - s * 0.35, by - s * 0.38, s * 0.28); c.fillStyle = 'rgba(255,255,255,0.9)'; c.fill();
-      circ(c, bx + s * 0.3, by + s * 0.3, s * 0.12); c.fillStyle = 'rgba(70,0,10,0.7)'; c.fill();
+    leaf(Math.PI + 0.3, 1.2 * s * r, 0.42 * s * r);
+    leaf(-0.3, 1.2 * s * r, 0.42 * s * r);
+    for (const [dx, dy] of [[-0.24, 0.02], [0.24, 0.03], [0, -0.17]]) {
+      const bx = dx * s * r, by = dy * s * r, q = 0.27 * s * r;
+      circ(c, bx + 0.01 * r, by + 0.02 * r, q); c.fillStyle = 'rgba(60,10,5,0.4)'; c.fill();
+      circ(c, bx, by, q); c.fillStyle = rg(c, bx - q * 0.35, by - q * 0.4, 0, bx, by, q, [[0, '#ff8080'], [0.5, '#e01f38'], [1, '#8a0619']]); c.fill();
+      c.strokeStyle = '#540310'; c.lineWidth = 0.025 * r; c.stroke();
+      circ(c, bx - q * 0.35, by - q * 0.38, q * 0.3); c.fillStyle = 'rgba(255,255,255,0.92)'; c.fill();
     }
+    c.restore();
   },
 };
 
@@ -1011,123 +1160,197 @@ FESTIVE_TIERS[8] = {
   },
 };
 
-// 9 ─ YULE LOG (chocolate bûche de Noël lying on its side — same collision shape as the classic Black Forest)
+// 9 ─ YULE LOG (a chocolate bûche de Noël on its side, seen a little from the front left: cream spiral on its cut end, bark, a branch stub)
 FESTIVE_TIERS[9] = {
-  key: 'yulelog', name: 'Yule Log', r: 72, outline: '#2a140a',
-  shape: r => [ptsSuper(r, 0.6 * r, 3.2)],
-  face: { x: 0.4, y: 0.2, s: 0.32, eye: 'light' },
-  crumbs: ['#5c311c', '#ffffff', '#2f9a55', '#e8334a', '#fff1d8'],
-  // the cut end of the roll, seen a little from the left (ellipse, units of r) — big, so the spiral survives 35 px
-  cut: { x: -0.57, y: 0.03, rx: 0.42, ry: 0.53 },
-  paint(c, r, R) {
-    const b = 0.6 * r, n = 3.2;
-    const edge = x => b * Math.pow(Math.max(0, 1 - Math.pow(Math.min(1, Math.abs(x / r)), n)), 1 / n);
-    const K = this.cut, ex = K.x * r, ey = K.y * r, erx = K.rx * r, ery = K.ry * r;
-    const fx = this.face.x * r, fy = this.face.y * r;
+  key: 'yulelog', name: 'Yule Log', r: 72, outline: '#24110a',
+  k: 1.0615,   // drawing scale: the collision area (the hull of the log) equals the classic Black Forest cake's
+  // the log in units of its drawing radius: axis height cy, half height b; the near cut end (left) and the far rounded
+  // end (right) are ellipses a wide, centred at xl and xr
+  log: { cy: 0.08, b: 0.5, xl: -0.66, xr: 0.66, a: 0.3 },
+  // the branch stub on top: its cut face (centre, half axes, tilt) and where its flanks meet the top of the log
+  stub: { fx: 0.3, fy: -0.505, frx: 0.15, fry: 0.07, rot: 0.1, x0: -0.32, x1: 0.62 },
+  face: { x: 0.34, y: 0.2, s: 0.32, eye: 'light' },
+  crumbs: ['#5c311c', '#3a1c0c', '#fff1d8', '#ffffff', '#2f9a55'],
+  // The collision outline is the convex hull of the log; the stub leaves two shallow slivers beside it, so paint()
+  // clips to the log itself and shades along its outline.
+  noShade: true,
+  // the stub's outline points: left foot, the ends of its cut face, right foot (units of r)
+  stubPts() {
+    const S = this.stub, top = this.log.cy - this.log.b, cs = Math.cos(S.rot), sn = Math.sin(S.rot);
+    return [[S.x0, top], [S.fx - S.frx * cs, S.fy - S.frx * sn], [S.fx + S.frx * cs, S.fy + S.frx * sn], [S.x1, top]];
+  },
+  // the upper edge of the stub at x (units of r): flanks that rise from the log a little hollow, like a branch growing out
+  stubTop(x) {
+    const [p0, p1, p2, p3] = this.stubPts();
+    if (x < p0[0] || x > p3[0]) return null;
+    if (x < p1[0]) return lerp(p0[1], p1[1], Math.pow((x - p0[0]) / (p1[0] - p0[0]), 1.35));
+    if (x > p2[0]) return lerp(p3[1], p2[1], Math.pow((p3[0] - x) / (p3[0] - p2[0]), 1.35));
+    return lerp(p1[1], p2[1], (x - p1[0]) / (p2[0] - p1[0]));
+  },
+  // the outline of the log (every vertical line crosses it in one piece): top and bottom edge, x by x
+  contour(r) {
+    if (this._c && this._c.r === r) return this._c.pts;
+    const G = this.log, S = this.stub;
+    const E = (cx, cy, rx, ry) => x => { const u = (x - cx) / rx; if (Math.abs(u) > 1) return null; const d = ry * Math.sqrt(1 - u * u); return [cy - d, cy + d]; };
+    const rotE = (cx, cy, rx, ry, rot) => x => {   // a tilted ellipse: solve for y
+      const cs = Math.cos(rot), sn = Math.sin(rot), dx = x - cx;
+      const A = sn * sn / (rx * rx) + cs * cs / (ry * ry), B = 2 * dx * cs * sn * (1 / (rx * rx) - 1 / (ry * ry)), C = dx * dx * (cs * cs / (rx * rx) + sn * sn / (ry * ry)) - 1;
+      const D = B * B - 4 * A * C; if (D < 0) return null;
+      const q = Math.sqrt(D); return [cy + (-B - q) / (2 * A), cy + (-B + q) / (2 * A)];
+    };
+    const stub = x => { const y = this.stubTop(x); return y == null ? null : [y, G.cy - G.b]; };
+    const rect = x => (x >= G.xl && x <= G.xr ? [G.cy - G.b, G.cy + G.b] : null);
+    const parts = [E(G.xl, G.cy, G.a, G.b), rect, E(G.xr, G.cy, G.a, G.b), rotE(S.fx, S.fy, S.frx, S.fry, S.rot), stub];
+    const X1 = G.xr + G.a, n = 320, top = [], bot = [];
+    for (let i = 0; i <= n; i++) {
+      const x = -X1 * Math.cos((i / n) * Math.PI); let a = Infinity, z = -Infinity;
+      for (const p of parts) { const s = p(x); if (s) { if (s[0] < a) a = s[0]; if (s[1] > z) z = s[1]; } }
+      if (a <= z) { top.push({ x: x * r, y: a * r }); bot.push({ x: x * r, y: z * r }); }
+    }
+    const pts = top.concat(bot.reverse());
+    this._c = { r, pts, path: pathFromPts(new Path2D(), pts) };
+    return pts;
+  },
+  shape(r) { return [this.contour(r)]; },   // one convex part: the engine takes the hull of the log's outline
+  figurePath(r) { this.contour(r); return this._c.path; },
+  outlineFn(c, path, r, ow) { const F = this.figurePath(r); c.save(); c.clip(F); c.lineWidth = ow * 2; c.strokeStyle = this.outline; c.stroke(F); c.restore(); },
+  paint(c, r, R, T, pr = 1) {
+    const F = this.figurePath(r), G = this.log, S = this.stub, top = G.cy - G.b;
+    const fx = this.face.x, fy = this.face.y;
+    c.save(); c.clip(F);
     c.lineCap = 'round'; c.lineJoin = 'round';
 
-    // ── chocolate buttercream bark: a cylinder lying on its side ──
-    c.fillStyle = lg(c, 0, -b, 0, b, [[0, '#9a5733'], [0.3, '#7c4224'], [0.62, '#5a2c15'], [1, '#2c1408']]);
+    // ── chocolate buttercream: a log lying on its side, lit from above ──
+    c.fillStyle = lg(c, 0, (top - 0.16) * r, 0, (G.cy + G.b) * r, [[0, '#a8663c'], [0.22, '#87492a'], [0.5, '#613017'], [0.8, '#41200c'], [1, '#2a1206']]);
     c.fillRect(-2 * r, -2 * r, 4 * r, 4 * r);
-    c.fillStyle = lg(c, 0.55 * r, 0, r, 0, [[0, 'rgba(30,12,4,0)'], [1, 'rgba(30,12,4,0.45)']]);
-    c.fillRect(0.55 * r, -2 * r, 2 * r, 4 * r);
-    // fork-swept buttercream: soft, rounded ripples flowing along the log — shaded, not outlined, so it reads as
-    // satiny frosting rather than wood grain
-    const calm = (x, y) => Math.hypot((x - fx) / (0.31 * r), (y - fy) / (0.18 * r)) > 1;
-    const ripples = [];
-    const NB = 9;
-    for (let i = 0; i < NB; i++) {
-      const th = lerp(-1.0, 1.32, (i + 0.5) / NB), yc = Math.sin(th) * b * 0.95, sq = Math.max(0.45, Math.cos(th));
-      const ph = R() * TAU, ph2 = R() * TAU, amp = lerp(0.035, 0.05, R()) * r * sq, fq = lerp(3.5, 5, R()) / r;
-      const runs = [[]];
-      for (let x = -0.6 * r; x <= 1.1 * r; x += 0.02 * r) {
-        const y = yc + Math.sin(x * fq + ph) * amp + Math.sin(x * fq * 2.2 + ph2) * amp * 0.3;
-        if (calm(x, y)) runs[runs.length - 1].push({ x, y }); else if (runs[runs.length - 1].length) runs.push([]);
+    c.fillStyle = lg(c, 0.2 * r, 0, (G.xr + G.a) * r, 0, [[0, 'rgba(25,8,2,0)'], [1, 'rgba(25,8,2,0.42)']]); c.fillRect(0.2 * r, -2 * r, 3 * r, 4 * r);
+    // ── bark: a few bold fork strokes along the log, a groove and a lit ridge each ──
+    const calm = (x, y) => Math.hypot((x - fx) / 0.3, (y - fy) / 0.2) > 1;
+    const strokes = [];
+    for (const [v, x0, x1, ph] of [[-0.62, -0.3, 0.9, 0.4], [-0.3, -0.34, 0.5, 2.1], [-0.12, 0.62, 0.92, 1.2], [0.08, -0.33, 0.12, 3.3], [0.36, -0.32, 0.94, 0.9], [0.68, -0.4, 0.86, 2.6]]) {
+      let run = [];
+      const flush = () => { if (run.length > 3) strokes.push(run); run = []; };
+      for (let x = x0; x <= x1; x += 0.02) {
+        const xe = G.xr + G.a * Math.sqrt(Math.max(0, 1 - v * v)) - 0.06, xs = G.xl + G.a * Math.sqrt(Math.max(0, 1 - v * v)) + 0.02;
+        const y = G.cy + G.b * v + 0.025 * Math.sin(x * 7 + ph) + 0.012 * Math.sin(x * 17 + ph * 2);
+        if (x < xs || x > xe || !calm(x, y)) { flush(); continue; }
+        run.push({ x: x * r, y: y * r });
       }
-      for (const p of runs) if (p.length > 3) ripples.push([p, sq]);
+      flush();
     }
-    for (const [p, sq] of ripples) { c.save(); c.translate(0, 0.024 * r * sq); c.strokeStyle = 'rgba(28,10,2,0.42)'; c.lineWidth = 0.055 * r * sq; strokePts(c, p); c.restore(); }
-    for (const [p, sq] of ripples) { c.strokeStyle = 'rgba(176,108,66,0.5)'; c.lineWidth = 0.036 * r * sq; strokePts(c, p); }
-    for (const [p, sq] of ripples) { c.save(); c.translate(0, -0.012 * r * sq); c.strokeStyle = 'rgba(255,214,170,0.4)'; c.lineWidth = 0.012 * r * sq; strokePts(c, p); c.restore(); }
+    // the rounded far end: the buttercream swirls round it
+    for (const [f, a0, a1] of [[0.55, -1.0, 0.9], [0.82, -1.25, 1.2]]) {
+      const run = []; for (let t = a0; t <= a1; t += 0.05) run.push({ x: (G.xr + 0.1 + Math.cos(t) * G.a * f * 0.7) * r, y: (G.cy + Math.sin(t) * G.b * f) * r });
+      strokes.push(run);
+    }
+    for (const p of strokes) { c.save(); c.translate(0.008 * r, 0.03 * r); c.strokeStyle = 'rgba(22,8,2,0.55)'; c.lineWidth = 0.06 * r; strokePts(c, p); c.restore(); }
+    for (const p of strokes) { c.strokeStyle = 'rgba(150,86,50,0.55)'; c.lineWidth = 0.045 * r; strokePts(c, p); }
+    for (const p of strokes) { c.save(); c.translate(-0.004 * r, -0.016 * r); c.strokeStyle = 'rgba(235,175,130,0.45)'; c.lineWidth = 0.02 * r; strokePts(c, p); c.restore(); }
     // satin sheen along the upper flank
-    ell(c, 0.32 * r, -0.12 * r, 0.6 * r, 0.07 * r, -0.02); c.fillStyle = rg(c, 0.32 * r, -0.12 * r, 0, 0.32 * r, -0.12 * r, 0.6 * r, [[0, 'rgba(255,225,190,0.22)'], [1, 'rgba(255,225,190,0)']]); c.fill();
-
-    // ── icing-sugar snow on top (thins out towards both ends, so the round right end stays chocolate) ──
-    const drips = [[-0.08, 0.05, 0.1], [0.62, 0.055, 0.12]];   // centre, half-width, length (units of r)
-    const snowY = x => {
-      const u = x / r, e = edge(x);
-      let y = -e + (0.5 + 0.06 * Math.sin(u * 5.5 + 0.8) + 0.025 * Math.sin(u * 13 + 2)) * b * Math.pow(e / b, 1.6);
-      for (const [cx, w, L] of drips) y += L * r / (1 + Math.pow((u - cx) / w, 4));
-      return y;
-    };
-    // the lower edge, traced right → left; `connect` continues the current path instead of starting a new one
-    const snowEdge = (dy, connect) => {
-      for (let x = 1.2 * r, first = !connect; x >= -1.2 * r; x -= 0.006 * r, first = false) {
-        if (first) c.moveTo(x, snowY(x) + dy); else c.lineTo(x, snowY(x) + dy);
-      }
-    };
-    const snowPath = () => { c.beginPath(); c.moveTo(-1.2 * r, -1.3 * b); c.lineTo(1.2 * r, -1.3 * b); snowEdge(0, true); c.closePath(); };
-    c.save(); c.translate(0, 0.022 * r); c.strokeStyle = 'rgba(20,8,2,0.5)'; c.lineWidth = 0.045 * r; c.beginPath(); snowEdge(0); c.stroke(); c.restore();
-    snowPath(); c.fillStyle = lg(c, 0, -b, 0, -0.35 * b, [[0, '#ffffff'], [0.6, '#fbfbff'], [1, '#e8ecf8']]); c.fill();
-    c.save(); snowPath(); c.clip();
-    c.strokeStyle = 'rgba(150,160,200,0.5)'; c.lineWidth = 0.05 * r; c.beginPath(); snowEdge(0); c.stroke();
+    c.save(); c.translate(0.15 * r, (top + 0.2) * r); c.scale(1, 0.1);
+    c.fillStyle = rg(c, 0, 0, 0, 0, 0, 0.75 * r, [[0, 'rgba(255,220,185,0.28)'], [1, 'rgba(255,220,185,0)']]); circ(c, 0, 0, 0.75 * r); c.fill();
     c.restore();
-    speckle(c, R, 45, R => { const x = lerp(-0.1, 0.9, R()) * r; return { x, y: snowY(x) + 0.04 * r + Math.pow(R(), 2.4) * 0.35 * b }; }, R => `rgba(255,255,255,${0.3 + R() * 0.4})`, r * 0.005, r * 0.01);
 
-    // ── the cut end: dark chocolate sponge rolled up with a thick band of cream ──
-    // ganache rim, and the thickness of the bark showing on the far side of the cut
-    ell(c, ex, ey, erx, ery); c.fillStyle = '#211006'; c.fill();
-    ell(c, ex + 0.02 * r, ey, erx - 0.025 * r, ery - 0.025 * r); c.fillStyle = lg(c, ex, 0, ex + erx, 0, [[0, '#3a1c0c'], [0.7, '#5e3119'], [1, '#7a4426']]); c.fill();
-    const irx = erx - 0.075 * r, iry = ery - 0.07 * r, ix = ex + 0.0 * r;
+    // ── a light snow of icing sugar along the top ──
+    const snowEdge = []; for (let x = G.xl - 0.1; x <= G.xr + 0.2; x += 0.01) snowEdge.push({ x: x * r, y: (top + 0.13 + 0.035 * Math.sin(x * 9 + 1) + 0.02 * Math.sin(x * 23)) * r });
+    const snow = new Path2D(); snow.moveTo(snowEdge[0].x, -2 * r); snowEdge.forEach(p => snow.lineTo(p.x, p.y)); snow.lineTo(snowEdge[snowEdge.length - 1].x, -2 * r); snow.closePath();
+    c.save(); c.translate(0, 0.02 * r); c.fillStyle = 'rgba(40,15,3,0.35)'; c.fill(snow); c.restore();
+    c.fillStyle = lg(c, 0, (top + 0.02) * r, 0, (top + 0.16) * r, [[0, '#ffffff'], [0.6, '#fafbff'], [1, '#e2e5f2']]); c.fill(snow);
+    speckle(c, R, 120, R => { const x = lerp(G.xl, G.xr + 0.2, R()); return { x: x * r, y: (top + 0.12 + Math.pow(R(), 2.2) * 0.3) * r }; }, R => `rgba(255,255,255,${0.35 + R() * 0.5})`, 0.006 * r, 0.013 * r);
+
+    // ── the branch stub: a short round branch, sawn off, lit on its left ──
+    const [p0, p1, p2, p3] = this.stubPts(), dip = 0.07;
+    const stub = new Path2D();
+    for (let i = 0; i <= 40; i++) { const x = lerp(p0[0], p3[0], i / 40); (i ? stub.lineTo : stub.moveTo).call(stub, x * r, this.stubTop(x) * r); }
+    stub.quadraticCurveTo(((p0[0] + p3[0]) / 2) * r, (top + 2 * dip) * r, p0[0] * r, p0[1] * r); stub.closePath();
+    c.save(); c.translate(0.01 * r, 0.03 * r); c.fillStyle = 'rgba(30,10,2,0.4)'; c.fill(stub); c.restore();
+    c.fillStyle = lg(c, p0[0] * r, 0, p3[0] * r, 0, [[0, '#8e5030'], [0.35, '#9c5a34'], [0.65, '#6a3519'], [1, '#3e1d0b']]); c.fill(stub);
+    c.save(); c.clip(stub);
+    for (const [u, w] of [[0.3, 0.9], [0.55, 1], [0.78, 0.85]]) {   // bark running up the branch
+      const run = []; for (let t = 0; t <= 1.0001; t += 0.1) { const bx = lerp(lerp(p0[0], p3[0], u), lerp(p1[0], p2[0], u), t), by = lerp(top + dip * w, lerp(p1[1], p2[1], u), t); run.push({ x: (bx + 0.012 * Math.sin(t * 6 + u * 9)) * r, y: by * r }); }
+      c.save(); c.translate(0.02 * r, 0.008 * r); c.strokeStyle = 'rgba(22,8,2,0.5)'; c.lineWidth = 0.05 * r; strokePts(c, run); c.restore();
+      c.strokeStyle = 'rgba(200,135,95,0.45)'; c.lineWidth = 0.025 * r; strokePts(c, run);
+    }
+    // snow along its upper edge
+    const ridge = []; for (let i = 0; i <= 30; i++) { const x = lerp(p0[0] + 0.04, p3[0] - 0.04, i / 30); ridge.push({ x: x * r, y: (this.stubTop(x) + 0.035) * r }); }
+    c.strokeStyle = 'rgba(255,255,255,0.9)'; c.lineWidth = 0.07 * r; strokePts(c, ridge);
+    c.restore();
+    // where the branch grows out of the log: a soft crease
+    c.strokeStyle = 'rgba(30,10,2,0.45)'; c.lineWidth = 0.04 * r; c.beginPath(); c.moveTo((p0[0] + 0.06) * r, (top + 0.01) * r); c.quadraticCurveTo(((p0[0] + p3[0]) / 2) * r, (top + 2 * dip + 0.01) * r, (p3[0] - 0.05) * r, (top + 0.01) * r); c.stroke();
+    // its sawn face: a slice of the same roll, a little snow on its rim
+    {
+      c.save(); c.translate(S.fx * r, S.fy * r); c.rotate(S.rot); c.scale(S.frx * r, S.fry * r);
+      circ(c, 0, 0, 1); c.fillStyle = '#2e1306'; c.fill();
+      circ(c, 0, 0, 0.84); c.fillStyle = '#5a2a12'; c.fill();
+      c.beginPath(); for (let t = 0; t <= 2.6 * Math.PI; t += 0.1) { const q = 0.08 + (t / (2.6 * Math.PI)) * 0.6; c.lineTo(Math.cos(t + 2) * q, Math.sin(t + 2) * q); }
+      c.strokeStyle = '#fff0d6'; c.lineWidth = 0.26; c.stroke();
+      c.restore();
+      c.save(); c.translate(S.fx * r, S.fy * r); c.rotate(S.rot);
+      c.strokeStyle = 'rgba(255,255,255,0.95)'; c.lineWidth = 0.035 * r; c.beginPath(); c.ellipse(0, 0, S.frx * r, S.fry * r, 0, Math.PI * 1.05, Math.PI * 1.95); c.stroke();
+      c.restore();
+    }
+
+    // ── the near cut end: dark chocolate sponge rolled up with a thick band of cream ──
+    c.save(); c.translate(G.xl * r, G.cy * r); c.scale(G.a * r, G.b * r);   // a unit circle, seen at a slant
+    circ(c, 0, 0, 1); c.fillStyle = '#2a1206'; c.fill();                  // the bark in section
+    circ(c, 0.02, 0, 0.9); c.fillStyle = '#6e3a1c'; c.fill();
+    circ(c, 0.02, 0, 0.8); c.fillStyle = '#3c1a08'; c.fill();             // the sponge
+    c.beginPath(); for (let t = 0; t <= 4 * Math.PI; t += 0.06) { const q = 0.07 + (t / (4 * Math.PI)) * 0.62; c.lineTo(0.02 + Math.cos(t + 0.6) * q, Math.sin(t + 0.6) * q); }
+    c.save(); c.translate(0.02, 0.03); c.strokeStyle = 'rgba(10,3,0,0.5)'; c.lineWidth = 0.2; c.stroke(); c.restore();
+    c.strokeStyle = '#fff2da'; c.lineWidth = 0.19; c.stroke();
+    // the cut face is turned toward the light: a soft glow on its upper left, shade on its lower right
+    c.fillStyle = rg(c, -0.35, -0.45, 0, -0.1, -0.1, 1.1, [[0, 'rgba(255,240,210,0.28)'], [0.5, 'rgba(255,240,210,0)'], [0.8, 'rgba(20,6,0,0.12)'], [1, 'rgba(20,6,0,0.4)']]);
+    circ(c, 0, 0, 1); c.fill();
+    c.restore();
+    // its lit rim, and a little snow on top
+    c.strokeStyle = 'rgba(225,165,120,0.75)'; c.lineWidth = 0.025 * r; c.beginPath(); c.ellipse(G.xl * r, G.cy * r, (G.a - 0.015) * r, (G.b - 0.015) * r, 0, Math.PI * 0.95, Math.PI * 1.6); c.stroke();
+    c.save(); c.beginPath(); c.ellipse(G.xl * r, G.cy * r, G.a * r, G.b * r, 0, 0, TAU); c.clip();
+    c.beginPath(); c.moveTo((G.xl - G.a) * r, (top - 0.1) * r);
+    for (let x = -1; x <= 1.0001; x += 0.05) c.lineTo((G.xl + x * G.a) * r, (G.cy - G.b * Math.sqrt(Math.max(0, 1 - x * x)) + (0.07 + 0.02 * Math.sin(x * 7)) * Math.max(0, 1 - (x / 0.8) ** 2)) * r);
+    c.lineTo((G.xl + G.a) * r, (top - 0.1) * r); c.closePath(); c.fillStyle = '#fbfcff'; c.fill();
+    c.restore();
+
+    // ── a holly sprig on the snow ──
+    this.holly(c, r, -0.14, top + 0.14, 0.23);
+
+    // ── volume: soft shading along the log's own outline ──
     c.save();
-    ell(c, ix, ey, irx, iry); c.clip();
-    c.fillStyle = rg(c, ix - 0.06 * r, ey - 0.12 * r, 0, ix, ey, iry, [[0, '#6e3a1f'], [0.6, '#552a14'], [1, '#3a1a0a']]);
-    c.fillRect(ix - irx, ey - iry, 2 * irx, 2 * iry);
-    speckle(c, R, 45, R => { const a = R() * TAU, d = Math.sqrt(R()); return { x: ix + Math.cos(a) * d * irx, y: ey + Math.sin(a) * d * iry }; }, R => `rgba(25,10,3,${0.3 + R() * 0.3})`, r * 0.006, r * 0.012);
-    // 1⅓ bold turns: wide cream band, wide sponge gap
-    const th0 = 0.35, thMax = th0 + 1.3 * TAU, kk = 0.95 / thMax;
-    const spiral = (off, from = th0, to = thMax) => { const p = []; for (let th = from; th <= to + 1e-9; th += 0.05) { const rr = kk * th + off; p.push({ x: ix + Math.cos(th) * rr * irx, y: ey + Math.sin(th) * rr * iry }); } return p; };
-    c.save(); c.translate(0.01 * r, 0.02 * r); c.strokeStyle = 'rgba(15,5,1,0.6)'; c.lineWidth = 0.145 * r; strokePts(c, spiral(0)); c.restore();
-    c.strokeStyle = '#fff3dc'; c.lineWidth = 0.135 * r; strokePts(c, spiral(0));
-    c.save(); c.translate(-0.012 * r, -0.016 * r); c.strokeStyle = '#ffffff'; c.lineWidth = 0.04 * r; strokePts(c, spiral(0, th0 + 0.5, thMax - 0.3)); c.restore();
-    circ(c, ix + Math.cos(th0) * kk * th0 * irx, ey + Math.sin(th0) * kk * th0 * iry, 0.06 * r); c.fillStyle = '#fff3dc'; c.fill();
-    // inner shadow at the rim of the cut
-    c.lineWidth = 0.05 * r; c.strokeStyle = 'rgba(20,6,1,0.5)'; ell(c, ix, ey, irx, iry); c.stroke();
+    const frame = new Path2D(); frame.rect(-4 * r, -4 * r, 8 * r, 8 * r); frame.addPath(F);
+    c.shadowColor = 'rgba(20,6,0,0.45)'; c.shadowBlur = r * 0.26 * pr; c.shadowOffsetX = -r * 0.06 * pr; c.shadowOffsetY = -r * 0.1 * pr;
+    c.fillStyle = '#000'; c.fill(frame, 'evenodd');
     c.restore();
-    c.lineWidth = 0.016 * r; c.strokeStyle = 'rgba(214,150,104,0.7)'; c.beginPath(); c.ellipse(ex, ey, erx - 0.012 * r, ery - 0.012 * r, 0, Math.PI * 1.08, Math.PI * 1.55); c.stroke();
-    // a little sugar caught on the top of the cut
-    c.save(); ell(c, ex, ey, erx + 0.01 * r, ery + 0.01 * r); c.clip();
-    c.beginPath(); c.moveTo(ex - erx, ey - ery - 0.1 * r);
-    for (let x = -1; x <= 1.0001; x += 0.05) c.lineTo(ex + x * erx, ey - ery + (0.045 + 0.02 * Math.sin(x * 9)) * r * (1 - x * x * 0.6));
-    c.lineTo(ex + erx, ey - ery - 0.1 * r); c.closePath(); c.fillStyle = '#fbfcff'; c.fill();
+    c.save(); c.globalCompositeOperation = 'soft-light';
+    c.fillStyle = rg(c, -0.4 * r, -0.5 * r, 0, -0.2 * r, -0.3 * r, r * 1.1, [[0, 'rgba(255,255,255,0.5)'], [1, 'rgba(255,255,255,0)']]);
+    c.fillRect(-3 * r, -3 * r, 6 * r, 6 * r);
     c.restore();
-
-    // ── a big holly sprig on the snow ──
-    this.holly(c, r, 0.2 * r, -0.36 * r);
+    c.restore();   // the log clip
   },
-  holly(c, r, hx, hy) {
-    const leaf = (ang, L, W) => {
-      c.save(); c.translate(hx, hy); c.rotate(ang);
-      const k = 3, w = t => W * Math.pow(Math.sin(Math.PI * t), 0.7);
+  // a holly sprig: two spiky leaves and three berries; (x, y) and size s in units of r
+  holly(c, r, x, y, s) {
+    c.save(); c.translate(x * r, y * r);
+    const leaf = (ang, len, wid) => {
+      c.save(); c.scale(1, 0.75); c.rotate(ang);
+      const k = 3, wf = t => wid * Math.pow(Math.sin(Math.PI * t), 0.7);
       c.beginPath(); c.moveTo(0, 0);
-      for (let i = 1; i <= k + 1; i++) { const t0 = (i - 1) / (k + 1), t1 = i / (k + 1), tm = (t0 + t1) / 2; c.quadraticCurveTo(L * tm, -w(tm) * 0.6, L * t1, i <= k ? -w(t1) : 0); }
-      for (let i = k; i >= 0; i--) { const t0 = (i + 1) / (k + 1), t1 = i / (k + 1), tm = (t0 + t1) / 2; c.quadraticCurveTo(L * tm, w(tm) * 0.6, L * t1, i > 0 ? w(t1) : 0); }
+      for (let i = 1; i <= k + 1; i++) { const t0 = (i - 1) / (k + 1), t1 = i / (k + 1), tm = (t0 + t1) / 2; c.quadraticCurveTo(len * tm, -wf(tm) * 0.55, len * t1, i <= k ? -wf(t1) : 0); }
+      for (let i = k; i >= 0; i--) { const t0 = (i + 1) / (k + 1), t1 = i / (k + 1), tm = (t0 + t1) / 2; c.quadraticCurveTo(len * tm, wf(tm) * 0.55, len * t1, i > 0 ? wf(t1) : 0); }
       c.closePath();
-      c.save(); c.translate(0.012 * r, 0.022 * r); c.fillStyle = 'rgba(30,20,10,0.35)'; c.fill(); c.restore();
-      c.fillStyle = lg(c, 0, -W, 0, W, [[0, '#56c872'], [0.5, '#25903f'], [1, '#125526']]); c.fill();
-      c.strokeStyle = '#0b3517'; c.lineWidth = 0.022 * r; c.stroke();
-      c.strokeStyle = 'rgba(205,255,205,0.8)'; c.lineWidth = 0.016 * r; c.beginPath(); c.moveTo(L * 0.08, 0); c.quadraticCurveTo(L * 0.5, -W * 0.1, L * 0.9, 0); c.stroke();
+      c.save(); c.translate(0.01 * r, 0.035 * r); c.fillStyle = 'rgba(20,8,2,0.4)'; c.fill(); c.restore();
+      c.fillStyle = lg(c, 0, -wid, 0, wid, [[0, '#56c872'], [0.5, '#25903f'], [1, '#125526']]); c.fill();
+      c.strokeStyle = '#0b3517'; c.lineWidth = 0.025 * r; c.stroke();
+      c.strokeStyle = 'rgba(205,255,205,0.75)'; c.lineWidth = 0.02 * r; c.beginPath(); c.moveTo(len * 0.1, 0); c.quadraticCurveTo(len * 0.5, -wid * 0.1, len * 0.85, 0); c.stroke();
       c.restore();
     };
-    leaf(Math.PI - 0.12, 0.44 * r, 0.15 * r);
-    leaf(0.12, 0.44 * r, 0.15 * r);
-    for (const [dx, dy] of [[-0.065, 0.015], [0.065, 0.02], [0, -0.075]]) {
-      const x = hx + dx * r, y = hy + dy * r, s = 0.078 * r;
-      circ(c, x + 0.01 * r, y + 0.014 * r, s); c.fillStyle = 'rgba(40,0,5,0.4)'; c.fill();
-      circ(c, x, y, s); c.fillStyle = rg(c, x - s * 0.35, y - s * 0.4, 0, x, y, s, [[0, '#ff8080'], [0.5, '#e01f38'], [1, '#8a0619']]); c.fill();
-      c.strokeStyle = '#540310'; c.lineWidth = 0.016 * r; c.stroke();
-      circ(c, x - s * 0.35, y - s * 0.38, s * 0.28); c.fillStyle = 'rgba(255,255,255,0.92)'; c.fill();
+    leaf(Math.PI + 0.2, 1.2 * s * r, 0.42 * s * r);
+    leaf(-0.2, 1.2 * s * r, 0.42 * s * r);
+    for (const [dx, dy] of [[-0.24, 0.02], [0.24, 0.03], [0, -0.17]]) {
+      const bx = dx * s * r, by = dy * s * r, q = 0.27 * s * r;
+      circ(c, bx + 0.01 * r, by + 0.02 * r, q); c.fillStyle = 'rgba(40,0,5,0.4)'; c.fill();
+      circ(c, bx, by, q); c.fillStyle = rg(c, bx - q * 0.35, by - q * 0.4, 0, bx, by, q, [[0, '#ff8080'], [0.5, '#e01f38'], [1, '#8a0619']]); c.fill();
+      c.strokeStyle = '#540310'; c.lineWidth = 0.02 * r; c.stroke();
+      circ(c, bx - q * 0.35, by - q * 0.38, q * 0.3); c.fillStyle = 'rgba(255,255,255,0.92)'; c.fill();
     }
+    c.restore();
   },
 };
 
