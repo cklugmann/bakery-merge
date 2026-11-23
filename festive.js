@@ -4,7 +4,7 @@
 //
 //  Eleven Christmas bakes and treats that take the place of the classic pastries while festive
 //  mode is on. Same rules, same sizes: every tier has the collision area of its classic
-//  counterpart (six of them the identical shape), so the game plays the same.
+//  counterpart (within 3 %; the Peppermint and the Stollen the identical shape), so the game plays the same.
 //
 //  Loaded by index.html before the main script. Each entry has the same form as the classic
 //  tiers in index.html (key, name, r, outline, shape, face, crumbs, paint) and uses the drawing

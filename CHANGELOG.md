@@ -10,21 +10,24 @@ The current version is shown on the title and pause screens
 
 - **Festive mode.** From **23 November to 6 January** (your own local date, every year) the bakery
   celebrates Christmas: a whole new ladder of Christmas bakes and treats, a snowy evening outside
-  the shop window and sleigh bells in the waltz. During the season it is on from the start; a small
+  the shop window and Christmas music of its own. During the season it is on from the start; a small
   **Christmas / Classic** switch on the title screen (and on the game-over card, for your next run)
   takes you back to the classic pastries and the classic bakery whenever you like. Your choice is
   remembered for the rest of the season; next year starts festive again. Outside the season the
   switch is gone and the game is exactly the one you know — nothing changes in classic.
 - **The Christmas ladder** — eleven new hand-painted treats with faces, golden variants and their
-  own crumbs: **Peppermint → Gumdrop → Snowflake Cookie → Tree Cookie → Chocolate Santa → Mince Pie
-  → Gingerbread Man → Christmas Pudding → Stollen → Yule Log → Gingerbread House.** Two Gingerbread
+  own crumbs: **Peppermint → Gingerbread Heart → Cinnamon Star → Tree Cookie → Chocolate Santa →
+  Mince Pie → Gingerbread Man → Bundt Cake → Stollen → Yule Log → Gingerbread House.** Every treat
+  has an outline of its own: three cut-out cookies (a heart, a star and a tree, each with its baked
+  edge showing around the icing), a deep little pie, a fluted cake, a chocolate log. Two Gingerbread
   Houses make the Golden Peppermint; a golden Gingerbread House and a plain one are the JACKPOT
   (*both houses cash in*). Chocolate Santas join the mix at stage 3, Mince Pies at stage 4.
 - **It plays like the classic game.** Same rules, spawn odds, points, gate counters and golden
-  chain. Every treat takes up the same room on the board as the pastry it replaces: six of the
-  eleven collision shapes are the very same, the others match in area within 3 % (the compact
-  Tree Cookie and Chocolate Santa are a touch larger than the Cupcake and the Croissant, because
-  they pack tighter), and the Gingerbread Man and the House turn and tip like the Pretzel and the
+  chain. Every treat takes up the same room on the board as the pastry it replaces: the Peppermint
+  and the Stollen have the very same collision shape as the Cookie and the Bread, the others have
+  an outline that follows their own silhouette and match in area within 3 % (the compact Tree
+  Cookie and Chocolate Santa are a touch larger than the Cupcake and the Croissant, because they
+  pack tighter), and the Gingerbread Man and the House turn and tip like the Pretzel and the
   Wedding Cake.
 - **The bakery on Christmas Eve:** a dusk sky with falling snow and snowdrifts behind the game,
   frost in the corners of the shop window, a snow-covered fir-green awning with a string of fairy
@@ -35,11 +38,19 @@ The current version is shown on the title and pause screens
   becomes a snow-globe flurry. Snow lies on the title, pause and game-over cards, the buttons turn fir
   green, the gate bar is a candy cane. The **golden bakery** still crowns every jackpot: the whole
   evening turns to candlelight, a little more golden with each level.
-- **Sleigh bells in the waltz.** Small, soft sleigh bells join the harp in some phrases and rest in
-  others (the pattern changes from round to round, so it does not wear out), a quiet celesta
-  answers the flute, a sleigh passes by when the gate opens, and big merges and the jackpot cheer
-  get a little jingle. Tempo and harmony are the waltz you know; everything stays under the music
-  and effects sliders.
+- **Christmas music.** Christmas mode has music of its own: *We Wish You a Merry Christmas*, *O
+  Tannenbaum* and *Silent Night*, arranged for the bakery's instruments: music box and celesta,
+  flute, harp and pizzicato bass, with sleigh bells trotting along in the lively part and resting in
+  the quiet ones. It keeps the waltz's time and tempo, so drops, merges and combos still play in
+  harmony with it, the golden bakery adds its layers and lifts the key as before, and the jackpot
+  show ducks it. It is as loud as the classic waltz and follows the music slider. Switching between
+  Christmas and Classic starts the other mode's music from its first bar. A sleigh passes by when
+  the gate opens, and big merges and the jackpot cheer get a little jingle. The classic waltz is
+  unchanged.
+- **Music on the title screen.** The game now asks for sound as soon as the page opens, in both
+  modes. Where the browser allows it (an installed app, a desktop browser that already knows the
+  game) the music plays at once; everywhere else browsers hold sound back until the first tap,
+  click or key, anywhere on the page, and the music starts then.
 - **Your progress is safe.** Classic best score, discovered pastries, jackpot tally and sound
   settings are untouched. The Christmas ladder keeps its own best score and discoveries — and
   they wait for you until next year.
@@ -50,7 +61,8 @@ The current version is shown on the title and pause screens
   or `?date=2026-12-24` (also `?date=2027-01-06T23:59:30`) to pretend it is that day.
 - In the code: `Season` (the window and the remembered choice), `LADDERS` / `setMode` (the ladder
   in play; `TIER_DEFS` follows it), `festive.js` (the Christmas tiers — if that file is missing the
-  game is simply classic), `Xmas` (the festive scenery), `festive` inside `Sfx`.
+  game is simply classic), `Xmas` (the festive scenery), `playFestive` / `XSONG` inside `Sfx` (the
+  Christmas music).
 
 ## 0.4.2 — The jackpot show & the golden bakery
 

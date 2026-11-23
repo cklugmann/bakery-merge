@@ -1546,7 +1546,8 @@ const Sfx = (() => {
   //   waltz's time and tempo (3/4, 126), so that drops, merges and the jackpot show ride on it exactly as
   //   they ride on the waltz — they follow XCH, the chord of the bar that is playing.
   //     intro (2 bars)                          sleigh bells and harp
-  //     "We Wish You a Merry Christmas" (16)    music box and celesta, the sleigh bells trotting along
+  //     "We Wish You a Merry Christmas" (16)    music box and celesta, the sleigh bells trotting along (on every beat in
+  //                                             one half, on the downbeats in the other; the halves swap every round)
   //     bridge (4)                              harp and a celesta sigh; the sleigh has passed
   //     "O Tannenbaum" (16)                     the flute; the bells return, softly, for its last line
   //     bridge (4)
@@ -1568,11 +1569,13 @@ const Sfx = (() => {
   //   voice: who plays the tune · pickup: an upbeat played in the last beat(s) of the bar before the section
   //   lead: level of the tune · soft: level of the harp under it · acc: harp pattern · glint: celesta sparkle on a new chord
   //   bells: sleigh bells per bar (one number for all bars, or one per bar): 2 = on every beat, 1 = on the downbeat only
+  //   bellsAlt: the same for every second time round the loop, so that two rounds in a row are never quite alike
   const X_TREE = [[[72, 0.75], [72, 0.25], [72, 1], [74, 1]], [[76, 0.75], [76, 0.25], [76, 1.5], [76, 0.5]], [[74, 0.5], [76, 0.5], [77, 1.5], [71, 0.5]]];
   const X_NIGHT = [[[67, 1.5], [69, 0.5], [67, 1]], [[64, 3]]], X_NIGHT2 = [[[69, 2], [69, 1]], [[72, 1.5], [71, 0.5], [69, 1]], ...X_NIGHT];
   const XSONG = [
     { acc: 'waltz', glint: true, bells: 2, chords: [0, 0], tune: [] },
-    { voice: 'box', pickup: [67, 1], acc: 'waltz', soft: 0.8, bells: 2,   // We Wish You a Merry Christmas
+    { voice: 'box', pickup: [67, 1], acc: 'waltz', soft: 0.8,   // We Wish You a Merry Christmas
+      bells: [2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1], bellsAlt: [1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2],
       chords: [0, 1, 3, 7, 4, 5, 2, 0, 0, 7, 5, 7, 5, 0, 2, 0],
       tune: [
         [[72, 1], [72, 0.5], [74, 0.5], [72, 0.5], [71, 0.5]], [[69, 1], [69, 1], [69, 1]], [[74, 1], [74, 0.5], [76, 0.5], [74, 0.5], [72, 0.5]], [[71, 1], [67, 1], [67, 1]],
@@ -1606,7 +1609,8 @@ const Sfx = (() => {
     S.chords.forEach((ch, i) => {
       const notes = []; let beat = 0;
       for (const [m, len] of S.tune[i] || []) { if (m) notes.push({ beat, m, len, voice: S.voice, gain: S.lead || 1 }); beat += len; }
-      XBARS.push({ ch, acc: S.acc, glint: !!S.glint, hv: S.soft || 1, bells: typeof S.bells === 'number' ? S.bells : (S.bells && S.bells[i]) || 0, notes });
+      const bells = typeof S.bells === 'number' ? S.bells : (S.bells && S.bells[i]) || 0;
+      XBARS.push({ ch, acc: S.acc, glint: !!S.glint, hv: S.soft || 1, bells, alt: S.bellsAlt ? S.bellsAlt[i] || 0 : bells, notes });
     });
     if (S.pickup && first) XBARS[first - 1].notes.push({ beat: 3 - S.pickup[1], m: S.pickup[0], len: S.pickup[1], voice: S.voice, gain: S.lead || 1 });
   }
@@ -1650,8 +1654,9 @@ const Sfx = (() => {
     if (gold >= 3 && pos === 0 && bar % 2 === 0) tones(64, 79, ci).slice(0, 3).forEach((m, i) => bell(m, { at: at + i * 0.03, vol: 0.02, dur: 1.6, bright: 0.3, dest: musicBus }));
     // ── sleigh bells: decoration, so they step aside when a third of the voices is all that is left ──
     if (ends.length < MAX_VOICES - 10) {
-      if (B.bells && pos === 0) jingle(XBELLS[ci], { ...o, vol: 0.02, hits: 3, gap: 0.045, ring: 0.3, pan: 0.2 });
-      else if (B.bells > 1 && pos % 2 === 0) jingle(XBELLS[ci], { ...o, vol: 0.013, hits: 2, gap: 0.045, pan: 0.25 });
+      const lv = Math.floor(bar / XBARS.length) % 2 ? B.alt : B.bells;
+      if (lv && pos === 0) jingle(XBELLS[ci], { ...o, vol: 0.02, hits: 3, gap: 0.045, ring: 0.3, pan: 0.2 });
+      else if (lv > 1 && pos % 2 === 0) jingle(XBELLS[ci], { ...o, vol: 0.013, hits: 2, gap: 0.045, pan: 0.25 });
       else if (B.swell >= 0 && pos === 5) jingle(XBELLS[B.swell], { ...o, vol: 0.016, hits: 4, gap: 0.045, ring: 0.3, swell: true, pan: 0.15 });
     }
   }
