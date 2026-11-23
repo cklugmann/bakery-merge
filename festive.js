@@ -1017,15 +1017,17 @@ FESTIVE_TIERS[6] = {
 // 7 ─ BUNDT CAKE (a fluted Gugelhupf seen from the side, a little from above: golden-brown ridges, white icing drips, the hole on top)
 FESTIVE_TIERS[7] = {
   key: 'bundt', name: 'Bundt Cake', r: 56, outline: '#5a2c0e',
-  k: 1.044,   // drawing scale: the collision area (the hull of the cake) equals the classic Cherry Pie's
+  // No drawing scale (k = 1): the cake is 15 % smaller in area than the classic Cherry Pie (8,355 against 9,790) and a
+  // little squat, so that it looks smaller than the Stollen it merges into (the classic ladder shrinks at that step).
+  // Gingerbread Man → Bundt Cake → Stollen → Yule Log grow by the same 15 % in area each.
   // The cake is a fluted solid of revolution, painted from its own little 3D model: the profile (radius, height) runs
   // from the foot of the cake over its shoulder to the rim of the hole (units of r); n rounded ridges all round, amp
   // deep; seen from elev (radians) above the horizon; Y0 moves the picture down so that its middle is near 0.
-  prof: [[1, 0], [1, 0.11], [0.96, 0.35], [0.88, 0.57], [0.76, 0.74], [0.6, 0.85], [0.44, 0.89], [0.32, 0.875], [0.22, 0.83]],
-  n: 12, amp: 0.11, elev: 0.45, Y0: 0.32,
+  prof: [[1, 0], [1, 0.095], [0.96, 0.3], [0.88, 0.49], [0.76, 0.636], [0.6, 0.731], [0.44, 0.765], [0.32, 0.752], [0.22, 0.714]],
+  n: 12, amp: 0.11, elev: 0.45, Y0: 0.265,
   // icing: where it ends on the profile (0 foot … 1 hole) and its drips down the ridges: [ridge (0 = front), length]
   ice: 0.6, drips: [[-3, 0.16], [-2, 0.32], [-1, 0.2], [0, 0.08], [1, 0.28], [2, 0.15], [3, 0.24]],
-  face: { x: 0, y: 0.42, s: 0.34 },
+  face: { x: 0, y: 0.365, s: 0.34 },
   crumbs: ['#d99a4a', '#ffffff', '#8a4a1c', '#e8334a', '#2f9a55'],
   // The collision outline is the convex hull of the cake; the ridges scallop the painted cake a little inside it, so
   // paint() clips to the cake itself and shades along its outline.
@@ -1222,9 +1224,10 @@ FESTIVE_TIERS[7] = {
   },
 };
 
-// 8 ─ STOLLEN (powdered-sugar Stollen loaf — same collision shape as the classic Bread)
+// 8 ─ STOLLEN (powdered-sugar Stollen loaf — the classic Bread's collision shape, drawn 1.11 × as big)
 FESTIVE_TIERS[8] = {
   key: 'stollen', name: 'Stollen', r: 64, outline: '#5a3010',
+  k: 1.11,   // 23 % more area than the Bread (9,610): bigger than the Bundt Cake before it, smaller than the Yule Log after it
   top: r => x => -0.66 * r * Math.pow(Math.max(0, 1 - Math.pow(Math.abs(x / r), 2.2)), 1 / 2.2),
   bot: r => x => 0.5 * r * Math.pow(Math.max(0, 1 - Math.pow(Math.abs(x / r), 2.5)), 1 / 2.5),
   shape(r) {

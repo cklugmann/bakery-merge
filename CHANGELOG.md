@@ -23,12 +23,15 @@ The current version is shown on the title and pause screens
   Houses make the Golden Peppermint; a golden Gingerbread House and a plain one are the JACKPOT
   (*both houses cash in*). Chocolate Santas join the mix at stage 3, Mince Pies at stage 4.
 - **It plays like the classic game.** Same rules, spawn odds, points, gate counters and golden
-  chain. Every treat takes up the same room on the board as the pastry it replaces: the Peppermint
-  and the Stollen have the very same collision shape as the Cookie and the Bread, the others have
-  an outline that follows their own silhouette and match in area within 3 % (the compact Tree
-  Cookie and Chocolate Santa are a touch larger than the Cupcake and the Croissant, because they
-  pack tighter), and the Gingerbread Man and the House turn and tip like the Pretzel and the
-  Wedding Cake.
+  chain. Nearly every treat takes up the same room on the board as the pastry it replaces: the
+  Peppermint has the very same collision shape as the Cookie, the others have an outline that
+  follows their own silhouette and match in area within 3 % (the compact Tree Cookie and Chocolate
+  Santa are a touch larger than the Cupcake and the Croissant, because they pack tighter), and the
+  Gingerbread Man and the House turn and tip like the Pretzel and the Wedding Cake. One step is
+  deliberately different: in classic the Bread is smaller than the Cherry Pie before it, but on the
+  Christmas ladder every treat is bigger than the last — the Bundt Cake is a little squatter and
+  15 % smaller than the Cherry Pie, and the Stollen is the Bread's shape with 23 % more area, so
+  Gingerbread Man → Bundt Cake → Stollen → Yule Log grow in equal steps.
 - **The bakery on Christmas Eve:** a dusk sky with falling snow and snowdrifts behind the game,
   frost in the corners of the shop window, a snow-covered fir-green awning with a string of fairy
   lights, more lights down the window frame, holly on the gate, wreaths and snowy beams on the
