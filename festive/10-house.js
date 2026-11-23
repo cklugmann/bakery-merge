@@ -2,6 +2,7 @@
 // 10 ─ GINGERBREAD HOUSE (gingerbread house: soft walls and a snowy roof)
 FESTIVE_TIERS[10] = {
   key: 'house', name: 'Gingerbread House', r: 82, outline: '#5e300f',
+  inertiaK: 1.11,   // two parts instead of the Wedding Cake's three: this gives the house the cake's rotational inertia (see the Gingerbread Man)
   // two soft convex parts (units of r): the walls [centreY, halfWidth, halfHeight] and the roof discs [x, y, radius]
   walls: [0.52, 0.69, 0.385], roof: [[0, -0.67, 0.12], [-0.75, 0.10, 0.12], [0.75, 0.10, 0.12]],
   shape(r) {

@@ -1,7 +1,8 @@
 'use strict';
 // 4 ─ CHOCOLATE SANTA (a foil-wrapped chocolate Santa; one soft convex bell shape)
 FESTIVE_TIERS[4] = {
-  key: 'santa', name: 'Chocolate Santa', plural: 'Chocolate Santas', r: 39, k: 0.7643, outline: '#7a1424',
+  key: 'santa', name: 'Chocolate Santa', plural: 'Chocolate Santas', r: 39, outline: '#7a1424',
+  k: 0.7643,   // drawn 0.76 × its nominal r: a compact bell fills its box far better than the classic Croissant's crescent — the collision area is the same
   // bell / egg: [x, y, radius] discs whose convex hull is the figure (units of r)
   discs: [[0, -0.727, 0.353], [-0.507, 0.551, 0.485], [0.507, 0.551, 0.485]],
   shape(r) { const pts = []; for (const [x, y, d] of this.discs) pts.push(...ptsCircle(d * r, 48, x * r, y * r)); return [pts]; },

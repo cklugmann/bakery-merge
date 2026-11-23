@@ -1,7 +1,10 @@
 'use strict';
 // 6 ─ GINGERBREAD MAN (a chubby iced gingerbread man)
 FESTIVE_TIERS[6] = {
-  key: 'gingerbread', name: 'Gingerbread Man', plural: 'Gingerbread men', r: 50, k: 1.2984, outline: '#5f2f10',
+  key: 'gingerbread', name: 'Gingerbread Man', plural: 'Gingerbread men', r: 50, outline: '#5f2f10',
+  // k: the figure is drawn 1.3 × its nominal r — a figure fills less of its box than the classic Pretzel, the collision area is the same.
+  // inertiaK: Matter under-counts the rotational inertia of bodies made of several parts; this gives the man the Pretzel's.
+  k: 1.2984, inertiaK: 1.45,
   // four convex parts (units of r): head; arms + tummy (one part: two hand discs and a tummy disc); two legs (hip disc → foot disc)
   head: [0, -0.55, 0.41], hand: [0.58, -0.11, 0.2], tummy: [0, 0, 0.28], hip: [0.165, 0.3, 0.226], foot: [0.34, 0.69, 0.22],
   shape(r) {
