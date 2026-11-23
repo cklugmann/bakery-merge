@@ -80,6 +80,8 @@ FESTIVE_TIERS[7] = {
     c.fill(icing);
     // thickness: cool shading just inside the lower edge, a bright rim just above it
     c.save(); c.clip(icing);
+    c.fillStyle = rg(c, -0.32 * r, -0.5 * r, 0.2 * r, -0.2 * r, -0.35 * r, 1.12 * r, [[0, 'rgba(150,145,190,0)'], [0.7, 'rgba(150,145,190,0.08)'], [1, 'rgba(150,145,190,0.32)']]);
+    c.fillRect(-2 * r, -2 * r, 4 * r, 4 * r);
     c.save(); c.translate(0, -0.02 * r); c.strokeStyle = 'rgba(150,145,185,0.3)'; c.lineWidth = 0.06 * r; c.stroke(icing); c.restore();
     c.save(); c.translate(-0.01 * r, -0.06 * r); c.strokeStyle = 'rgba(255,255,255,0.8)'; c.lineWidth = 0.03 * r; c.stroke(icing); c.restore();
     c.restore();

@@ -43,15 +43,24 @@ FESTIVE_TIERS[8] = {
     // a few raisins peeking through the sugar
     for (const [x, y, s] of [[0.7, -0.08, 0.042], [0.0, 0.18, 0.036], [0.6, 0.25, 0.034], [0.84, -0.3, 0.03], [0.26, -0.5, 0.03]]) {
       const X = x * r, Y = y * r, S = s * r;
-      blobPath(c, X, Y, S, R, 6, 0.45); c.fillStyle = '#4a2018'; c.fill();
-      blobPath(c, X - S * 0.2, Y - S * 0.25, S * 0.45, R, 5, 0.3); c.fillStyle = 'rgba(150,90,80,0.7)'; c.fill();
-      speckle(c, R, 7, R => { const p = inDisc(S)(R); return { x: X + p.x, y: Y + p.y }; }, 'rgba(255,255,255,0.85)', r * 0.006, r * 0.013);
+      c.save(); c.translate(X, Y); c.rotate(R() * Math.PI); c.scale(1.25, 0.75);
+      blobPath(c, 0, 0, S, R, 6, 0.5); c.fillStyle = '#4a2018'; c.fill();
+      c.strokeStyle = 'rgba(150,90,80,0.8)'; c.lineWidth = 0.012 * r; c.beginPath(); c.moveTo(-S * 0.6, -S * 0.1); c.quadraticCurveTo(0, -S * 0.5, S * 0.55, -S * 0.05); c.stroke();
+      c.restore();
+      speckle(c, R, 3, R => { const p = inDisc(S * 0.8)(R); return { x: X + p.x, y: Y + p.y }; }, 'rgba(255,255,255,0.8)', r * 0.005, r * 0.009);
+    }
+    // soft lumps in the thick sugar coat
+    for (let i = 0; i < 16; i++) {
+      const x = lerp(-0.25, 0.92, R()) * r, y = lerp(top(x) + 0.12 * r, sugarY(x) - 0.08 * r, R()), s = lerp(0.07, 0.12, R()) * r;
+      if (Math.abs(x - this.face.x * r) < 0.3 * r && Math.abs(y - this.face.y * r) < 0.16 * r) continue;
+      ell(c, x + s * 0.25, y + s * 0.3, s, s * 0.55); c.fillStyle = 'rgba(165,135,120,0.06)'; c.fill();
+      ell(c, x - s * 0.15, y - s * 0.15, s * 0.8, s * 0.4); c.fillStyle = 'rgba(255,255,255,0.35)'; c.fill();
     }
     // powder texture
     speckle(c, R, 240, R => ({ x: (R() * 2 - 1) * r, y: lerp(-0.66, 0.3, R()) * r }), R => (R() < 0.6 ? `rgba(255,255,255,${0.55 + R() * 0.45})` : `rgba(165,140,125,${0.1 + R() * 0.12})`), r * 0.005, r * 0.013);
     c.restore();
     // powdery lower edge dusting the crust
-    speckle(c, R, 140, R => { const x = (R() * 2 - 1) * r; return { x, y: sugarY(x) + Math.pow(R(), 2.2) * 0.1 * r }; }, R => `rgba(255,253,248,${0.3 + R() * 0.5})`, r * 0.004, r * 0.011);
+    speckle(c, R, 90, R => { const x = (R() * 2 - 1) * r; return { x, y: sugarY(x) + Math.pow(R(), 2.5) * 0.09 * r }; }, R => `rgba(255,253,248,${0.3 + R() * 0.5})`, r * 0.004, r * 0.009);
     c.fillStyle = lg(c, 0, 0.3 * r, 0, 0.52 * r, [[0, 'rgba(70,30,5,0)'], [1, 'rgba(70,30,5,0.4)']]); c.fillRect(-2 * r, 0.3 * r, 4 * r, r);
 
     // ── the cut end: crust ring, yellow crumb with fruit, and the marzipan core ──
@@ -59,7 +68,7 @@ FESTIVE_TIERS[8] = {
     const facePts = [];
     for (let i = 0; i < 120; i++) {
       const t = (i / 120) * TAU; let x = ex + Math.cos(t) * erx, y = ey + Math.sin(t) * ery;
-      x = Math.max(x, -0.97 * r); y = clamp(y, top(x) + 0.075 * r, bot(x) - 0.02 * r);
+      x = Math.max(x, -0.97 * r); y = clamp(y, top(x) + 0.115 * r, bot(x) - 0.02 * r);
       facePts.push({ x, y });
     }
     const face = new Path2D(); pathFromPts(face, facePts);

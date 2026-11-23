@@ -25,7 +25,7 @@ FESTIVE_TIERS[6] = {
     const lip0 = (yJoin + 0.02) * r, lipY = x => ring(lip0, x);                                                  // lower edge of the dome's overhang
     c.lineCap = 'round'; c.lineJoin = 'round';
 
-    // ── paper band: dark brown, printed with a gold lattice ──
+    // ── paper band: dark brown, printed with gold stars ──
     c.fillStyle = lg(c, -w, 0, w, 0, [[0, '#2c1406'], [0.18, '#4a2610'], [0.4, '#633519'], [0.7, '#45230e'], [1, '#261104']]);
     c.fillRect(-2 * r, -2 * r, 4 * r, 4 * r);
     // gold print: staggered rows of little four-point stars that wrap round the band
@@ -60,7 +60,7 @@ FESTIVE_TIERS[6] = {
       ell(c, bx + s * 0.15 * r, by - 0.13 * r, 0.05 * r, 0.022 * r, s * 0.25); c.fillStyle = 'rgba(255,235,235,0.75)'; c.fill();
     }
     ell(c, bx, by, 0.06 * r, 0.065 * r); c.fillStyle = rg(c, bx - 0.02 * r, by - 0.02 * r, 0, bx, by, 0.07 * r, [[0, '#ff7070'], [1, '#b0142a']]); c.fill(); c.strokeStyle = 'rgba(80,0,10,0.85)'; c.lineWidth = 0.022 * r; c.stroke();
-    // bottom shading of the band, top edge of the paper
+    // bottom shading of the band
     c.fillStyle = lg(c, 0, 0.62 * r, 0, r, [[0, 'rgba(15,4,0,0)'], [1, 'rgba(15,4,0,0.5)']]); c.fillRect(-2 * r, 0.62 * r, 4 * r, r);
 
     // ── the dome ──
@@ -82,7 +82,7 @@ FESTIVE_TIERS[6] = {
     const cx = 0, cy = -0.77 * r, ax = 0.4 * r, ay = 0.115 * r;
     // two gashes crossing in an X (flattened by the perspective), widest where they cross
     const gash = (x0, y0, x1, y1, hw) => {
-      const p = new Path2D(), mx = (x0 + x1) / 2, my = (y0 + y1) / 2, L = Math.hypot(x1 - x0, y1 - y0), nx = -(y1 - y0) / L * hw, ny = (x1 - x0) / L * hw;
+      const p = new Path2D(), L = Math.hypot(x1 - x0, y1 - y0), nx = -(y1 - y0) / L * hw, ny = (x1 - x0) / L * hw;
       const pts = [];
       for (let i = 0; i <= 16; i++) { const t = i / 16, k = Math.pow(Math.sin(Math.PI * t), 0.8) * (1 + (R() - 0.5) * 0.35 * Math.sin(Math.PI * t)); pts.push({ x: lerp(x0, x1, t) + nx * k, y: lerp(y0, y1, t) + ny * k }); }
       for (let i = 16; i >= 0; i--) { const t = i / 16, k = Math.pow(Math.sin(Math.PI * t), 0.8) * (1 + (R() - 0.5) * 0.35 * Math.sin(Math.PI * t)); pts.push({ x: lerp(x0, x1, t) - nx * k, y: lerp(y0, y1, t) - ny * k }); }
