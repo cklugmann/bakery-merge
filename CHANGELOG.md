@@ -6,6 +6,49 @@ version marks a larger iteration and a **patch** marks fixes and tuning.
 The current version is shown on the title and pause screens
 (`VERSION` constant at the top of the script in `index.html`).
 
+## 0.5.0 — Christmas at the bakery
+
+- **Festive mode.** From **23 November to 6 January** (your own local date, every year) the bakery
+  celebrates Christmas: a whole new ladder of Christmas bakes and treats, a snowy evening outside
+  the shop window and sleigh bells in the waltz. During the season it is on from the start; a small
+  **Christmas / Classic** switch on the title screen (and on the game-over card, for your next run)
+  takes you back to the classic pastries and the classic bakery whenever you like. Your choice is
+  remembered for the rest of the season; next year starts festive again. Outside the season the
+  switch is gone and the game is exactly the one you know — nothing changes in classic.
+- **The Christmas ladder** — eleven new hand-painted treats with faces, golden variants and their
+  own crumbs: **Peppermint → Gumdrop → Snowflake Cookie → Tree Cookie → Chocolate Santa → Mince Pie
+  → Gingerbread Man → Christmas Pudding → Stollen → Yule Log → Gingerbread House.** Two Gingerbread
+  Houses make the Golden Peppermint; a golden Gingerbread House and a plain one are the JACKPOT
+  (*both houses cash in*). Chocolate Santas join the mix at stage 3, Mince Pies at stage 4.
+- **It plays like the classic game.** Same rules, spawn odds, points, gate counters and golden
+  chain. Every treat takes up the same room on the board as the pastry it replaces (the collision
+  areas match within half a percent, and six of the eleven shapes are the very same); the two
+  treats built from several parts — the Gingerbread Man and the House — also turn and tip like
+  their classic counterparts.
+- **The bakery on Christmas Eve:** a dusk sky with falling snow and snowdrifts behind the game,
+  frost in the corners of the shop window, a snow-covered fir-green awning with a string of fairy
+  lights, more lights down the window frame, holly on the gate, wreaths and snowy beams on the
+  façade when the camera pulls back for a stage change. Chambers in Christmas flavours (eggnog,
+  cranberry milk, fir frost, sugarplum …), snowflakes in every merge burst, Christmas colours and
+  little stars in the confetti and the jackpot fireworks, and the fairy-dust drift between stages
+  becomes a snow-globe flurry. Snow lies on the score signs and the cards, the buttons turn fir
+  green, the gate bar is a candy cane. The **golden bakery** still crowns every jackpot: the whole
+  evening turns to candlelight, a little more golden with each level.
+- **Sleigh bells in the waltz.** Small, soft sleigh bells join the harp in some phrases and rest in
+  others (the pattern changes from round to round, so it does not wear out), a quiet celesta
+  answers the flute, a sleigh passes by when the gate opens, and big merges and the jackpot cheer
+  get a little jingle. Tempo and harmony are the waltz you know; everything stays under the music
+  and effects sliders.
+- **Your progress is safe.** Classic best score, discovered pastries, jackpot tally and sound
+  settings are untouched. The Christmas ladder keeps its own best score and discoveries — and
+  they wait for you until next year.
+- With *reduce motion* switched on in your device settings, the snow and the lights stand still.
+- For testing on any day: add `?season=on` or `?season=off` to the address to force the season,
+  or `?date=2026-12-24` (also `?date=2027-01-06T23:59:30`) to pretend it is that day.
+- In the code: `Season` (the window and the remembered choice), `LADDERS` / `setMode` (the ladder
+  in play; `TIER_DEFS` follows it), `festive.js` (the Christmas tiers — if that file is missing the
+  game is simply classic), `Xmas` (the festive scenery), `festive` inside `Sfx`.
+
 ## 0.4.2 — The jackpot show & the golden bakery
 
 - **Fixed: the jackpot felt like nothing happened.** Merging a **golden Wedding Cake with a
