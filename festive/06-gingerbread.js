@@ -1,7 +1,7 @@
 'use strict';
-// 4 ─ GINGERBREAD MAN (a chubby iced gingerbread man)
-FESTIVE_TIERS[4] = {
-  key: 'gingerbread', name: 'Gingerbread Man', plural: 'Gingerbread men', r: 39, outline: '#5f2f10',
+// 6 ─ GINGERBREAD MAN (a chubby iced gingerbread man)
+FESTIVE_TIERS[6] = {
+  key: 'gingerbread', name: 'Gingerbread Man', plural: 'Gingerbread men', r: 50, k: 1.2984, outline: '#5f2f10',
   // four convex parts (units of r): head; arms + tummy (one part: two hand discs and a tummy disc); two legs (hip disc → foot disc)
   head: [0, -0.55, 0.41], hand: [0.58, -0.11, 0.2], tummy: [0, 0, 0.28], hip: [0.165, 0.3, 0.226], foot: [0.34, 0.69, 0.22],
   shape(r) {

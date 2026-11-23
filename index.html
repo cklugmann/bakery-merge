@@ -987,7 +987,9 @@ const Mode = { festive: false };                           // true while the Chr
 // ───────────────────────────────────────────────────────────────────
 function buildTier(T, idx) {
   T.idx = idx;
-  const r = T.r;
+  // r = nominal size (rules, effects); a tier may draw itself k times bigger or smaller than that
+  // (festive tiers whose silhouette fills its bounding box differently from the classic counterpart's)
+  const r = T.dr = T.r * (T.k || 1);
   const hulls = T.shape(r).map(convexHull);
   T.physDesign = hulls.map(h => resample(h, clamp(Math.round(perimeter(h) / 8.5), 12, 34)));
   // centre exactly as Matter computes it for (compound) bodies: area-weighted part centroids
@@ -1041,7 +1043,7 @@ const GOLD_LUT = (() => {
 })();
 
 function paintTier(c, T, pr) {
-  const r = T.r;
+  const r = T.dr;
   c.save();
   c.clip(T.pathDesign);
   T.paint(c, r, mulberry32(T.idx * 7919 + 11), T, pr);
@@ -2189,6 +2191,7 @@ function createPastry(tier, golden, x, y, scale = 1) {
   const body = parts.length === 1 ? parts[0] : Body.create({ ...PASTRY_OPTS, parts });
   Body.setPosition(body, { x, y });
   if (scale !== 1) Body.scale(body, scale, scale);
+  if (T.inertiaK) Body.setInertia(body, body.inertia * T.inertiaK);
   body.pastry = {
     tier, golden, scale, growFrom: scale, growT: scale < 1 ? 0 : GROW_MS,
     born: G.time, bornR: G.rtime, popAt: scale < 1 ? G.rtime : 0, happyUntil: 0, hopAt: 0,
@@ -2609,7 +2612,7 @@ function growPastries(dt) {
     p.growT = Math.min(GROW_MS, p.growT + dt);
     const target = lerp(p.growFrom, 1, easeOutCubic(p.growT / GROW_MS));
     const f = target / p.scale;
-    if (Math.abs(f - 1) > 1e-6) Body.scale(b, f, f);
+    if (Math.abs(f - 1) > 1e-6) { Body.scale(b, f, f); const K = TIER_DEFS[p.tier].inertiaK; if (K) Body.setInertia(b, b.inertia * K); }   // (Body.scale recomputes the inertia)
     p.scale = target;
   }
 }
@@ -3593,7 +3596,7 @@ const UI = {
         if (!L || !cv || cv.dataset.done === L.id) return;
         // a little icon from that ladder's own sprite code (painted once)
         try {
-          const T = L.tiers[festive ? 4 : 3], sp = makeSprite(T, 2, false), c = cv.getContext('2d'), s = (cv.width * 0.46) / (Math.max(T.bbox.w, T.bbox.h) / 2);
+          const T = L.tiers[festive ? 6 : 3], sp = makeSprite(T, 2, false), c = cv.getContext('2d'), s = (cv.width * 0.46) / (Math.max(T.bbox.w, T.bbox.h) / 2);
           c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height);
           c.translate(cv.width / 2, cv.height / 2); c.scale(s, s); c.translate(-(T.bbox.minX + T.bbox.maxX) / 2, -(T.bbox.minY + T.bbox.maxY) / 2);
           c.drawImage(sp.cv, sp.x, sp.y, sp.w, sp.h); drawFace(c, T, 'normal', false);
