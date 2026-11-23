@@ -251,6 +251,7 @@ FESTIVE_TIERS[2] = {
 // 3 ─ TREE COOKIE (Christmas-tree iced sugar cookie, a plump rounded triangle)
 FESTIVE_TIERS[3] = {
   key: 'tree', name: 'Tree Cookie', r: 29, outline: '#7a3f14',
+  k: 1.0139,   // 2.8 % more collision area than the classic Cupcake: this compact triangle packs about 5 % tighter, so the same area would take up less room on the board
   // plump rounded triangle: [x, y, radius] discs whose convex hull is the cookie (units of r)
   discs: [[0, -0.98, 0.2], [-0.47, -0.05, 0.2], [0.47, -0.05, 0.2], [-0.8, 0.8, 0.228], [0.8, 0.8, 0.228]],
   shape(r) { const pts = []; for (const [x, y, d] of this.discs) pts.push(...ptsCircle(d * r, 40, x * r, y * r)); return [pts]; },
@@ -365,7 +366,7 @@ FESTIVE_TIERS[3] = {
 // 4 ─ CHOCOLATE SANTA (a foil-wrapped chocolate Santa; one soft convex bell shape)
 FESTIVE_TIERS[4] = {
   key: 'santa', name: 'Chocolate Santa', plural: 'Chocolate Santas', r: 39, outline: '#9a2232',
-  k: 0.7643,   // drawn 0.76 × its nominal r: a compact bell fills its box far better than the classic Croissant's crescent — the collision area is the same
+  k: 0.7750,   // drawn 0.78 × its nominal r: a compact bell fills its box far better than the classic Croissant's crescent. Its collision area is 2.8 % above the Croissant's, because it also packs about 4 % tighter (the same area would take up less room on the board)
   // bell / egg: [x, y, radius] discs whose convex hull is the figure (units of r)
   discs: [[0, -0.727, 0.353], [-0.507, 0.551, 0.485], [0.507, 0.551, 0.485]],
   shape(r) { const pts = []; for (const [x, y, d] of this.discs) pts.push(...ptsCircle(d * r, 48, x * r, y * r)); return [pts]; },
