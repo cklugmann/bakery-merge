@@ -1321,6 +1321,58 @@ const Sfx = (() => {
   }
   const sparkle = (n, at, lo = 86, hi = 103, vol = 0.03) => { const tt = tones(lo, hi); for (let i = 0; i < n; i++) box(tt[(Math.random() * tt.length) | 0], { at: at + i * 0.06 + Math.random() * 0.02, vol: vol * (0.6 + Math.random() * 0.4), dur: 0.45 }); };
   const strum = (lo, hi, step, o) => tones(lo, hi).forEach((m, i) => harp(m, { ...o, at: (o.at || 0) + i * step }));
+  // ── festive mode only ───────────────────────────────────────────
+  // Nothing festive ever calls Math.random(): the classic game's random sequence stays exactly as it
+  // was, so the small human variations of the sleigh bells come from this private generator.
+  let fseed = 0x5eed;
+  const frand = () => { fseed = (fseed + 0x6d2b79f5) >>> 0; let t = fseed; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  // sleigh bells: a strap of little bells, shaken once. Two bells ~30 cents apart (FM carriers sharing
+  // one modulator at an inharmonic ratio → a small cluster of bell partials at 2–9 kHz that beat against
+  // each other) and a third, smaller one; a quick rattle of `hits` strikes re-excites them (each strike
+  // brightest at its start), and every strike adds a tiny band-passed "chink" of the pellets.
+  // 4 oscillators + 1 noise source, one voice. Tuned to a chord tone `m`.
+  //   swell: the strikes grow towards the last one (a shake that leads into the next downbeat)
+  //   shakes: several shakes an eighth apart, rising and fading (a passing sleigh), panned pan → panTo
+  function jingle(m, { at = 0, vol = 0.01, hits = 2, gap = 0.045, ring = 0.26, swell = false, shakes = 1, pan = 0, panTo = pan, important = false, dest = null } = {}) {
+    if (!live(important, dest)) return;
+    const t = ac.currentTime + at, f = hz(m), g = ac.createGain(), ts = [], amp = [];
+    for (let k = 0; k < shakes; k++) {
+      const sv = vol * (shakes > 1 ? Math.sin(Math.PI * (k + 0.5) / shakes) : 1);
+      for (let i = 0, s = t + k * EIGHTH; i < hits; i++) {   // a hand shaking a strap is never metronomic
+        ts.push(s); amp.push(sv * (swell ? 0.3 + 0.7 * (i + 1) / hits : Math.pow(0.6, i)) * (0.85 + frand() * 0.3));
+        s += gap * (0.8 + frand() * 0.4);
+      }
+    }
+    const last = ts[ts.length - 1], end = last + ring, more = i => i < ts.length - 1;
+    if (panTo !== pan && ac.createStereoPanner) {
+      const p = ac.createStereoPanner(); p.pan.setValueAtTime(clamp(pan, -0.7, 0.7), t); p.pan.linearRampToValueAtTime(clamp(panTo, -0.7, 0.7), end);
+      p.connect(dest || bus); g.connect(p);
+    } else g.connect(out(dest || bus, pan));
+    g.gain.setValueAtTime(0.0001, t);
+    ts.forEach((s, i) => {
+      g.gain.exponentialRampToValueAtTime(amp[i], s + 0.0015);
+      if (more(i)) g.gain.exponentialRampToValueAtTime(amp[i] * 0.35, ts[i + 1]); else g.gain.exponentialRampToValueAtTime(0.0001, end);
+    });
+    const c1 = ac.createOscillator(), c2 = ac.createOscillator(), mo = ac.createOscillator(), mg = ac.createGain();
+    c1.frequency.value = f; c2.frequency.value = f * 1.018; mo.frequency.value = f * 2.76;
+    mo.connect(mg); mg.connect(c1.frequency); mg.connect(c2.frequency); c1.connect(g); c2.connect(g);
+    const c3 = ac.createOscillator(), g3 = ac.createGain();
+    c3.frequency.value = f * 1.47; c3.connect(g3); g3.connect(g);
+    ts.forEach((s, i) => {   // every strike: brightest (FM index) at its start, the small bell re-struck
+      const to = more(i) ? ts[i + 1] - 0.0005 : 0;
+      mg.gain.setValueAtTime(f * 1.5, s); mg.gain.exponentialRampToValueAtTime(f * 0.1, to || s + 0.12);
+      g3.gain.setValueAtTime(0.35, s); g3.gain.exponentialRampToValueAtTime(more(i) ? 0.1 : 0.0001, to || s + ring * 0.5);
+    });
+    const n = ac.createBufferSource(), nf = ac.createBiquadFilter(), ng = ac.createGain();
+    n.buffer = noiseBuf; n.loop = true; nf.type = 'bandpass'; nf.frequency.value = 7000; nf.Q.value = 1.2;
+    ng.gain.setValueAtTime(0.0001, t);
+    ts.forEach(s => { ng.gain.setValueAtTime(0.0001, s); ng.gain.exponentialRampToValueAtTime(0.5, s + 0.001); ng.gain.exponentialRampToValueAtTime(0.0001, s + 0.018); });
+    n.connect(nf); nf.connect(ng); ng.connect(g);
+    for (const o of [c1, c2, mo, c3]) { o.start(t); o.stop(end + 0.05); }
+    n.start(t, frand() * 0.5); n.stop(last + 0.03);
+    ends.push(end);
+  }
+  const jingleNote = (ch = H.chord) => tones(98, 103, ch)[0];   // D7 or E7: the bells sit on a chord tone
 
   // ── the waltz: look-ahead scheduler on the audio clock ────────────
   // A 16-bar folk tune for the flute, one entry per bar: [[midi, beats], …] (0 = rest)
@@ -1366,6 +1418,35 @@ const Sfx = (() => {
     if (gold >= 3 && pos === 0 && bar % 2 === 0) {
       // III: a soft, sustained bell chord under every change of harmony
       tones(64, 79, ci).slice(0, 3).forEach((m, i) => bell(m, { at: at + i * 0.03, vol: 0.02, dur: 2.6, bright: 0.3, dest: musicBus }));
+    }
+    if (festive) festiveEighth(pos, bar, ci, section, at);
+  }
+  // ── the festive waltz: the Christmas colours on top of the same waltz ──
+  //   first round (harp only): sleigh bells on beats 2 and 3, the "pah-pah" of the waltz, with a shake
+  //   that leads into every fourth bar; a soft celesta descant: per chord a sighing two-note figure, the
+  //   line falling step by step (G G F F E D C) and ending on the wistful A♭ of the minor chord.
+  //   second round (the flute tune): one gentle shake on each downbeat, and a celesta answer while the
+  //   flute holds the last note of each phrase.
+  //   With the golden layers (gold ≥ 2 brings off-beat glockenspiel) the bells thin out to beat 2.
+  //   It is decoration: when a third of the voices is all that is left (busy play, gold 3 at a change
+  //   of harmony), it steps aside so the merges and drops always get through.
+  const DESCANT = [[93, 91], [93, 91], [93, 89], [91, 89], [91, 88], [88, 86], [86, 84], [89, 92]];   // per chord: [bar 1 beat 2, bar 2 beat 1]
+  function festiveEighth(pos, bar, ci, section, at) {
+    if (ends.length >= MAX_VOICES - 10) return;    // (live() of this eighth's harp has just pruned `ends`)
+    const jm = jingleNote(ci), o = { at, dest: musicBus };
+    if (section === 0) {
+      if (bar % 4 === 3) { if (pos === 5) jingle(jm, { ...o, vol: 0.009, hits: 5, gap: 0.042, ring: 0.3, swell: true, pan: 0.15 }); }
+      else if (pos === 2 || (pos === 4 && gold < 2)) jingle(jm, { ...o, vol: pos === 2 ? 0.0085 : 0.0065, hits: 2, gap: 0.04, pan: pos === 2 ? 0.25 : -0.1 });
+      const d = DESCANT[ci];
+      if (bar % 2 === 0 && pos === 2) bell(d[0], { ...o, vol: 0.013, dur: 1.0, bright: 0.35, pan: -0.15 });
+      if (bar % 2 === 1 && pos === 0) bell(d[1], { ...o, vol: 0.014, dur: 1.4, bright: 0.35, pan: -0.15 });
+    } else {
+      if (pos === 0 && bar % 16) jingle(jm, { ...o, vol: 0.008, hits: 3, gap: 0.038, ring: 0.32, pan: 0.2 });   // (bar 1 of the round: the swell lands there)
+      if (bar % 16 === 15 && pos === 5) jingle(jm, { ...o, vol: 0.008, hits: 5, gap: 0.042, ring: 0.3, swell: true, pan: 0.15 });
+      if (bar % 4 === 3 && pos >= 2 && pos <= 4) {
+        const hi = tones(86, 100, ci), k = pos - 2, notes = Math.floor(bar / 4) % 2 ? [hi[0], hi[1], hi[2]] : [hi[3] || hi[2], hi[2], hi[1]];
+        bell(notes[k], { ...o, vol: 0.013, dur: 0.8, bright: 0.4, pan: 0.1 * (k - 1) });
+      }
     }
   }
   function schedule() {
@@ -1429,6 +1510,8 @@ const Sfx = (() => {
       if (tier >= 5) strum(tt[Math.max(0, i - 3)], m, 0.03, { vol: 0.045, dur: 0.8 });
       if (chain >= 3) box(tt[Math.min(tt.length - 1, i + 4)], { at: 0.08, vol: 0.035, dur: 0.5, pan });
       if (golden) { sparkle(4, 0.08, 88, 103, 0.035); air({ at: 0.02, dur: 0.4, vol: 0.018, type: 'highpass', f0: 6500 }); }
+      // festive, big pastries: a shake of sleigh bells (only with voices to spare: never at the cost of a merge)
+      if (festive && tier >= 6 && ends.length < MAX_VOICES - 10) jingle(jingleNote(), { at: 0.05, vol: 0.02, hits: 3, gap: 0.04, pan });
     },
     tick() { marimba(tones(84, 96)[1], { vol: 0.05, dur: 0.3 }); },
     gateOpen() {
@@ -1438,6 +1521,8 @@ const Sfx = (() => {
     spell() {   // fairy-dust drift during the stage change
       air({ dur: 1.4, vol: 0.022, type: 'highpass', f0: 6000, f1: 9000, important: true });
       sparkle(10, 0.1, 86, 103, 0.03);
+      // festive: a sleigh passes by – six shakes in tempo, sweeping left to right, swelling and fading (one voice)
+      if (festive) jingle(jingleNote(), { at: 0.15, vol: 0.022, hits: 3, gap: 0.04, shakes: 6, pan: -0.6, panTo: 0.6, important: true });
     },
     land() {
       air({ dur: 0.18, vol: 0.03, type: 'bandpass', f0: 1300, q: 0.9, important: true });
@@ -1489,6 +1574,7 @@ const Sfx = (() => {
     jackpotCheer() {   // the whole bakery hops: an upward harp run and three music-box "yays"
       strum(55, 98, 0.024, { vol: 0.045, dur: 1, important: true });
       const tt = tones(84, 100); [0, 1, 2].forEach(i => box(tt[i] || tt[tt.length - 1], { at: 0.1 + i * 0.07, vol: 0.05, dur: 0.5, important: true }));
+      if (festive) jingle(jingleNote(), { at: 0.1, vol: 0.024, hits: 5, gap: 0.045, ring: 0.35, important: true });
     },
     // the golden bakery level (0 … 3): key up one semitone per level, extra layers in the waltz
     setGold(level) { gold = clamp(level | 0, 0, 3); transpose = gold; },
