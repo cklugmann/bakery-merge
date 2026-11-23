@@ -628,7 +628,9 @@ FESTIVE_TIERS[5] = {
 FESTIVE_TIERS[6] = {
   key: 'gingerbread', name: 'Gingerbread Man', plural: 'Gingerbread men', r: 50, outline: '#5f2f10',
   // k: drawing scale; the collision area (the hull of the whole figure) equals the classic Pretzel's.
-  k: 1.1756,
+  // inertiaK: the Pretzel is built from two parts, for which Matter computes a lower rotational inertia than for
+  // one solid piece of the same size; this factor gives the man the Pretzel's, so he turns and tips like it.
+  k: 1.1756, inertiaK: 0.634,
   // The visible figure is four convex parts (units of the drawing radius): head; arms + shoulders + belly (one part);
   // two short fat legs (hip disc → foot disc). It is squat (≈1.3 : 1) and fills ≈90 % of its own convex hull, so the
   // collision is ONE convex part — the hull — and the few slivers between figure and hull stay small and transparent.
