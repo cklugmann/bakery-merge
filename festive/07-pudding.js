@@ -3,7 +3,7 @@
 FESTIVE_TIERS[7] = {
   key: 'pudding', name: 'Christmas Pudding', r: 56, outline: '#3a1c0e',
   shape: r => [ptsCircle(r)],
-  face: { x: 0, y: 0.42, s: 0.38, eye: 'light' },
+  face: { x: 0, y: 0.43, s: 0.4, eye: 'light' },
   crumbs: ['#5c311c', '#ffffff', '#2f9a55', '#e8334a'],
   // icing drips: [x, length, half-width] in units of r
   drips: [[-0.74, 0.16, 0.1], [-0.44, 0.3, 0.115], [-0.13, 0.15, 0.1], [0.19, 0.27, 0.11], [0.5, 0.2, 0.115], [0.8, 0.12, 0.09]],
@@ -26,17 +26,21 @@ FESTIVE_TIERS[7] = {
     c.fillRect(-2 * r, -2 * r, 4 * r, 4 * r);
     // mottled crumb
     speckle(c, R, 160, inDisc(0.97 * r), R => (R() < 0.5 ? `rgba(170,110,65,${0.18 + R() * 0.25})` : `rgba(35,14,5,${0.25 + R() * 0.3})`), 0.012 * r, 0.032 * r);
-    // fruit: raisins, candied peel, glacé cherries — keep the face area calm
+    // a calmer, slightly lighter patch behind the face, so its white-rimmed eyes and blush read on the dark crumb
     const fx = this.face.x * r, fy = this.face.y * r;
+    ell(c, fx, fy + 0.03 * r, 0.5 * r, 0.3 * r); c.fillStyle = rg(c, fx, fy + 0.03 * r, 0, fx, fy + 0.03 * r, 0.5 * r, [[0, 'rgba(150,92,52,0.85)'], [0.55, 'rgba(140,85,48,0.5)'], [1, 'rgba(120,70,40,0)']]); c.fill();
+    // fruit: raisins, candied peel, glacé cherries — keep the face area calm and red fruit well away from it
     const fruit = [];
     for (let k = 0; k < 400 && fruit.length < 34; k++) {
       const p = inDisc(0.9 * r)(R);
-      if (Math.abs(p.x - fx) < 0.42 * r && Math.abs(p.y - fy) < 0.2 * r) continue;
+      if (Math.abs(p.x - fx) < 0.46 * r && Math.abs(p.y - fy) < 0.24 * r) continue;
       if (fruit.some(q => Math.hypot(q.x - p.x, q.y - p.y) < 0.15 * r)) continue;
       fruit.push(p);
     }
+    const nearFace = p => Math.abs(p.x - fx) < 0.4 * r && p.y - fy > -0.55 * r && p.y - fy < 0.45 * r;
     fruit.forEach((p, i) => {
-      const kind = i % 6, s = lerp(0.05, 0.075, R()) * r;
+      let kind = i % 6; const s = lerp(0.05, 0.075, R()) * r;
+      if (kind === 4 && nearFace(p)) kind = 0;   // a red cherry near the mouth reads as a tongue or a nose
       if (kind <= 2) {            // raisin
         blobPath(c, p.x + 0.012 * r, p.y + 0.016 * r, s, R, 6, 0.4); c.fillStyle = 'rgba(20,6,0,0.45)'; c.fill();
         blobPath(c, p.x, p.y, s, R, 6, 0.4); c.fillStyle = '#24100a'; c.fill();
@@ -58,7 +62,7 @@ FESTIVE_TIERS[7] = {
     // currants and glints
     for (let k = 0; k < 40; k++) {
       const p = inDisc(0.92 * r)(R), s = lerp(0.022, 0.034, R()) * r;
-      if (Math.abs(p.x - fx) < 0.4 * r && Math.abs(p.y - fy) < 0.18 * r) continue;
+      if (Math.abs(p.x - fx) < 0.46 * r && Math.abs(p.y - fy) < 0.22 * r) continue;
       circ(c, p.x, p.y, s); c.fillStyle = '#1c0a04'; c.fill();
       circ(c, p.x - s * 0.35, p.y - s * 0.35, s * 0.35); c.fillStyle = 'rgba(200,130,100,0.6)'; c.fill();
     }
