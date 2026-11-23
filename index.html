@@ -1015,6 +1015,10 @@ function buildTier(T, idx) {
   T.partsLocal = dense.map(p => p.map(v => ({ x: v.x - T.C.x, y: v.y - T.C.y })));
   T.pathLocal = new Path2D();
   for (const p of T.partsLocal) pathFromPts(T.pathLocal, p);
+  // the shape that effects painted over a piece are clipped to: the collision outline — or, for a tier whose painted
+  // figure is smaller than its outline (figurePath, see the festive Gingerbread Man), that figure
+  T.pathFx = T.pathLocal;
+  if (T.figurePath) { try { const f = new Path2D(); f.addPath(T.figurePath(r), new DOMMatrix().translate(-T.C.x, -T.C.y)); T.pathFx = f; } catch (e) { /* keep the outline */ } }
   let minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9, maxR = 0;
   for (const p of T.partsLocal) for (const v of p) {
     minX = Math.min(minX, v.x); maxX = Math.max(maxX, v.x); minY = Math.min(minY, v.y); maxY = Math.max(maxY, v.y);
@@ -3290,7 +3294,7 @@ const Render = {
     c.drawImage(sp.cv, sp.x, sp.y, sp.w, sp.h);
     if (p.golden) this.goldFx(c, b, T, t);
     drawFace(c, T, this.mood(p, t), p.golden);
-    if (p.danger) { c.globalAlpha = 0.22 + 0.3 * (0.5 + 0.5 * Math.sin(t * 0.02)); c.fillStyle = '#ff2a1a'; c.fill(T.pathLocal); }
+    if (p.danger) { c.globalAlpha = 0.22 + 0.3 * (0.5 + 0.5 * Math.sin(t * 0.02)); c.fillStyle = '#ff2a1a'; c.fill(T.pathFx); }
     c.restore();
   },
   halo(c, b, t) {
@@ -3310,7 +3314,7 @@ const Render = {
     // a glossy light sweep across the surface
     const u = ((t + ph) % 2400) / 2400, pos = lerp(-0.3, 1.6, u);
     if (pos < 1.25) {
-      c.save(); c.clip(T.pathLocal);
+      c.save(); c.clip(T.pathFx);
       const g = c.createLinearGradient(bb.minX, bb.minY, bb.maxX, bb.maxY);
       const st = [[pos - 0.2, 0], [pos - 0.06, 0.5], [pos, 0.95], [pos + 0.06, 0.5], [pos + 0.2, 0]];
       g.addColorStop(0, 'rgba(255,252,225,0)');

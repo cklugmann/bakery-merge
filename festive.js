@@ -635,6 +635,7 @@ FESTIVE_TIERS[6] = {
   // two short fat legs (hip disc → foot disc). It is squat (≈1.3 : 1) and fills ≈90 % of its own convex hull, so the
   // collision is ONE convex part — the hull — and the few slivers between figure and hull stay small and transparent.
   head: [0, -0.31, 0.47], hand: [0.77, -0.09, 0.235], shoulder: [0, -0.15, 0.4], belly: [0, 0.11, 0.52], hip: [0.335, 0.33, 0.29], foot: [0.385, 0.485, 0.21],
+  figurePath(r) { return this.union(r).path; },   // what is painted: effects over the piece (golden sweep, danger tint) keep to it
   figure(r) {
     const [hx, hy, hr] = this.head, [ax, ay, ar] = this.hand, [, sy, sr] = this.shoulder, [, by, br] = this.belly, [px, py, pr] = this.hip, [fx, fy, fr] = this.foot;
     const C = (x, y, d, n = 32) => ptsCircle(d * r, n, x * r, y * r);
