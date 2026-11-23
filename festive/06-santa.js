@@ -72,7 +72,7 @@ FESTIVE_TIERS[6] = {
     c.fillStyle = lg(c, 0, -1.1 * r, 0, 1.1 * r, [[0, 'rgba(255,200,200,0.1)'], [0.5, 'rgba(90,0,10,0)'], [1, 'rgba(70,0,10,0.25)']]);
     c.fillRect(-2 * r, -2 * r, 4 * r, 4 * r);
     foil(0.2, 0.14, 0.5);
-    for (const k of [[[-0.32, -0.48], [-0.25, -0.57], [-0.27, -0.64]], [[0.66, 0.0], [0.6, 0.08], [0.65, 0.15]], [[0.4, 0.82], [0.48, 0.86], [0.47, 0.95]], [[0.8, 0.7], [0.72, 0.78]]]) crinkle(k);
+    for (const k of [[[-0.34, -0.47], [-0.27, -0.55], [-0.28, -0.62]], [[0.26, 0.84], [0.36, 0.87], [0.46, 0.85], [0.56, 0.89]], [[0.5, 0.94], [0.6, 0.95], [0.7, 0.91]], [[-0.3, 0.88], [-0.22, 0.92]]]) crinkle(k);
 
     // ── hat: the cone bends a little to the right; a fold shadow and a lit ridge ──
     c.lineCap = 'round';
@@ -168,6 +168,7 @@ FESTIVE_TIERS[6] = {
 
     // ── coat: white trim down the front, belt with a gold buckle ──
     const trim = loop([[-0.1, 0.62], [0.1, 0.62], [0.11, 0.8], [0.12, 1.1], [-0.12, 1.1], [-0.11, 0.8]], 6);
+    for (let y = 0.74, i = 0; y < 1.05; y += 0.085, i++) for (const s of [-1, 1]) disc(trim, s * (0.105 + 0.004 * i), y + (s > 0 ? 0.04 : 0), 0.04);
     silver(trim, -0.1, 0.6, 0.12, 1.0, 0.04);
     const beltY = x => 0.62 + 0.05 * (1 - x * x);
     const belt = new Path2D();
@@ -227,5 +228,9 @@ FESTIVE_TIERS[6] = {
 
     // ── the crinkles and the shine run over the print as well ──
     foil(0.06, 0.04, 0.25);
+    // crisp glints where the foil faces the light
+    for (const [x, y, a, b, rot, al] of [[-0.24, -0.62, 0.11, 0.026, -1.15, 0.85], [-0.8, 0.16, 0.1, 0.024, -1.3, 0.7], [0.84, 0.36, 0.06, 0.016, -1.2, 0.45]]) {
+      ell(c, x * r, y * r, a * r, b * r, rot); c.fillStyle = `rgba(255,255,255,${al})`; c.fill();
+    }
   },
 };
