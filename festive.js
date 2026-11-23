@@ -254,7 +254,7 @@ FESTIVE_TIERS[3] = {
   // plump rounded triangle: [x, y, radius] discs whose convex hull is the cookie (units of r)
   discs: [[0, -0.98, 0.2], [-0.47, -0.05, 0.2], [0.47, -0.05, 0.2], [-0.8, 0.8, 0.228], [0.8, 0.8, 0.228]],
   shape(r) { const pts = []; for (const [x, y, d] of this.discs) pts.push(...ptsCircle(d * r, 40, x * r, y * r)); return [pts]; },
-  face: { x: 0, y: 0.45, s: 0.48 },
+  face: { x: 0, y: 0.45, s: 0.48, blush: 'rgba(255,158,150,0.62)' },   // a warmer, denser blush: the usual translucent pink turns olive on dark green
   crumbs: ['#2f9a55', '#8fd9a0', '#ffd84a', '#e0a860', '#e8334a'],
   // the cookie outline pulled in by d (units of r): the exact inset of the convex hull of the discs
   inset(r, d) { const pts = []; for (const [x, y, rad] of this.discs) pts.push(...ptsCircle(Math.max(0.01, rad - d) * r, 40, x * r, y * r)); return pathFromPts(new Path2D(), convexHull(pts)); },

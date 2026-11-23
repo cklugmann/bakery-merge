@@ -171,15 +171,15 @@ body[data-season="xmas"][data-gold="3"]{background:radial-gradient(82% 70% at 50
 body[data-season="xmas"][data-gold="1"]::after{filter:sepia(.4) saturate(1.5)}
 body[data-season="xmas"][data-gold="2"]::after{filter:sepia(.6) saturate(1.9)}
 body[data-season="xmas"][data-gold="3"]::after{filter:sepia(.75) saturate(2.3)}
-/* snow lying on the signs: a white cap along the top edge */
-body[data-season="xmas"] .chip,body[data-season="xmas"] #ladder,body[data-season="xmas"] .ibtn{box-shadow:0 -3px 0 #fff,0 3px 0 rgba(200,140,70,.35)}
-body[data-season="xmas"] .ibtn:active{box-shadow:0 -3px 0 #fff,0 1px 0 rgba(200,140,70,.35)}
-body[data-season="xmas"][data-gold="1"] #score-chip,body[data-season="xmas"][data-gold="2"] .chip,body[data-season="xmas"][data-gold="3"] .chip,body[data-season="xmas"][data-gold="2"] #ladder,body[data-season="xmas"][data-gold="3"] #ladder,body[data-season="xmas"][data-gold="3"] .ibtn{box-shadow:0 -3px 0 #fff,0 3px 0 rgba(214,160,40,.5)}
-body[data-season="xmas"] .card{background:var(--xmas-cap,none) center top/100% 16px no-repeat,var(--card);box-shadow:0 -4px 0 #fff,0 14px 40px rgba(40,40,90,.32)}
+/* snow lying on the signs and cards: one lumpy layer of snow that covers the top edge — the top border is
+   transparent there and the snow (an image painted in Xmas.build) fills the border box in its place */
+body[data-season="xmas"] .chip,body[data-season="xmas"] #ladder,body[data-season="xmas"] .ibtn{border-top-color:transparent;background:var(--xmas-cap,none) center top/100% 9px no-repeat border-box var(--card)}
+body[data-season="xmas"] .card{border-top-color:transparent;background:var(--xmas-cap,none) center top/100% 19px no-repeat border-box var(--card);box-shadow:0 14px 40px rgba(40,40,90,.32)}
+body[data-season="xmas"] .stat span{display:block;line-height:1.25}
 body[data-season="xmas"] h1,body[data-season="xmas"] #logo{position:relative}
 body[data-season="xmas"] h1::after,body[data-season="xmas"] #logo::after{content:"";position:absolute;left:50%;top:-.16em;width:1.1em;height:.65em;margin-left:1.18em;background:var(--xmas-holly,none) center/contain no-repeat;transform:rotate(16deg);pointer-events:none}
 /* wide layout: the logo hangs as a little snowy sign above the HUD (the dusk sky is too dark for its small print) */
-body[data-season="xmas"] #logo{background:var(--card);border:2px solid var(--line);border-radius:14px;padding:9px 4px 7px;box-shadow:0 -3px 0 #fff,0 3px 0 rgba(200,140,70,.35)}
+body[data-season="xmas"] #logo{background:var(--xmas-cap,none) center top/100% 9px no-repeat border-box var(--card);border:2px solid var(--line);border-top-color:transparent;border-radius:14px;padding:9px 4px 7px;box-shadow:0 3px 0 rgba(200,140,70,.35)}
 body[data-season="xmas"] #logo::after{top:.2em;margin-left:1.22em;width:1.05em}
 body[data-season="xmas"] #game{box-shadow:0 0 0 3px #d9a56c,0 12px 30px rgba(40,40,90,.34),0 0 46px rgba(255,232,190,.4)}
 body[data-season="xmas"][data-gold] #game{box-shadow:0 0 0 3px #d9a56c,0 12px 30px rgba(90,60,40,.3),0 0 60px rgba(255,214,120,.6)}
@@ -1023,7 +1023,7 @@ function buildTier(T, idx) {
   for (let i = pts.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [pts[i], pts[j]] = [pts[j], pts[i]]; }
   T.inside = pts.length ? pts : [{ x: 0, y: 0 }];
   T.ow = clamp(r * 0.075, 1.6, 3.4);
-  T.faceLocal = T.face ? { x: T.face.x * r - T.C.x, y: T.face.y * r - T.C.y, u: T.face.s * r, light: T.face.eye === 'light' } : null;
+  T.faceLocal = T.face ? { x: T.face.x * r - T.C.x, y: T.face.y * r - T.C.y, u: T.face.s * r, light: T.face.eye === 'light', blush: T.face.blush } : null;
 }
 CLASSIC_TIERS.forEach(buildTier);
 // a broken festive ladder must never take the classic game down with it
@@ -1141,7 +1141,7 @@ function drawFace(c, T, mood, golden) {
   const dark = golden ? '#4a2600' : '#2b1408';
   c.save(); c.translate(f.x, f.y);
   // blush
-  c.fillStyle = golden ? 'rgba(255,140,40,0.35)' : 'rgba(255,105,120,0.32)';
+  c.fillStyle = golden ? 'rgba(255,140,40,0.35)' : f.blush || 'rgba(255,105,120,0.32)';
   ell(c, -0.58 * u, 0.17 * u, 0.15 * u, 0.08 * u); c.fill();
   ell(c, 0.58 * u, 0.17 * u, 0.15 * u, 0.08 * u); c.fill();
   c.lineCap = 'round';
@@ -2874,13 +2874,13 @@ const Xmas = {
     if (!this.css) try {
       const kk = this.k; this.k = 3;
       const holly = F.sprite(44, 26, drawHolly);
-      const cap = F.sprite(380, 16, c => {
+      const cap = F.sprite(380, 19, c => {
         const R = mulberry32(9);
-        c.beginPath(); c.moveTo(0, 0); c.lineTo(380, 0); c.lineTo(380, 3);
-        for (let x = 380; x > 0;) { const s = 14 + R() * 20, d = 3 + R() * 6; c.quadraticCurveTo(x - s / 2, 3 + d * 1.5, x - s, 2.5 + R() * 1.5); x -= s; }
+        c.beginPath(); c.moveTo(0, 0); c.lineTo(380, 0); c.lineTo(380, 6);
+        for (let x = 380; x > 0;) { const s = 16 + R() * 22, d = 3 + R() * 5; c.quadraticCurveTo(x - s / 2, 6 + d * 1.5, x - s, 5.5 + R() * 1.5); x -= s; }
         c.closePath();
-        c.save(); c.translate(0, 1.4); c.fillStyle = 'rgba(110,130,190,0.32)'; c.fill(); c.restore();
-        c.fillStyle = '#ffffff'; c.fill();
+        c.save(); c.translate(0, 2.2); c.fillStyle = 'rgba(96,116,180,0.42)'; c.fill(); c.restore();          // cool shadow under the snow
+        c.fillStyle = lg(c, 0, 0, 0, 16, [[0, '#ffffff'], [0.55, '#ffffff'], [1, '#e6edfb']]); c.fill();     // the snow, bluish towards its lower edge
       });
       this.k = kk;
       const st = document.documentElement.style;
