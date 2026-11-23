@@ -106,7 +106,8 @@ FESTIVE_TIERS[4] = {
     c.fillRect(-r * 3, -r * 3, r * 6, r * 6);
     c.restore();
     // light rim just inside the contour, on the lit (top-left) side
-    c.save(); c.translate(0.018 * r, 0.026 * r); c.strokeStyle = 'rgba(255,226,175,0.5)'; c.lineWidth = (this.ow || 0.075 * r) * 2 + 0.03 * r; c.stroke(U.path); c.restore();
+    // (kept faint: a strong light rim reads as a cream icing outline at icon size)
+    c.save(); c.translate(0.014 * r, 0.02 * r); c.strokeStyle = 'rgba(255,226,175,0.32)'; c.lineWidth = (this.ow || 0.075 * r) * 2 + 0.02 * r; c.stroke(U.path); c.restore();
   },
   outlineFn(c, path, r, ow) { c.lineWidth = ow * 2; c.strokeStyle = this.outline; c.stroke(this.union(r).path); },
 };
