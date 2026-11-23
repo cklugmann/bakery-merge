@@ -3809,8 +3809,8 @@ function loop(now) {
     }
   }
   if (engine && Mode.festive && !Xmas.lite && sim) {
-    // festive mode watches what drawing a frame costs: a smoothed average (single stalls are capped) that stays
-    // above 11 ms through ten seconds of play means the device cannot afford the decoration
+    // festive mode watches what drawing a frame costs: after a warm-up of 600 frames, a smoothed average (roughly the
+    // last two seconds; single stalls are capped at 30 ms) above 11 ms means the device cannot afford the decoration
     const t0 = performance.now(); Render.frame();
     Xmas.ft += (Math.min(performance.now() - t0, 30) - Xmas.ft) * 0.01;
     if (++Xmas.fn > 600 && Xmas.ft > 11) Xmas.lite = true;
