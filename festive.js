@@ -671,9 +671,9 @@ FESTIVE_TIERS[4] = {
   tear: { cx: -0.507, cy: 0.551, d: 0.1 },
 };
 
-// 5 ─ MINCE PIE (a homely little pie seen from the side, a little from above: fluted golden case, hand-pinched crimp, mincemeat in a star cut-out)
+// 5 ─ MINCE PIE (a homely little pie seen from the side, a little from above: foil tin, hand-pinched crimp, sugar-dusted lid with steam slits)
 FESTIVE_TIERS[5] = {
-  key: 'mincepie', name: 'Mince Pie', plural: 'Mince pies', r: 41, outline: '#7a4316',
+  key: 'mincepie', name: 'Mince Pie', plural: 'Mince pies', r: 41, outline: '#6b4a34',
   k: 1.302,   // drawing scale: the collision area (the hull of the pie) equals the classic Cinnamon Roll's
   // the pie in units of its drawing radius
   rim: { cy: -0.2, rx: 0.85, ry: 0.3 },                      // the crimped rim runs along this ellipse
@@ -682,8 +682,10 @@ FESTIVE_TIERS[5] = {
   lid: { cy: -0.2, rx: 0.76, ry: 0.3 },                      // the lid inside the rim
   wall: { y: -0.14, x: 0.9 },                                // the fluted case: its top corners, tucked under the rim …
   base: { cy: 0.4, rx: 0.72, ry: 0.22, n: 12, dip: 0.018 },  // … and its foot (n flutes all round, scalloped `dip` deep)
+  // steam slits cut into the lid, red filling showing: [x, y, tilt (degrees), length] (units of r)
+  slits: [[-0.4, -0.19, -22, 0.22], [-0.16, -0.29, 8, 0.22], [0.08, -0.17, 28, 0.2]],
   face: { x: 0, y: 0.36, s: 0.4 },
-  crumbs: ['#f6d29b', '#e2a050', '#ffffff', '#5a1a14', '#c97a34'],
+  crumbs: ['#f6d29b', '#e2a050', '#ffffff', '#9a1c1c', '#c9ced4'],
   // The collision outline is the convex hull of the pie; the painted pie is a little smaller (the rim overhangs the
   // case, the crimp and the foot are scalloped), so paint() clips to the pie itself and shades along its outline.
   noShade: true,
@@ -738,36 +740,26 @@ FESTIVE_TIERS[5] = {
     c.save(); c.clip(F);
     c.lineCap = 'round'; c.lineJoin = 'round';
 
-    // ── the fluted pastry case: golden, a shade deeper than the lid, turning away from the light ──
-    c.fillStyle = lg(c, 0, -0.2 * r, 0, 0.66 * r, [[0, '#f4bf68'], [0.5, '#e29d46'], [1, '#bf7228']]);
+    // ── a smooth, slightly shiny foil pie tin with sloped sides: cool silver, a soft vertical sheen, darker at the foot ──
+    c.fillStyle = lg(c, -w.x * r, 0, w.x * r, 0, [[0, '#8a9099'], [0.12, '#c2c7ce'], [0.27, '#eef0f3'], [0.4, '#d3d7dc'], [0.62, '#aeb3ba'], [0.82, '#c4c8cd'], [1, '#848a93']]);
     c.fillRect(-2 * r, -2 * r, 4 * r, 4 * r);
-    c.fillStyle = lg(c, -r, 0, r, 0, [[0, 'rgba(255,240,200,0.2)'], [0.4, 'rgba(255,240,200,0)'], [0.65, 'rgba(110,50,10,0)'], [1, 'rgba(110,50,10,0.38)']]);
-    c.fillRect(-2 * r, -2 * r, 4 * r, 4 * r);
-    // flutes: soft, shallow, hand-pressed ribs of pastry from under the rim down to the foot, a little uneven
-    const n = b.n, edge = k => ((k - 0.5) + 0.22 * Math.sin(k * 2.7 + 1.3)) * TAU / n;
-    const top = a => ({ x: w.x * Math.sin(a) * r, y: (w.y + 0.32 * Math.cos(a)) * r });
-    const foot = a => ({ x: b.rx * Math.sin(a) * r, y: (b.cy + b.ry * Math.cos(a) - b.dip * (1 - this.lobe(a))) * r });
-    for (let k = -Math.ceil(n / 4); k <= Math.ceil(n / 4); k++) {
-      const a0 = Math.max(edge(k), -Math.PI / 2), a1 = Math.min(edge(k + 1), Math.PI / 2);
-      if (a1 <= a0) continue;
-      const t0 = top(a0), t1 = top(a1), f0 = foot(a0), f1 = foot(a1), p = new Path2D();
-      p.moveTo(t0.x, t0.y - 0.15 * r); p.lineTo(t1.x, t1.y - 0.15 * r);
-      for (let i = 0; i <= 10; i++) { const q = foot(lerp(a1, a0, i / 10)); p.lineTo(q.x, q.y + 0.02 * r); }
-      p.closePath();
-      const m0 = (t0.x + f0.x) / 2, m1 = (t1.x + f1.x) / 2;
-      c.fillStyle = lg(c, m0, 0, m1, 0, [[0, 'rgba(140,62,12,0.24)'], [0.25, 'rgba(255,222,160,0.06)'], [0.45, 'rgba(255,228,175,0.28)'], [0.7, 'rgba(255,225,165,0.04)'], [1, 'rgba(140,62,12,0.22)']]);
-      c.globalAlpha = 0.6 + 0.4 * Math.min(1, 1.6 * Math.abs(Math.sin(((k + 0.5) * TAU) / n)));   // softer in the middle, behind the face
-      c.fill(p);
-      c.globalAlpha = 1;
+    c.fillStyle = lg(c, 0, 0.1 * r, 0, (b.cy + b.ry) * r, [[0, 'rgba(56,62,72,0)'], [0.65, 'rgba(56,62,72,0.12)'], [1, 'rgba(46,52,62,0.42)']]);
+    c.fillRect(-2 * r, 0.1 * r, 4 * r, 2 * r);
+    // a few faint crinkles in the foil
+    for (const [x0, bend, a] of [[-0.5, 0.03, 0.5], [0.46, -0.025, 0.45], [-0.18, -0.02, 0.3]]) {
+      const run = []; for (let i = 0; i <= 8; i++) { const t = i / 8, y = lerp(0.2, b.cy + 0.12, t); run.push({ x: (x0 * lerp(1, b.rx / w.x, t) + bend * Math.sin(Math.PI * t)) * r, y: y * r }); }
+      c.save(); c.translate(0.012 * r, 0); c.strokeStyle = `rgba(70,76,88,${0.3 * a})`; c.lineWidth = 0.025 * r; strokePts(c, run); c.restore();
+      c.strokeStyle = `rgba(255,255,255,${0.7 * a})`; c.lineWidth = 0.02 * r; strokePts(c, run);
     }
-    // contact shadow along the foot, and a baked speckle
-    c.fillStyle = lg(c, 0, (b.cy + 0.02) * r, 0, (b.cy + b.ry) * r, [[0, 'rgba(95,40,4,0)'], [1, 'rgba(95,40,4,0.42)']]);
-    c.fillRect(-2 * r, (b.cy + 0.02) * r, 4 * r, r);
-    speckle(c, R, 45, R => ({ x: lerp(-0.85, 0.85, R()) * r, y: lerp(0.12, 0.66, R()) * r }), R => `rgba(140,62,14,${0.14 + R() * 0.2})`, 0.008 * r, 0.018 * r);
-    // the overhanging rim casts a soft shadow onto the case
+    // the tin's rolled edge at the foot, following the outline
+    const foot = a => ({ x: b.rx * Math.sin(a) * r, y: (b.cy + b.ry * Math.cos(a) - b.dip * (1 - this.lobe(a))) * r });
+    const rolled = dy => { const run = []; for (let i = 0; i <= 40; i++) { const p = foot(lerp(-Math.PI / 2, Math.PI / 2, i / 40)); run.push({ x: p.x, y: p.y - dy * r }); } return run; };
+    c.strokeStyle = 'rgba(60,66,78,0.45)'; c.lineWidth = 0.03 * r; strokePts(c, rolled(0.085));
+    c.strokeStyle = 'rgba(240,243,246,0.7)'; c.lineWidth = 0.035 * r; strokePts(c, rolled(0.055));
+    // the overhanging crust casts a soft shadow onto the tin
     const rimFront = dy => { c.beginPath(); for (let i = 0; i <= 40; i++) { const t = lerp(-0.15, Math.PI + 0.15, i / 40); const x = Math.cos(t) * (M.rx + 0.03) * r, y = (M.cy + Math.sin(t) * M.ry + dy) * r; i ? c.lineTo(x, y) : c.moveTo(x, y); } };
-    rimFront(0.15); c.strokeStyle = 'rgba(105,45,6,0.28)'; c.lineWidth = 0.12 * r; c.stroke();
-    rimFront(0.13); c.strokeStyle = 'rgba(105,45,6,0.32)'; c.lineWidth = 0.06 * r; c.stroke();
+    rimFront(0.15); c.strokeStyle = 'rgba(40,40,50,0.22)'; c.lineWidth = 0.12 * r; c.stroke();
+    rimFront(0.13); c.strokeStyle = 'rgba(40,40,50,0.26)'; c.lineWidth = 0.06 * r; c.stroke();
 
     // ── one wave of the crimp: a broad, flat pinch of pastry, pale where it meets the lid, baked darker at its tip ──
     const lump = ([x, y, hl, hr, rot, t]) => {
@@ -801,24 +793,22 @@ FESTIVE_TIERS[5] = {
     }
     speckle(c, R, 140, R => { const a = R() * TAU, d = Math.sqrt(R()) * 0.95; return { x: Math.cos(a) * d * L.rx * r, y: (L.cy + Math.sin(a) * d * L.ry) * r }; }, R => `rgba(255,255,255,${0.5 + R() * 0.45})`, 0.006 * r, 0.013 * r);
 
-    // ── a star cut out of the lid, the dark, glossy mincemeat showing through it ──
-    const sx = 0.0, sy = L.cy - 0.03, S = this.star(sx * r, sy * r, 0.34 * r, 0.16 * r, 0.52);
-    c.save(); c.translate(0, 0.012 * r); c.strokeStyle = 'rgba(150,70,15,0.45)'; c.lineWidth = 0.06 * r; c.stroke(S); c.restore();   // the lid dips a little round the cut
-    c.fillStyle = rg(c, (sx - 0.06) * r, (sy - 0.04) * r, 0, sx * r, sy * r, 0.34 * r, [[0, '#86301c'], [0.45, '#561610'], [1, '#2c0806']]); c.fill(S);
-    c.save(); c.clip(S);
-    // fruit in the mincemeat: currants, a bit of candied peel, a glacé cherry
-    for (const [x, y, s, col] of [[-0.12, -0.02, 0.035, '#1e0604'], [0.08, 0.0, 0.03, '#1e0604'], [0.02, -0.07, 0.03, '#d8761e'], [-0.02, 0.04, 0.032, '#c81e2e'], [0.16, -0.03, 0.026, '#e8a03a']]) {
-      ell(c, (sx + x) * r, (sy + y) * r, s * r, s * 0.7 * r); c.fillStyle = col; c.fill();
+    // ── three short, curved steam slits cut into the lid, off-centre, glossy red fruit filling showing in them ──
+    for (const [x, y, rot, len] of this.slits) {
+      const S = new Path2D(), hl = len / 2, wd = 0.12, bend = 0.04;
+      S.moveTo(-hl, 0); S.quadraticCurveTo(0, -wd - bend, hl, 0); S.quadraticCurveTo(0, wd - bend, -hl, 0); S.closePath();
+      const M2 = new DOMMatrix().translate(x * r, y * r).scale(r, r * 0.55).rotate(rot), P = new Path2D(); P.addPath(S, M2);
+      c.save(); c.translate(0, 0.012 * r); c.strokeStyle = 'rgba(150,70,15,0.4)'; c.lineWidth = 0.05 * r; c.stroke(P); c.restore();   // the lid dips a little round the cut
+      c.fillStyle = rg(c, (x - 0.03) * r, (y - 0.015) * r, 0, x * r, y * r, hl * r, [[0, '#c23a2e'], [0.5, '#8e1a18'], [1, '#5a0c0c']]); c.fill(P);
+      c.save(); c.clip(P);   // the far wall of the cut: the thickness of the lid, lit
+      const wall = new Path2D(); wall.rect(-2 * r, -2 * r, 4 * r, 4 * r); wall.addPath(P, new DOMMatrix().translate(0, 0.012 * r));
+      c.fillStyle = '#f2be6c'; c.fill(wall, 'evenodd');
+      c.restore();
+      c.strokeStyle = 'rgba(120,52,12,0.8)'; c.lineWidth = 0.022 * r; c.stroke(P);
+      ell(c, (x - 0.02) * r, (y + 0.008) * r, 0.03 * r, 0.01 * r, rot * Math.PI / 180 * 0.55); c.fillStyle = 'rgba(255,225,215,0.9)'; c.fill();   // syrupy gloss
     }
-    // the far wall of the cut: the thickness of the lid, lit
-    const wall = new Path2D(); wall.rect(-2 * r, -2 * r, 4 * r, 4 * r); wall.addPath(S, new DOMMatrix().translate(0, 0.035 * r));
-    c.fillStyle = '#f0bb68'; c.fill(wall, 'evenodd');
-    c.restore();
-    c.strokeStyle = 'rgba(115,52,10,0.85)'; c.lineWidth = 0.025 * r; c.stroke(S);
-    // syrupy gloss
-    for (const [x, y, w, h] of [[-0.07, 0.0, 0.05, 0.016], [0.1, 0.03, 0.035, 0.013]]) { ell(c, (sx + x) * r, (sy + y) * r, w * r, h * r, -0.15); c.fillStyle = 'rgba(255,225,200,0.85)'; c.fill(); }
 
-    // ── a little holly sprig tucked behind the star ──
+    // ── a little holly sprig ──
     this.holly(c, r, 0.5, -0.36, 0.2);
 
     // ── the crimped rim in front of the lid ──
@@ -836,13 +826,13 @@ FESTIVE_TIERS[5] = {
       c.strokeStyle = 'rgba(115,50,8,0.6)'; c.lineWidth = 0.032 * r;
       c.beginPath(); c.moveTo((x - nx * 0.03) * r, (y - ny * 0.03) * r); c.lineTo((x + nx * 0.08) * r, (y + ny * 0.08) * r); c.stroke();
       if (i !== 0 && i !== lumps.length - 2) continue;
-      // at two of the pinches the filling has bubbled up between crimp and lid: dark, glossy mincemeat seeping into the gap
+      // at two of the pinches the filling has bubbled up between crimp and lid: glossy red fruit filling seeping into the gap
       const px = -ny, py = nx, ix = x - nx * 0.06, iy = y - ny * 0.06;
       c.beginPath(); c.moveTo((ix + px * 0.035) * r, (iy + py * 0.035) * r); c.lineTo((x + nx * 0.05) * r, (y + ny * 0.05) * r); c.lineTo((ix - px * 0.035) * r, (iy - py * 0.035) * r); c.closePath();
-      c.fillStyle = '#4a120c'; c.fill();
+      c.fillStyle = '#6e1010'; c.fill();
       c.save(); c.translate(ix * r, iy * r); c.scale(1, 0.62);
       blobPath(c, 0.006 * r, 0.02 * r, 0.05 * r, R, 7, 0.3); c.fillStyle = 'rgba(90,30,5,0.35)'; c.fill();
-      blobPath(c, 0, 0, 0.05 * r, R, 7, 0.3); c.fillStyle = rg(c, -0.015 * r, -0.015 * r, 0, 0, 0, 0.05 * r, [[0, '#8e3622'], [0.6, '#5a1810'], [1, '#3a0c08']]); c.fill();
+      blobPath(c, 0, 0, 0.05 * r, R, 7, 0.3); c.fillStyle = rg(c, -0.015 * r, -0.015 * r, 0, 0, 0, 0.05 * r, [[0, '#c23a2e'], [0.6, '#8e1a18'], [1, '#5a0c0c']]); c.fill();
       c.restore();
       ell(c, (ix - 0.016) * r, (iy - 0.01) * r, 0.016 * r, 0.007 * r, -0.2); c.fillStyle = 'rgba(255,232,210,0.9)'; c.fill();
     }
@@ -862,19 +852,6 @@ FESTIVE_TIERS[5] = {
     c.fillRect(-3 * r, -3 * r, 6 * r, 6 * r);
     c.restore();
     c.restore();   // the pie clip
-  },
-  // a five-pointed star lying flat (squashed to `fy` of its height), rounded points, one pointing away from us
-  star(cx, cy, R0, R1, fy) {
-    const pts = [];
-    for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + (k * Math.PI) / 5, d = k % 2 ? R1 : R0; pts.push({ x: cx + Math.cos(a) * d, y: cy + Math.sin(a) * d * fy }); }
-    const p = new Path2D(), n = pts.length;
-    for (let i = 0; i < n; i++) {
-      const p0 = pts[(i + n - 1) % n], p1 = pts[i], p2 = pts[(i + 1) % n], f = i % 2 ? 0.14 : 0.22;
-      const a = { x: lerp(p1.x, p0.x, f), y: lerp(p1.y, p0.y, f) }, b = { x: lerp(p1.x, p2.x, f), y: lerp(p1.y, p2.y, f) };
-      i ? p.lineTo(a.x, a.y) : p.moveTo(a.x, a.y); p.quadraticCurveTo(p1.x, p1.y, b.x, b.y);
-    }
-    p.closePath();
-    return p;
   },
   // a holly sprig lying on the lid: two spiky leaves and three berries; (x, y) and size s in units of r
   holly(c, r, x, y, s) {
@@ -1368,7 +1345,7 @@ FESTIVE_TIERS[8] = {
   },
 };
 
-// 9 ─ YULE LOG (a Swiss roll dressed as a log: chocolate-frosted roll on its side, sponge-and-cream spiral, cream rosettes on top)
+// 9 ─ YULE LOG (a chocolate Swiss roll dressed as a log: glossy glaze, a zigzag of white icing, cream spiral, cream rosettes on top)
 FESTIVE_TIERS[9] = {
   key: 'yulelog', name: 'Yule Log', r: 72, outline: '#5a2c12',
   k: 1.031,   // drawing scale: the collision area (the hull of the cake) equals the classic Black Forest cake's
@@ -1378,9 +1355,10 @@ FESTIVE_TIERS[9] = {
   // whipped-cream rosettes piped along the top: [centre x, topping ('berry' | 'holly')]; their size, and how far their
   // centre sits below the top of the roll (they make the scalloped top edge of the outline)
   rosettes: [[-0.32, 'berry'], [0, 'holly'], [0.32, 'berry']], rose: { rx: 0.21, ry: 0.2, lift: 0.075 },
-  // the soft fork furrows along the roll, by their height on it (-1 top … 1 bottom)
-  furrows: [-0.44, 0.34, 0.68],
-  face: { x: 0.2, y: 0.04, s: 0.36 },
+  // the zigzag drizzle of white icing across the roll: its turning points, alternately near the top and near the
+  // bottom (x in units of r), and where it ends in a little drip
+  drizzle: [-0.44, -0.27, -0.12, 0.2, 0.52, 0.7, 0.9], drips: [1, 5],
+  face: { x: 0.2, y: -0.01, s: 0.36 },
   crumbs: ['#8a4c2a', '#d9a060', '#fbefd8', '#ffffff', '#e8334a'],
   // The collision outline is the convex hull of the roll and its rosettes; the shallow slivers between and beside the
   // rosettes stay unpainted, so paint() clips to the cake itself and shades along its outline.
@@ -1415,49 +1393,58 @@ FESTIVE_TIERS[9] = {
       c.restore();
     };
 
-    // ── soft, warm milk-chocolate frosting on a roll lying on its side: lit along the top, warm shade below ──
-    c.fillStyle = lg(c, 0, top * r, 0, bot * r, [[0, '#b0703f'], [0.3, '#97582f'], [0.62, '#7c4222'], [1, '#5c2e15']]);
+    // ── smooth, glossy chocolate glaze poured over the roll: warm, one soft broad highlight, warm shade below ──
+    c.fillStyle = lg(c, 0, top * r, 0, bot * r, [[0, '#a8683e'], [0.3, '#8e5030'], [0.65, '#713a20'], [1, '#532814']]);
     c.fillRect(-2 * r, -2 * r, 4 * r, 4 * r);
-    glow(0.05, top + 0.3, 0.85, 0.13, '236,178,128', 0.45);    // the broad highlight along the upper flank
-    glow(0.1, bot - 0.06, 0.9, 0.12, '70,30,10', 0.35);         // warm shade underneath
-    glow(G.xr + 0.12, G.cy, 0.3, 0.5, '70,30,10', 0.3);         // the far end turning away
-    // a few broad, soft, wavy fork furrows along the roll: a warm shade in the furrow, a soft light on its upper lip
-    for (const [k, v] of this.furrows.entries()) {
-      const th = Math.asin(v), xs = G.xl + G.a * Math.cos(th) - 0.02, xe = G.xr + G.a * Math.cos(th), pts = [];
-      for (let x = xs; x <= xe + 1e-6; x += 0.02) pts.push({ x: x * r, y: (G.cy + G.b * v + 0.03 * Math.cos(th) * Math.sin(x * 5.5 + k * 2.1)) * r });
-      const w = 0.075 * Math.cos(th) * r;
-      c.save(); c.translate(0, 0.3 * w); c.strokeStyle = 'rgba(80,34,12,0.32)'; c.lineWidth = w; strokePts(c, pts); c.restore();
-      c.save(); c.translate(0, -0.55 * w); c.strokeStyle = 'rgba(230,170,122,0.32)'; c.lineWidth = 0.6 * w; strokePts(c, pts); c.restore();
-    }
-    // the calm, light part of the frosting where the face sits
-    glow(this.face.x, this.face.y + 0.02, 0.34, 0.2, '182,118,74', 0.55);
+    glow(0.1, top + 0.27, 0.8, 0.15, '255,214,176', 0.42);     // the soft broad highlight of the glaze
+    glow(0.1, bot - 0.05, 0.9, 0.13, '60,24,8', 0.35);           // warm shade underneath
+    glow(G.xr + 0.12, G.cy, 0.3, 0.5, '60,24,8', 0.28);          // the far end turning away
+    glow(this.face.x, this.face.y + 0.02, 0.24, 0.17, '176,112,70', 0.5);   // a calm, lighter spot where the face sits
+    // a light dusting of icing sugar on top
+    speckle(c, R, 70, R => { const x = lerp(G.xl, G.xr + 0.25, R()); return { x: x * r, y: (top + 0.04 + Math.pow(R(), 2) * 0.4) * r }; }, R => `rgba(255,252,245,${0.4 + R() * 0.5})`, 0.007 * r, 0.014 * r);
 
-    // ── a generous dusting of icing sugar along the top ──
-    const snowY = x => top + 0.12 + 0.025 * Math.sin(x * 8 + 1) + 0.015 * Math.sin(x * 19 + 0.5);
-    const snow = new Path2D(); snow.moveTo(-1.2 * r, -2 * r);
-    for (let x = -1.2; x <= 1.2001; x += 0.01) snow.lineTo(x * r, snowY(x) * r);
-    snow.lineTo(1.2 * r, -2 * r); snow.closePath();
-    c.save(); c.translate(0, 0.02 * r); c.fillStyle = 'rgba(90,40,12,0.25)'; c.fill(snow); c.restore();
-    c.fillStyle = lg(c, 0, top * r, 0, (top + 0.15) * r, [[0, '#fffdf8'], [0.6, '#fdf8f0'], [1, '#f1e6d8']]); c.fill(snow);
-    speckle(c, R, 140, R => { const x = lerp(G.xl, G.xr + 0.25, R()); return { x: x * r, y: (top + 0.1 + Math.pow(R(), 2) * 0.45) * r }; }, R => `rgba(255,252,245,${0.4 + R() * 0.5})`, 0.007 * r, 0.015 * r);
+    // ── a bold zigzag drizzle of white icing across the roll, raised, with rounded ends and a drip here and there ──
+    {
+      // turning points, a little uneven in height; between them each stroke wobbles a little, as a hand-held piping bag does
+      const D = this.drizzle, tp = D.map((x, k) => ({ x, y: k % 2 ? bot - [0.12, 0.17, 0.1][((k - 1) / 2) % 3] : top + [0.15, 0.12, 0.17, 0.13][(k / 2) % 4] }));
+      const ctrl = [];
+      tp.forEach((p, k) => {
+        ctrl.push(p);
+        const q = tp[k + 1]; if (!q) return;
+        const dx = q.x - p.x, dy = q.y - p.y, l = Math.hypot(dx, dy), nx = -dy / l, ny = dx / l, s = k % 2 ? 1 : -1;
+        ctrl.push({ x: p.x + dx * 0.36 + nx * 0.022 * s, y: p.y + dy * 0.36 + ny * 0.022 * s }, { x: p.x + dx * 0.68 - nx * 0.016 * s, y: p.y + dy * 0.68 - ny * 0.016 * s });
+      });
+      const pts = spline(ctrl.map(p => ({ x: p.x * r, y: p.y * r })), 10), shine = [];
+      for (let k = 0; k < tp.length - 1; k++) shine.push(pts.slice(k * 30 + 8, k * 30 + 17));
+      const w = 0.075 * r, drips = this.drips.map(k => ({ x: tp[k].x * r, y: tp[k].y * r }));
+      const drip = (p, s) => { c.beginPath(); c.moveTo(p.x - w * 0.45 * s, p.y); c.quadraticCurveTo(p.x - w * 0.5 * s, p.y + w * 1.3 * s, p.x, p.y + w * 1.45 * s); c.quadraticCurveTo(p.x + w * 0.5 * s, p.y + w * 1.3 * s, p.x + w * 0.45 * s, p.y); c.closePath(); };
+      c.save(); c.translate(0.01 * r, 0.03 * r);   // its soft shadow on the glaze
+      c.strokeStyle = 'rgba(45,16,4,0.38)'; c.lineWidth = w * 1.15; strokePts(c, pts);
+      for (const p of drips) { drip(p, 1.1); c.fillStyle = 'rgba(45,16,4,0.38)'; c.fill(); }
+      c.restore();
+      c.strokeStyle = '#efe2d2'; c.lineWidth = w; strokePts(c, pts);                       // the icing, its shaded underside …
+      for (const p of drips) { drip(p, 1); c.fillStyle = '#efe2d2'; c.fill(); }
+      c.save(); c.translate(-0.008 * r, -0.014 * r); c.strokeStyle = '#fffdf8'; c.lineWidth = w * 0.72; strokePts(c, pts); c.restore();   // … its lit top
+      for (const p of drips) { c.save(); c.translate(-0.006 * r, -0.01 * r); drip(p, 0.78); c.fillStyle = '#fffdf8'; c.fill(); c.restore(); }
+      c.save(); c.translate(-0.016 * r, -0.022 * r); c.strokeStyle = 'rgba(255,255,255,0.95)'; c.lineWidth = w * 0.22; for (const s of shine) strokePts(c, s); c.restore();
+    }
 
     // ── whipped-cream rosettes piped along the top, each with a berry or a holly leaf ──
     for (const [x, kind] of this.rosettes) this.rosette(c, r, x, top + Q.lift, kind);
 
-    // ── the near cut end: a Swiss roll in section, golden sponge rolled round thick ivory cream, coated in frosting ──
+    // ── the near cut end: a chocolate Swiss roll in section, cocoa sponge rolled round thick white cream, in its glaze ──
     c.save(); c.translate(G.xl * r, G.cy * r); c.scale(G.a * r, G.b * r);   // a unit circle, seen at a slant
-    circ(c, 0, 0, 1); c.fillStyle = lg(c, 0, -1, 0, 1, [[0, '#9c5e36'], [0.5, '#80462a'], [1, '#62321a']]); c.fill();   // the frosting coat, cut through
-    circ(c, 0.02, 0.01, 0.8); c.fillStyle = 'rgba(70,30,10,0.45)'; c.fill();                                              // where coat and sponge meet
-    circ(c, 0.02, 0, 0.77); c.fillStyle = rg(c, -0.25, -0.3, 0, 0.02, 0, 0.8, [[0, '#e8b878'], [0.6, '#d29a5a'], [1, '#b87c42']]); c.fill();   // sponge
-    c.save(); circ(c, 0.02, 0, 0.77); c.clip();
-    speckle(c, R, 70, R => { const a = R() * TAU, d = Math.sqrt(R()) * 0.75; return { x: 0.02 + Math.cos(a) * d, y: Math.sin(a) * d }; }, R => (R() < 0.6 ? `rgba(150,90,40,${0.25 + R() * 0.25})` : `rgba(255,228,180,${0.3 + R() * 0.3})`), 0.025, 0.05);   // a soft, porous crumb
+    circ(c, 0, 0, 1); c.fillStyle = lg(c, 0, -1, 0, 1, [[0, '#7a3e20'], [0.5, '#5e2c14'], [1, '#48200e']]); c.fill();   // the glaze coat, cut through
+    circ(c, 0.02, 0, 0.82); c.fillStyle = rg(c, -0.25, -0.3, 0, 0.02, 0, 0.85, [[0, '#a8683e'], [0.6, '#91542f'], [1, '#7a4224']]); c.fill();   // cocoa sponge
+    c.save(); circ(c, 0.02, 0, 0.82); c.clip();
+    speckle(c, R, 80, R => { const a = R() * TAU, d = Math.sqrt(R()) * 0.8; return { x: 0.02 + Math.cos(a) * d, y: Math.sin(a) * d }; }, R => (R() < 0.6 ? `rgba(80,38,16,${0.3 + R() * 0.25})` : `rgba(200,140,95,${0.35 + R() * 0.3})`), 0.025, 0.05);   // a soft, porous crumb
     c.restore();
-    // the cream: one and a half turns, thick and soft, a little shade on its lower edge
-    const spiral = []; for (let t = 0; t <= 3 * Math.PI + 1e-6; t += 0.05) { const q = 0.08 + (t / (3 * Math.PI)) * 0.5; spiral.push({ x: 0.02 + Math.cos(t + 2.3) * q, y: Math.sin(t + 2.3) * q }); }
-    c.save(); c.translate(0.012, 0.03); c.strokeStyle = 'rgba(140,80,35,0.4)'; c.lineWidth = 0.24; strokePts(c, spiral); c.restore();
-    c.strokeStyle = '#f8ecd4'; c.lineWidth = 0.23; strokePts(c, spiral);
-    circ(c, 0.02 + Math.cos(2.3) * 0.08, Math.sin(2.3) * 0.08, 0.12); c.fillStyle = '#f8ecd4'; c.fill();
-    c.save(); c.translate(-0.02, -0.035); c.strokeStyle = 'rgba(255,252,244,0.7)'; c.lineWidth = 0.07; strokePts(c, spiral.slice(10, -8)); c.restore();
+    // the cream: one and a half turns, thick, white-ivory, a little warm shade on its lower edge
+    const spiral = []; for (let t = 0; t <= 3 * Math.PI + 1e-6; t += 0.05) { const q = 0.08 + (t / (3 * Math.PI)) * 0.52; spiral.push({ x: 0.02 + Math.cos(t + 2.3) * q, y: Math.sin(t + 2.3) * q }); }
+    c.save(); c.translate(0.012, 0.03); c.strokeStyle = 'rgba(60,26,10,0.45)'; c.lineWidth = 0.25; strokePts(c, spiral); c.restore();
+    c.strokeStyle = '#fbf3e4'; c.lineWidth = 0.24; strokePts(c, spiral);
+    circ(c, 0.02 + Math.cos(2.3) * 0.08, Math.sin(2.3) * 0.08, 0.13); c.fillStyle = '#fbf3e4'; c.fill();
+    c.save(); c.translate(-0.02, -0.035); c.strokeStyle = 'rgba(255,255,252,0.85)'; c.lineWidth = 0.08; strokePts(c, spiral.slice(10, -8)); c.restore();
     // the cut face turned toward the light: brighter top left, a soft warm shade bottom right
     c.fillStyle = rg(c, -0.3, -0.4, 0, -0.05, -0.05, 1.05, [[0, 'rgba(255,236,200,0.18)'], [0.55, 'rgba(255,236,200,0)'], [0.85, 'rgba(90,40,10,0.08)'], [1, 'rgba(90,40,10,0.3)']]);
     circ(c, 0, 0, 1); c.fill();
