@@ -3,11 +3,11 @@
 FESTIVE_TIERS[2] = {
   key: 'snowflake', name: 'Snowflake Cookie', r: 24, outline: '#7c461b',
   shape: r => [ptsCircle(r)],
-  face: { x: 0, y: 0.6, s: 0.46 },
+  face: { x: 0, y: 0.55, s: 0.52 },
   crumbs: ['#bfe4fb', '#ffffff', '#e8c48a', '#6db7e8'],
   ice: 0.77,          // mean icing radius (units of r); the edge wobbles softly around it
-  fy: -0.16,          // snowflake centre (it sits high; the face lives below it, in the gap of the lower arms)
-  arm: 0.56,          // snowflake arm length
+  fy: -0.22,          // snowflake centre (it sits high; the face lives below it, in the gap of the lower arms)
+  arm: 0.51,          // snowflake arm length
   rot: 0,             // arm angle offset (0 = horizontal arms, so the bottom gap opens towards the face)
   vee: [0.6, 0.2, 0.82],     // one bold V of branches per arm: position along the arm, length, angle to the arm
   aw: 0.15, bw: 0.125,       // arm / branch line width (bold, so the flake survives a 35 px icon at 1×)

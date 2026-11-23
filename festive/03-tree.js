@@ -55,7 +55,7 @@ FESTIVE_TIERS[3] = {
     for (let k = tiers.length - 1; k >= 0; k--) {
       const [, yt, xb, yb] = tiers[k], path = paths[k];
       c.save(); c.clip(path);
-      c.fillStyle = lg(c, -xb * r, yt * r, xb * 0.6 * r, yb * r + 0.12 * r, [[0, '#5cc672'], [0.35, '#2e9e50'], [0.75, '#1e8040'], [1, '#135f30']]);
+      c.fillStyle = lg(c, -xb * r, yt * r, xb * 0.6 * r, yb * r + 0.12 * r, [[0, '#49b866'], [0.35, '#258a42'], [0.75, '#176c34'], [1, '#0e4f27']]);
       c.fillRect(-r, (yt - 0.1) * r, 2 * r, (yb - yt + 0.35) * r);
       if (k > 0) { c.save(); c.translate(0.02 * r, 0.05 * r); c.fillStyle = 'rgba(5,45,18,0.45)'; c.fill(paths[k - 1]); c.restore(); }
       // glossy streak on the lit side (kept away from the face on the bottom tier)

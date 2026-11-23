@@ -152,7 +152,7 @@ h2{font-weight:700;font-size:2rem;color:#7a3a0e;line-height:1.1}
 /* ── festive mode, body[data-season="xmas"]: Christmas Eve at the bakery ─────────────────────────────
    Outside it is a snowy winter evening: a clear dusk sky with snow falling behind everything and
    drifts at the bottom; snow lies on the HUD signs, the ladder and the cards; the bakery's orange
-   accents turn fir green (red stays the colour of the danger line), the gate bar is a candy cane.
+   accents turn fir green (red stays the colour of the danger line), the gate bar is a candy stripe.
    The golden bakery (data-gold) turns the whole evening to candlelight: the sky itself goes gold,
    a little more with every level, as the classic room does. */
 body[data-season="xmas"]{background:#8f9dd0 linear-gradient(#55649f 0%,#7f8fc6 42%,#b4bfe3 100%)}
@@ -168,16 +168,18 @@ body[data-season="xmas"]::after{content:"";position:fixed;left:-10%;right:-10%;b
 body[data-season="xmas"][data-gold="1"]{background:radial-gradient(74% 62% at 50% 46%,rgba(255,216,136,.85) 0%,rgba(255,216,136,0) 80%),#c9ad9a linear-gradient(#8c84a8 0%,#c9ad9a 45%,#edd09a 100%)}
 body[data-season="xmas"][data-gold="2"]{background:radial-gradient(78% 66% at 50% 46%,rgba(255,210,112,.9) 0%,rgba(255,210,112,0) 82%),#dbb47e linear-gradient(#a88e86 0%,#dbb47e 45%,#f2d08a 100%)}
 body[data-season="xmas"][data-gold="3"]{background:radial-gradient(82% 70% at 50% 46%,rgba(255,222,128,.95) 0%,rgba(255,222,128,0) 84%),#ecc06a linear-gradient(#c9a05a 0%,#ecc06a 45%,#f8dc92 100%)}
-body[data-season="xmas"][data-gold]::after{opacity:.94}
+body[data-season="xmas"][data-gold="1"]::after{filter:sepia(.4) saturate(1.5)}
+body[data-season="xmas"][data-gold="2"]::after{filter:sepia(.6) saturate(1.9)}
+body[data-season="xmas"][data-gold="3"]::after{filter:sepia(.75) saturate(2.3)}
 /* snow lying on the signs: a white cap along the top edge */
 body[data-season="xmas"] .chip,body[data-season="xmas"] #ladder,body[data-season="xmas"] .ibtn{box-shadow:0 -3px 0 #fff,0 3px 0 rgba(200,140,70,.35)}
 body[data-season="xmas"] .ibtn:active{box-shadow:0 -3px 0 #fff,0 1px 0 rgba(200,140,70,.35)}
 body[data-season="xmas"][data-gold="1"] #score-chip,body[data-season="xmas"][data-gold="2"] .chip,body[data-season="xmas"][data-gold="3"] .chip,body[data-season="xmas"][data-gold="2"] #ladder,body[data-season="xmas"][data-gold="3"] #ladder,body[data-season="xmas"][data-gold="3"] .ibtn{box-shadow:0 -3px 0 #fff,0 3px 0 rgba(214,160,40,.5)}
-body[data-season="xmas"] .card{border-top-color:#fff;background:var(--xmas-cap,none) center top/100% 16px no-repeat,var(--card);box-shadow:0 -4px 0 #fff,0 14px 40px rgba(40,40,90,.32)}
+body[data-season="xmas"] .card{background:var(--xmas-cap,none) center top/100% 16px no-repeat,var(--card);box-shadow:0 -4px 0 #fff,0 14px 40px rgba(40,40,90,.32)}
 body[data-season="xmas"] h1,body[data-season="xmas"] #logo{position:relative}
 body[data-season="xmas"] h1::after,body[data-season="xmas"] #logo::after{content:"";position:absolute;left:50%;top:-.16em;width:1.1em;height:.65em;margin-left:1.18em;background:var(--xmas-holly,none) center/contain no-repeat;transform:rotate(16deg);pointer-events:none}
 /* wide layout: the logo hangs as a little snowy sign above the HUD (the dusk sky is too dark for its small print) */
-body[data-season="xmas"] #logo{background:var(--card);border:2px solid var(--line);border-top-color:#fff;border-radius:14px;padding:9px 4px 7px;box-shadow:0 -3px 0 #fff,0 3px 0 rgba(200,140,70,.35)}
+body[data-season="xmas"] #logo{background:var(--card);border:2px solid var(--line);border-radius:14px;padding:9px 4px 7px;box-shadow:0 -3px 0 #fff,0 3px 0 rgba(200,140,70,.35)}
 body[data-season="xmas"] #logo::after{top:.2em;margin-left:1.22em;width:1.05em}
 body[data-season="xmas"] #game{box-shadow:0 0 0 3px #d9a56c,0 12px 30px rgba(40,40,90,.34),0 0 46px rgba(255,232,190,.4)}
 body[data-season="xmas"][data-gold] #game{box-shadow:0 0 0 3px #d9a56c,0 12px 30px rgba(90,60,40,.3),0 0 60px rgba(255,214,120,.6)}
@@ -189,7 +191,7 @@ body[data-season="xmas"] .btn.ghost{background:#fff;box-shadow:0 4px 0 #e2c193}
 body[data-season="xmas"] #mult{background:linear-gradient(#55bd78,#2c8f52)}
 body[data-season="xmas"] #combo{background:linear-gradient(#55bd78,#2c8f52);box-shadow:0 3px 0 #1c6a3a}
 body[data-season="xmas"] #score.bump{color:#2c8f52}
-body[data-season="xmas"] #gate-fill{background:repeating-linear-gradient(-55deg,#e2414d 0 4px,#fff6f2 4px 8px);box-shadow:inset 0 0 0 1px rgba(170,30,45,.25)}
+body[data-season="xmas"] #gate-fill{background:repeating-linear-gradient(-55deg,#fffaf4 0 5px,#e2535d 5px 7px,#fffaf4 7px 12px,#3aa35e 12px 14px);box-shadow:inset 0 0 0 1px rgba(44,143,82,.45)}
 body[data-season="xmas"] h1 span{color:#d8434f}
 body[data-season="xmas"] .mode-switch button[aria-pressed="true"]{color:#1f7a42}
 body[data-season="xmas"] .mode-switch button:focus-visible{outline-color:rgba(44,143,82,.5)}
@@ -3173,7 +3175,7 @@ const Render = {
         c.fillStyle = 'rgba(60,30,25,0.22)';
         for (let x = Math.floor(x0 / 36) * 36; x < x1; x += 36) c.fillRect(x, y0, 2, h);
         // evening: a cool dusk over the wood, warm light spilling out of the window next to it
-        c.fillStyle = 'rgba(52,62,120,0.2)'; c.fillRect(x0, y0, x1 - x0, h);
+        c.fillStyle = 'rgba(52,62,120,0.07)'; c.fillRect(x0, y0, x1 - x0, h);
         const inner = x0 < 0 ? x1 : x0, out = x0 < 0 ? Math.max(x0, inner - 70) : Math.min(x1, inner + 70);
         c.fillStyle = lg(c, inner, 0, out, 0, [[0, L ? 'rgba(255,200,90,0.32)' : 'rgba(255,196,120,0.24)'], [1, 'rgba(255,196,120,0)']]);
         c.fillRect(Math.min(inner, out), y0, Math.abs(out - inner), h);
