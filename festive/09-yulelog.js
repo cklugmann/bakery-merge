@@ -57,7 +57,12 @@ FESTIVE_TIERS[9] = {
       for (const [cx, w, L] of drips) y += L * r / (1 + Math.pow((u - cx) / w, 4));
       return y;
     };
-    const snowEdge = (dy, start) => { for (let x = 1.2 * r, i = 0; x >= -1.2 * r; x -= 0.006 * r, i++) (i || start) ? c.lineTo(x, snowY(x) + dy) : c.moveTo(x, snowY(x) + dy); };
+    // the lower edge, traced right → left; `connect` continues the current path instead of starting a new one
+    const snowEdge = (dy, connect) => {
+      for (let x = 1.2 * r, first = !connect; x >= -1.2 * r; x -= 0.006 * r, first = false) {
+        if (first) c.moveTo(x, snowY(x) + dy); else c.lineTo(x, snowY(x) + dy);
+      }
+    };
     const snowPath = () => { c.beginPath(); c.moveTo(-1.2 * r, -1.3 * b); c.lineTo(1.2 * r, -1.3 * b); snowEdge(0, true); c.closePath(); };
     c.save(); c.translate(0, 0.02 * r); c.strokeStyle = 'rgba(20,8,2,0.45)'; c.lineWidth = 0.04 * r; c.beginPath(); snowEdge(0); c.stroke(); c.restore();
     snowPath(); c.fillStyle = lg(c, 0, -b, 0, -0.35 * b, [[0, '#ffffff'], [0.6, '#fbfbff'], [1, '#e6eaf6']]); c.fill();

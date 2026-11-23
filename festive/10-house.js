@@ -64,6 +64,14 @@ FESTIVE_TIERS[10] = {
     this.window(c, r, -0.385 * r, 0.47 * r);
     this.door(c, r, 0.36 * r, 0.43 * r);
     for (const s of [-1, 1]) this.cane(c, r, s * 0.585 * r, 0.22 * r, 0.95 * r, 0.075 * r);
+    // a piped icing heart under the window
+    {
+      const hx = -0.385 * r, hy = 0.715 * r, hs = 0.06 * r;
+      const heart = () => { c.beginPath(); c.moveTo(hx, hy + hs * 0.85); c.bezierCurveTo(hx - hs * 1.5, hy - hs * 0.15, hx - hs * 0.75, hy - hs * 1.15, hx, hy - hs * 0.4); c.bezierCurveTo(hx + hs * 0.75, hy - hs * 1.15, hx + hs * 1.5, hy - hs * 0.15, hx, hy + hs * 0.85); c.closePath(); };
+      c.save(); c.translate(0.006 * r, 0.012 * r); heart(); c.strokeStyle = 'rgba(80,30,5,0.45)'; c.lineWidth = 0.028 * r; c.stroke(); c.restore();
+      heart(); c.fillStyle = '#e8334a'; c.fill(); c.strokeStyle = '#ffffff'; c.lineWidth = 0.026 * r; c.stroke();
+      ell(c, hx - hs * 0.45, hy - hs * 0.35, hs * 0.2, hs * 0.13, -0.6); c.fillStyle = 'rgba(255,255,255,0.8)'; c.fill();
+    }
     // snow bank along the foot of the walls
     c.beginPath(); c.moveTo(-r, 1.1 * r);
     const bankY = x => (0.785 - 0.025 * Math.cos(x * 9) - 0.018 * Math.sin(x * 23 + 1)) * r;
@@ -129,9 +137,13 @@ FESTIVE_TIERS[10] = {
     c.moveTo(-r, ey - 0.05 * r); c.lineTo(r, ey - 0.05 * r); c.lineTo(r, ey + 0.04 * r);
     const N = 13;
     for (let i = N; i >= 0; i--) {
-      const x0 = lerp(-0.9, 0.9, i / N) * r, x1 = lerp(-0.9, 0.9, (i - 0.5) / N) * r, L = (0.08 + 0.05 * ((i * 7) % 3) / 2) * r;
+      // one drip between x0 and x2, its rounded tip at x1; lengths vary in a 3-step pattern
+      const x0 = lerp(-0.9, 0.9, i / N) * r, x1 = lerp(-0.9, 0.9, (i - 0.5) / N) * r, x2 = lerp(-0.9, 0.9, (i - 1) / N) * r, L = (0.08 + 0.05 * ((i * 7) % 3) / 2) * r;
       c.lineTo(x0, ey + 0.04 * r);
-      if (i > 0) c.bezierCurveTo(x0 - 0.01 * r, ey + L, x1 + 0.045 * r, ey + L + 0.02 * r, x1, ey + L + 0.02 * r), c.bezierCurveTo(x1 - 0.045 * r, ey + L + 0.02 * r, lerp(-0.9, 0.9, (i - 1) / N) * r + 0.01 * r, ey + L, lerp(-0.9, 0.9, (i - 1) / N) * r, ey + 0.04 * r);
+      if (i > 0) {
+        c.bezierCurveTo(x0 - 0.01 * r, ey + L, x1 + 0.045 * r, ey + L + 0.02 * r, x1, ey + L + 0.02 * r);
+        c.bezierCurveTo(x1 - 0.045 * r, ey + L + 0.02 * r, x2 + 0.01 * r, ey + L, x2, ey + 0.04 * r);
+      }
     }
     c.lineTo(-r, ey + 0.04 * r); c.closePath();
     c.fillStyle = 'rgba(60,20,2,0.4)'; c.save(); c.translate(0.008 * r, 0.022 * r); c.fill(); c.restore();
@@ -139,7 +151,10 @@ FESTIVE_TIERS[10] = {
     c.strokeStyle = 'rgba(150,160,205,0.6)'; c.lineWidth = 0.014 * r; c.stroke();
     // candies along the eave: the bottom of the ladder decorates the top
     const cand = [['p', -0.47], ['g', -0.235, '#e8334a'], ['p', 0], ['g', 0.235, '#2fae5a'], ['p', 0.47]];
-    for (const [k, x, col] of cand) k === 'p' ? this.peppermint(c, r, x * r, ey, 0.062 * r, x * 3) : this.gumdrop(c, r, x * r, ey + 0.045 * r, 0.065 * r, col);
+    for (const [k, x, col] of cand) {
+      if (k === 'p') this.peppermint(c, r, x * r, ey, 0.062 * r, x * 3);
+      else this.gumdrop(c, r, x * r, ey + 0.045 * r, 0.065 * r, col);
+    }
     this.peppermint(c, r, 0, -0.5 * r, 0.085 * r, 0.4);
 
     // ── self-shading (see noShade above) ──
