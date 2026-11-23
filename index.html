@@ -1137,7 +1137,7 @@ const Sprites = {
       festiveBroken(e);
       LADDER = LADDERS.classic; TIER_DEFS = LADDER.tiers; Mode.festive = false; this.ladder = LADDER;
       this.normal = TIER_DEFS.map(T => makeSprite(T, pr, false));
-      syncMode();
+      syncMode(G.state === 'play' || G.state === 'gate' || G.state === 'fall' || G.state === 'over');
     }
     this.gold = new Array(TIER_DEFS.length).fill(null);
   },
@@ -1740,6 +1740,7 @@ const FX = {
   },
   // festive: little snowflakes puffing out of a merge and drifting down (own randomness: Xmas.rng)
   flakes(x, y, r, n, golden) {
+    if (Xmas.lite) return;
     const R = Xmas.rng;
     for (let i = 0; i < n; i++) {
       const a = R() * TAU, sp = 0.05 + R() * 0.11, d = r * (0.3 + R() * 0.5);
@@ -2200,8 +2201,8 @@ const G = {
 // exactly as they always were; the Christmas ladder has its own pair, which waits for next year.
 const SAVE = { classic: { best: 'bm.best', disc: 'bm.disc' }, festive: { best: 'bm.xmas.best', disc: 'bm.xmas.disc' } };
 function loadDisc(key) { const d = store.get(key, null) || {}; const t = Array.isArray(d.tiers) ? d.tiers : []; for (let i = 0; i < 4; i++) t[i] = true; return { tiers: t, gold: !!d.gold, jackpots: Math.max(0, d.jackpots | 0), bestJackpot: Math.max(0, d.bestJackpot | 0) }; }
-const saveDisc = () => store.set(SAVE[LADDER.id].disc, G.disc);
-const saveBest = () => store.set(SAVE[LADDER.id].best, G.best);
+const saveDisc = () => { if (!G.unsaved) store.set(SAVE[LADDER.id].disc, G.disc); };
+const saveBest = () => { if (!G.unsaved) store.set(SAVE[LADDER.id].best, G.best); };
 
 // Switch between the classic and the festive game. Only ever called between runs (boot, the switch
 // on the title card, the start of a run), so a run always finishes in the mode it started in.
@@ -2212,9 +2213,13 @@ function setMode(festive) {
   syncMode();
 }
 // everything that follows the mode in play: the page theme, the saved progress, the sound, the wallpaper, the texts
-function syncMode() {
+// midRun: only when a festive treat could not be painted while a run was going on (see Sprites.ensure) — that run
+// keeps its own score and discoveries in memory and saves nothing (G.unsaved), so a run never writes into the
+// other mode's progress; the classic progress is loaded when the next run starts.
+function syncMode(midRun) {
   if (Mode.festive) document.body.dataset.season = 'xmas'; else delete document.body.dataset.season;
-  G.best = store.get(SAVE[LADDER.id].best, 0); G.disc = loadDisc(SAVE[LADDER.id].disc);
+  if (midRun) G.unsaved = true;
+  else { G.unsaved = false; G.best = store.get(SAVE[LADDER.id].best, 0); G.disc = loadDisc(SAVE[LADDER.id].disc); }
   Sfx.setFestive(Mode.festive);
   if (Render.c) Render.makePattern(Render.scale * Render.dpr);
   UI.onMode();
@@ -2737,8 +2742,9 @@ const stageCol = k => { const S = Mode.festive ? XMAS_COLS : STAGE_COLS; return 
 const Xmas = {
   rng: mulberry32(1225),            // the festive effects' own randomness (never Math.random, see above)
   k: 0, flakes: [], bulbs: {}, frost: null, awn: null, holly: null, awnPic: {}, calm: false,
-  // slow devices: if festive frames run long for a while, the snowfall on the board and the twinkling stop (see loop)
-  lite: false, ft: 16.7, fn: 0,
+  // slow devices: if drawing a festive frame keeps taking long, the snowfall on the board, the twinkling and the
+  // merge snowflakes are dropped for the rest of the visit (see loop)
+  lite: false, ft: 0, fn: 0,
   BULB_COLS: ['#ff5d5d', '#ffd23e', '#56cc7c', '#78c0ff', '#fff1c2'],
   GOLD_BULBS: ['#ffd56a', '#fff1c2', '#ffc23a'],
   CONFETTI: ['#ffd23e', '#fff4b8', '#e8414e', '#ffffff', '#f6a623', '#4fbf74'],   // same length as the classic list
@@ -2934,12 +2940,13 @@ const Xmas = {
     c.drawImage(b.lit, x - 9, y - 6, 18, 20);
     this.glow(c, b, x, y, tw, L);
   },
-  // the twinkle: in the brighter part of its cycle a light gets a second, wider glow
+  // the twinkle: in the brighter part of its cycle a second, wider glow fades in over a light
   // (not while the camera is pulled back for a stage change — the lights are tiny then — and not under reduced motion)
   glow(c, b, x, y, tw, L) {
-    if (this.calm || this.lite || tw <= (L >= 3 ? 0.5 : 0.66)) return;
+    const a = (tw - (L >= 3 ? 0.3 : 0.45)) * 1.8;   // fades in over the brighter half of the cycle
+    if (this.calm || this.lite || a < 0.06) return;
     const big = L >= 3 ? 1.25 : 1;
-    c.drawImage(b.halo, x - 11 * big, y + 4 - 11 * big, 22 * big, 22 * big);
+    c.globalAlpha = Math.min(1, a); c.drawImage(b.halo, x - 11 * big, y + 4 - 11 * big, 22 * big, 22 * big); c.globalAlpha = 1;
   },
   twinkle(i) { return REDUCED_MOTION ? 0.4 : 0.5 + 0.5 * Math.sin(G.rtime * 0.0021 + i * 2.39 + Math.sin(G.rtime * 0.0007 + i)); },
 };
@@ -3423,6 +3430,8 @@ const UI = {
     this.titleOn = false;
     { const ae = document.activeElement; if (ae && ae.blur && ae.closest && ae.closest('.mode-switch')) ae.blur(); }   // Space and Enter drop again, they must not reach the hidden switch
     // the mode is settled here, between runs: the player's choice while the season lasts, classic once it is over
+    G.state = 'idle';                  // the previous run is over: from here on a change of mode is one between runs
+    if (G.unsaved) syncMode();         // a run that fell back to classic half-way: now load the classic progress
     if ((festiveOffered() && Season.wanted()) !== Mode.festive) setMode(Season.wanted());
     newRun();
     this.shownScore = 0; this.lastScoreTxt = '0'; $('score').textContent = '0'; this.fitScore(); this.ladderDirty = true;
@@ -3777,9 +3786,6 @@ function loop(now) {
     if (n >= 10) acc = 0;
   }
   if (G.queuedDrop && canDrop()) tryDrop();
-  // festive mode watches its own frame time: on a device that cannot keep up (about 40 fps or less over several
-  // seconds of play) the decorative snowfall on the board and the twinkle are dropped for the rest of the visit
-  if (Mode.festive && !Xmas.lite && sim) { Xmas.ft += (rdt - Xmas.ft) * 0.02; if (++Xmas.fn > 240 && Xmas.ft > 25) Xmas.lite = true; }
   if (!G.paused) {
     FX.update(rdt * ts);
     Jackpot.update(rdt, rdt * ts);
@@ -3802,7 +3808,13 @@ function loop(now) {
       FX.add(p);
     }
   }
-  if (engine) Render.frame();
+  if (engine && Mode.festive && !Xmas.lite && sim) {
+    // festive mode watches what drawing a frame costs: a smoothed average (single stalls are capped) that stays
+    // above 11 ms through ten seconds of play means the device cannot afford the decoration
+    const t0 = performance.now(); Render.frame();
+    Xmas.ft += (Math.min(performance.now() - t0, 30) - Xmas.ft) * 0.01;
+    if (++Xmas.fn > 600 && Xmas.ft > 11) Xmas.lite = true;
+  } else if (engine) Render.frame();
   UI.frame(rdt);
   requestAnimationFrame(loop);
 }

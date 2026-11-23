@@ -31,7 +31,7 @@ The current version is shown on the title and pause screens
   façade when the camera pulls back for a stage change. Chambers in Christmas flavours (eggnog,
   cranberry milk, fir frost, sugarplum …), snowflakes in every merge burst, Christmas colours and
   little stars in the confetti and the jackpot fireworks, and the fairy-dust drift between stages
-  becomes a snow-globe flurry. Snow lies on the score signs and the cards, the buttons turn fir
+  becomes a snow-globe flurry. Snow lies on the title, pause and game-over cards, the buttons turn fir
   green, the gate bar is a candy cane. The **golden bakery** still crowns every jackpot: the whole
   evening turns to candlelight, a little more golden with each level.
 - **Sleigh bells in the waltz.** Small, soft sleigh bells join the harp in some phrases and rest in
@@ -43,6 +43,8 @@ The current version is shown on the title and pause screens
   settings are untouched. The Christmas ladder keeps its own best score and discoveries — and
   they wait for you until next year.
 - With *reduce motion* switched on in your device settings, the snow and the lights stand still.
+  On a device that cannot draw the decorated scene fast enough, the snowfall on the board, the
+  twinkling of the lights and the merge snowflakes switch themselves off for that visit.
 - For testing on any day: add `?season=on` or `?season=off` to the address to force the season,
   or `?date=2026-12-24` (also `?date=2027-01-06T23:59:30`) to pretend it is that day.
 - In the code: `Season` (the window and the remembered choice), `LADDERS` / `setMode` (the ladder
