@@ -151,7 +151,7 @@ h2{font-weight:700;font-size:2rem;color:#7a3a0e;line-height:1.1}
 #loading{position:fixed;inset:0;display:grid;place-items:center;font-weight:600;color:#a86a36}
 /* ── festive mode, body[data-season="xmas"]: Christmas Eve at the bakery ─────────────────────────────
    Outside it is a snowy winter evening: a clear dusk sky with snow falling behind everything and
-   drifts at the bottom; snow lies on the HUD signs, the ladder and the cards; the bakery's orange
+   drifts at the bottom; snow lies on the title, pause and game-over cards; the bakery's orange
    accents turn fir green (red stays the colour of the danger line), the gate bar is a candy stripe.
    The golden bakery (data-gold) turns the whole evening to candlelight: the sky itself goes gold,
    a little more with every level, as the classic room does. */
@@ -171,15 +171,15 @@ body[data-season="xmas"][data-gold="3"]{background:radial-gradient(82% 70% at 50
 body[data-season="xmas"][data-gold="1"]::after{filter:sepia(.4) saturate(1.5)}
 body[data-season="xmas"][data-gold="2"]::after{filter:sepia(.6) saturate(1.9)}
 body[data-season="xmas"][data-gold="3"]::after{filter:sepia(.75) saturate(2.3)}
-/* snow lying on the signs and cards: one lumpy layer of snow that covers the top edge — the top border is
-   transparent there and the snow (an image painted in Xmas.build) fills the border box in its place */
-body[data-season="xmas"] .chip,body[data-season="xmas"] #ladder,body[data-season="xmas"] .ibtn{border-top-color:transparent;background:var(--xmas-cap,none) center top/100% 9px no-repeat border-box var(--card)}
+/* snow lying on the big cards (title, pause, sound, game over): one lumpy layer of snow that covers the top
+   edge — the top border is transparent there and the snow (an image painted in Xmas.build) fills the border
+   box in its place. The small HUD signs stay as they are: at their size snow could only be a thin white edge. */
 body[data-season="xmas"] .card{border-top-color:transparent;background:var(--xmas-cap,none) center top/100% 19px no-repeat border-box var(--card);box-shadow:0 14px 40px rgba(40,40,90,.32)}
 body[data-season="xmas"] .stat span{display:block;line-height:1.25}
 body[data-season="xmas"] h1,body[data-season="xmas"] #logo{position:relative}
 body[data-season="xmas"] h1::after,body[data-season="xmas"] #logo::after{content:"";position:absolute;left:50%;top:-.16em;width:1.1em;height:.65em;margin-left:1.18em;background:var(--xmas-holly,none) center/contain no-repeat;transform:rotate(16deg);pointer-events:none}
 /* wide layout: the logo hangs as a little snowy sign above the HUD (the dusk sky is too dark for its small print) */
-body[data-season="xmas"] #logo{background:var(--xmas-cap,none) center top/100% 9px no-repeat border-box var(--card);border:2px solid var(--line);border-top-color:transparent;border-radius:14px;padding:9px 4px 7px;box-shadow:0 3px 0 rgba(200,140,70,.35)}
+body[data-season="xmas"] #logo{background:var(--card);border:2px solid var(--line);border-radius:14px;padding:9px 4px 7px;box-shadow:0 3px 0 rgba(200,140,70,.35)}
 body[data-season="xmas"] #logo::after{top:.2em;margin-left:1.22em;width:1.05em}
 body[data-season="xmas"] #game{box-shadow:0 0 0 3px #d9a56c,0 12px 30px rgba(40,40,90,.34),0 0 46px rgba(255,232,190,.4)}
 body[data-season="xmas"][data-gold] #game{box-shadow:0 0 0 3px #d9a56c,0 12px 30px rgba(90,60,40,.3),0 0 60px rgba(255,214,120,.6)}
@@ -2879,8 +2879,9 @@ const Xmas = {
         c.beginPath(); c.moveTo(0, 0); c.lineTo(380, 0); c.lineTo(380, 6);
         for (let x = 380; x > 0;) { const s = 16 + R() * 22, d = 3 + R() * 5; c.quadraticCurveTo(x - s / 2, 6 + d * 1.5, x - s, 5.5 + R() * 1.5); x -= s; }
         c.closePath();
-        c.save(); c.translate(0, 2.2); c.fillStyle = 'rgba(96,116,180,0.42)'; c.fill(); c.restore();          // cool shadow under the snow
-        c.fillStyle = lg(c, 0, 0, 0, 16, [[0, '#ffffff'], [0.55, '#ffffff'], [1, '#e6edfb']]); c.fill();     // the snow, bluish towards its lower edge
+        c.save(); c.translate(0, 3.6); c.fillStyle = 'rgba(96,116,180,0.16)'; c.fill(); c.restore();          // soft cool shadow under the snow …
+        c.save(); c.translate(0, 1.8); c.fillStyle = 'rgba(92,112,176,0.5)'; c.fill(); c.restore();           // … and a closer, darker one
+        c.fillStyle = lg(c, 0, 0, 0, 15, [[0, '#ffffff'], [0.4, '#ffffff'], [1, '#d9e3f8']]); c.fill();      // the snow, bluish towards its lower edge
       });
       this.k = kk;
       const st = document.documentElement.style;
