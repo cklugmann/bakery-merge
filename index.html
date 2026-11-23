@@ -2737,6 +2737,8 @@ const stageCol = k => { const S = Mode.festive ? XMAS_COLS : STAGE_COLS; return 
 const Xmas = {
   rng: mulberry32(1225),            // the festive effects' own randomness (never Math.random, see above)
   k: 0, flakes: [], bulbs: {}, frost: null, awn: null, holly: null, awnPic: {}, calm: false,
+  // slow devices: if festive frames run long for a while, the snowfall on the board and the twinkling stop (see loop)
+  lite: false, ft: 16.7, fn: 0,
   BULB_COLS: ['#ff5d5d', '#ffd23e', '#56cc7c', '#78c0ff', '#fff1c2'],
   GOLD_BULBS: ['#ffd56a', '#fff1c2', '#ffc23a'],
   CONFETTI: ['#ffd23e', '#fff4b8', '#e8414e', '#ffffff', '#f6a623', '#4fbf74'],   // same length as the classic list
@@ -2747,7 +2749,7 @@ const Xmas = {
   // (no particles, nothing to spawn or grow); in screen space, so it covers whatever the camera shows
   SNOW: (() => {
     const R = mulberry32(2412), out = [];
-    for (let i = 0; i < 38; i++) {
+    for (let i = 0; i < 30; i++) {
       const depth = R(), crystal = i % 4 === 0;
       out.push({ x: R(), y: R(), v: 0.012 + depth * 0.022, a: 5 + R() * 14, w: 0.00035 + R() * 0.0007, p: R() * TAU,
         s: crystal ? 4 + depth * 2.6 : 1.6 + depth * 2.2, al: 0.6 + depth * 0.38, crystal, rot: R() * TAU, vr: (R() - 0.5) * 0.0012 });
@@ -2808,9 +2810,9 @@ const Xmas = {
         ell(c, 4.1, 5.6, 0.9, 1.4, 0.3); c.fillStyle = 'rgba(255,255,255,0.8)'; c.fill();
       });
       // the lit bulb in one picture (soft glow + glass): one draw per light; `halo` is added on top while it twinkles
-      const lit = F.sprite(22, 24, c => {
-        c.fillStyle = rg(c, 11, 12, 0, 11, 12, 11, [[0, rgba(col, 0.5)], [0.35, rgba(col, 0.2)], [1, rgba(col, 0)]]); c.fillRect(0, 1, 22, 22);
-        c.drawImage(glass, 6, 7, 10, 12);
+      const lit = F.sprite(18, 20, c => {
+        c.fillStyle = rg(c, 9, 10, 0, 9, 10, 9, [[0, rgba(col, 0.55)], [0.4, rgba(col, 0.22)], [1, rgba(col, 0)]]); c.fillRect(0, 1, 18, 18);
+        c.drawImage(glass, 4, 5, 10, 12);
       });
       this.bulbs[col] = { halo, glass, lit };
     }
@@ -2929,13 +2931,13 @@ const Xmas = {
   // one fairy light hanging at (x, y); tw = 0…1 twinkle phase (fixed under reduced motion)
   bulb(c, x, y, col, tw, L) {
     const b = this.bulbs[col]; if (!b) return;
-    c.drawImage(b.lit, x - 11, y - 8, 22, 24);
+    c.drawImage(b.lit, x - 9, y - 6, 18, 20);
     this.glow(c, b, x, y, tw, L);
   },
   // the twinkle: in the brighter part of its cycle a light gets a second, wider glow
   // (not while the camera is pulled back for a stage change — the lights are tiny then — and not under reduced motion)
   glow(c, b, x, y, tw, L) {
-    if (this.calm || tw <= (L >= 3 ? 0.5 : 0.66)) return;
+    if (this.calm || this.lite || tw <= (L >= 3 ? 0.5 : 0.66)) return;
     const big = L >= 3 ? 1.25 : 1;
     c.drawImage(b.halo, x - 11 * big, y + 4 - 11 * big, 22 * big, 22 * big);
   },
@@ -3046,7 +3048,7 @@ const Render = {
   // it covers whatever the camera shows; drawn between x0 and x1 (world), behind the pastries.
   // Golden bakery: one flake in seven per level glitters gold. Reduced motion: a still snowfall.
   snow(c, x0, x1, dense) {
-    const S = Xmas.flakes; if (!S || !S.dots) return;
+    const S = Xmas.flakes; if (!S || !S.dots || Xmas.lite) return;
     const v = this.view, z = G.zoom || 1, t = REDUCED_MOTION ? 0 : G.rtime, L = G.goldLevel || 0;
     const sw = VW, sh = VH + 24, list = Xmas.SNOW, reps = dense ? 2 : 1;
     for (let r = 0; r < reps; r++) for (let i = 0; i < list.length; i++) {
@@ -3105,7 +3107,7 @@ const Render = {
       c.beginPath();
       for (let i = 0; i < n; i++) { c.moveTo(i * sw, wy); c.quadraticCurveTo((i + 0.5) * sw, wy + sag * 2, (i + 1) * sw, wy); }
       c.stroke();
-      for (let i = 0; i < n; i++) for (let j = 0; j < 2; j++) { const [bx, by] = spot(i, j), b = Xmas.bulbs[Xmas.bulbCol(i * 2 + j, L)]; if (b) c.drawImage(b.lit, bx - 11, by - 8, 22, 24); }
+      for (let i = 0; i < n; i++) for (let j = 0; j < 2; j++) { const [bx, by] = spot(i, j), b = Xmas.bulbs[Xmas.bulbCol(i * 2 + j, L)]; if (b) c.drawImage(b.lit, bx - 9, by - 6, 18, 20); }
     });
     c.drawImage(pic, 0, y, W, 84);
     for (let i = 0; i < n; i++) for (let j = 0; j < 2; j++) {
@@ -3218,8 +3220,7 @@ const Render = {
         c.fillStyle = '#9a6a4c'; c.fillRect(x0, y0, x1 - x0, h);
         c.fillStyle = 'rgba(60,30,25,0.22)';
         for (let x = Math.floor(x0 / 36) * 36; x < x1; x += 36) c.fillRect(x, y0, 2, h);
-        // evening: a cool dusk over the wood, warm light spilling out of the window next to it
-        c.fillStyle = 'rgba(52,62,120,0.07)'; c.fillRect(x0, y0, x1 - x0, h);
+        // evening: warm light spilling out of the window onto the wood next to it
         const inner = x0 < 0 ? x1 : x0, out = x0 < 0 ? Math.max(x0, inner - 70) : Math.min(x1, inner + 70);
         c.fillStyle = lg(c, inner, 0, out, 0, [[0, L ? 'rgba(255,200,90,0.32)' : 'rgba(255,196,120,0.24)'], [1, 'rgba(255,196,120,0)']]);
         c.fillRect(Math.min(inner, out), y0, Math.abs(out - inner), h);
@@ -3246,8 +3247,8 @@ const Render = {
       c.fillStyle = 'rgba(60,30,10,0.35)'; c.fillRect(x < 0 ? -1.5 : W, y0, 1.5, h);
       c.fillStyle = L ? 'rgba(255,214,90,0.6)' : 'rgba(255,230,190,0.25)'; c.fillRect(x + (x < 0 ? 3 : 4), y0, L ? 2 : 1.5, h);
     }
-    // the light string down both rails: a gently waving wire, a bulb every 44 units (anchored in the world)
-    const STEP_Y = 44, ya = Math.floor(y0 / STEP_Y) * STEP_Y, yb = y0 + h;
+    // the light string down both rails: a gently waving wire, a bulb every 52 units (anchored in the world)
+    const STEP_Y = 52, ya = Math.floor(y0 / STEP_Y) * STEP_Y, yb = y0 + h;
     c.strokeStyle = '#3b4f36'; c.lineWidth = 1.1;
     for (const x of [-RAIL / 2, W + RAIL / 2]) {
       c.beginPath();
@@ -3776,6 +3777,9 @@ function loop(now) {
     if (n >= 10) acc = 0;
   }
   if (G.queuedDrop && canDrop()) tryDrop();
+  // festive mode watches its own frame time: on a device that cannot keep up (about 40 fps or less over several
+  // seconds of play) the decorative snowfall on the board and the twinkle are dropped for the rest of the visit
+  if (Mode.festive && !Xmas.lite && sim) { Xmas.ft += (rdt - Xmas.ft) * 0.02; if (++Xmas.fn > 240 && Xmas.ft > 25) Xmas.lite = true; }
   if (!G.paused) {
     FX.update(rdt * ts);
     Jackpot.update(rdt, rdt * ts);
